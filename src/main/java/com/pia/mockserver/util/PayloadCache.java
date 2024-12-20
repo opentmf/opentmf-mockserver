@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,9 +21,10 @@ import org.slf4j.LoggerFactory;
 public class PayloadCache {
 
   private static final Logger LOG = LoggerFactory.getLogger(PayloadCache.class);
+  public static final String NO_CACHE_ENTRY_FOUND_FOR_DOMAIN = "No cache entry found for domain = '{}'";
 
-  private final Map<String, Map<String, JsonNode>> dataCache = new HashMap<>();
-  private final Map<String, Map<String, Long>> timeCache = new HashMap<>();
+  private final Map<String, TreeMap<String, JsonNode>> dataCache = new HashMap<>();
+  private final Map<String, TreeMap<String, Long>> timeCache = new HashMap<>();
   private static final long PROD_TTL = 1000L * 60 * 60 * 2;
 
   private final long timeToLive;
@@ -64,8 +66,8 @@ public class PayloadCache {
    * @param value The payload to be cached.
    */
   public synchronized void put(String domain, String key, JsonNode value) {
-    dataCache.putIfAbsent(domain, new HashMap<>());
-    timeCache.putIfAbsent(domain, new HashMap<>());
+    dataCache.putIfAbsent(domain, new TreeMap<>());
+    timeCache.putIfAbsent(domain, new TreeMap<>());
 
     if (dataCache.get(domain).containsKey(key)) {
       throw new IllegalArgumentException();
@@ -99,7 +101,30 @@ public class PayloadCache {
    * @param key The key identifier for the cache entry.
    */
   public synchronized void touch(String domain, String key) {
-    timeCache.get(domain).put(key, System.currentTimeMillis());
+    timeCache.get(domain).subMap(key, true, key + "z", true)
+        .replaceAll((k, v) -> System.currentTimeMillis());
+  }
+
+  public synchronized JsonNode getLatestOf(String domain, String key) {
+    if (dataCache.get(domain) == null) {
+      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
+      return null;
+    }
+    TreeMap<String, JsonNode> map = dataCache.get(domain);
+    return map.subMap(key, true, key + "z", true).lastEntry().getValue();
+  }
+
+  public synchronized String getLatestVersion(String domain, String key) {
+    if (dataCache.get(domain) == null) {
+      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
+      return null;
+    }
+    TreeMap<String, JsonNode> map = dataCache.get(domain);
+    return map.subMap(key, true, key + "z", true)
+        .lastEntry()
+        .getValue()
+        .get("version")
+        .asText();
   }
 
   /**
@@ -113,7 +138,7 @@ public class PayloadCache {
     LOG.info("Getting cache entry for domain = '{}' and key = '{}'", domain, key);
 
     if (dataCache.get(domain) == null) {
-      LOG.info("No cache entry found for domain = '{}'", domain);
+      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
       return null;
     }
     return dataCache.get(domain).get(key);
@@ -127,7 +152,7 @@ public class PayloadCache {
    */
   public synchronized Map<String, JsonNode> get(String domain) {
     if (dataCache.get(domain) == null) {
-      LOG.info("No cache entry found for domain = '{}'", domain);
+      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
       return Collections.emptyMap();
     }
     return dataCache.get(domain);

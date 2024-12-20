@@ -8,6 +8,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
+import com.pia.mockserver.model.Id;
+import com.pia.mockserver.model.TmfStatePath;
+import com.pia.mockserver.util.IdExtractor;
 import com.pia.mockserver.util.JacksonUtil;
 import com.pia.mockserver.util.PathExtractor;
 import com.pia.mockserver.util.PayloadCache;
@@ -59,12 +62,14 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
    */
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    // Extract the domain and ID of the record to be updated from the request path
     String domain = PathExtractor.extractDomainWithId(httpRequest.getPath().getValue());
-    String id = PathExtractor.extractLastPart(httpRequest.getPath().getValue());
+    TmfStatePath tmfStatePath = TmfStatePath.resolveFromPath(domain);
+    Id id = IdExtractor.parseId(PathExtractor.extractLastPart(httpRequest.getPath().getValue()));
 
-    // Retrieve the cached data associated with the domain and ID from the payload cache
-    JsonNode cachedData = CACHE.get(domain, id);
+    // Retrieve the cached data associated with the domain and ID
+    JsonNode cachedData = (id.isProvided() || !tmfStatePath.isVersioned())
+        ? CACHE.get(domain, id.getCompositeId())
+        : CACHE.getLatestOf(domain, id.getId());
 
     // If the data exists in the cache, indicating that the record exists, apply the JSON Merge
     // Patch provided in the request body
@@ -85,7 +90,7 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
       }
 
       // Update the cached data with the patched node
-      CACHE.update(domain, id, patchedNode);
+      CACHE.update(domain, id.getCompositeId(), patchedNode);
 
       // Set audit fields for update operation
       setUpdateFields((ObjectNode) patchedNode);

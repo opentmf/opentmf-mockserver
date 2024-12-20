@@ -7,6 +7,9 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
+import com.pia.mockserver.model.Id;
+import com.pia.mockserver.model.TmfStatePath;
+import com.pia.mockserver.util.IdExtractor;
 import com.pia.mockserver.util.JacksonUtil;
 import com.pia.mockserver.util.PathExtractor;
 import com.pia.mockserver.util.PayloadCache;
@@ -60,12 +63,14 @@ public class DynamicJsonPatchCallback implements ExpectationResponseCallback {
    */
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    // Extract the domain and ID of the resource from the request path
     String domain = PathExtractor.extractDomainWithId(httpRequest.getPath().getValue());
-    String id = PathExtractor.extractLastPart(httpRequest.getPath().getValue());
+    TmfStatePath tmfStatePath = TmfStatePath.resolveFromPath(domain);
+    Id id = IdExtractor.parseId(PathExtractor.extractLastPart(httpRequest.getPath().getValue()));
 
-    // Retrieve the cached data associated with the domain and ID from the payload cache
-    JsonNode cachedData = CACHE.get(domain, id);
+    // Retrieve the cached data associated with the domain and ID
+    JsonNode cachedData = (id.isProvided() || !tmfStatePath.isVersioned())
+        ? CACHE.get(domain, id.getCompositeId())
+        : CACHE.getLatestOf(domain, id.getId());
 
     // If the data does not exist in the cache, indicating that the resource does not exist, return
     // a not found response
@@ -85,7 +90,7 @@ public class DynamicJsonPatchCallback implements ExpectationResponseCallback {
     }
 
     // Update the cached data with the patched data
-    CACHE.update(domain, id, patchedNode);
+    CACHE.update(domain, id.getCompositeId(), patchedNode);
 
     // Return a successful response with the patched data
     return HttpResponse.response()

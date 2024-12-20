@@ -14,46 +14,22 @@ import org.apache.commons.lang3.StringUtils;
  */
 public enum TmfStatePath {
 
-  /**
-   * Enum constant representing the order path. Associated variable: STATE Initial state:
-   * ACKNOWLEDGED Final state: COMPLETED
-   */
-  ORDER("order", STATE, ACKNOWLEDGED, COMPLETED),
+  ORDER("order", STATE, ACKNOWLEDGED, COMPLETED, false),
+  INVENTORY("inventory", STATUS, CREATED, ACTIVE, false),
 
-  /**
-   * Enum constant representing the inventory path. Associated variable: STATUS Initial state:
-   * CREATED Final state: ACTIVE
-   */
-  INVENTORY("inventory", STATUS, CREATED, ACTIVE),
+  CANDIDATE("candidate", LIFE_CYCLE_STATUS, IN_DESIGN, LAUNCHED, true),
+  CATALOG("catalog", LIFE_CYCLE_STATUS, IN_DESIGN, LAUNCHED, true),
+  CATEGORY("category", LIFE_CYCLE_STATUS, IN_DESIGN, LAUNCHED, true),
+  SPECIFICATION("specification", LIFE_CYCLE_STATUS, IN_DESIGN, LAUNCHED, true),
+  OFFERING("offering", LIFE_CYCLE_STATUS, IN_DESIGN, LAUNCHED, true),
 
-  /**
-   * Enum constant representing the catalog path. Associated variable: LIFE_CYCLE_STATUS Initial
-   * state: IN_STUDY Final state: IN_DESIGN
-   */
-  CATALOG("catalog", LIFE_CYCLE_STATUS, IN_STUDY, IN_DESIGN),
-
-  /**
-   * Enum constant representing the category path. Associated variable: LIFE_CYCLE_STATUS Initial
-   * state: IN_STUDY Final state: IN_DESIGN
-   */
-  CATEGORY("category", LIFE_CYCLE_STATUS, IN_STUDY, IN_DESIGN),
-
-  /**
-   * Enum constant representing the candidate path. Associated variable: LIFE_CYCLE_STATUS Initial
-   * state: IN_STUDY Final state: IN_DESIGN
-   */
-  CANDIDATE("candidate", LIFE_CYCLE_STATUS, IN_STUDY, IN_DESIGN),
-
-  /**
-   * Default enum constant representing a default path. Associated variable: STATE Initial state:
-   * ACKNOWLEDGED Final state: COMPLETED
-   */
-  DEFAULT("default", STATE, ACKNOWLEDGED, COMPLETED);
+  DEFAULT("default", STATE, ACKNOWLEDGED, COMPLETED, false);
 
   private final String path;
   private final String variableName;
   private final String initialState;
   private final String finalState;
+  private final boolean versioned;
 
   /**
    * Constructs a TMF state path enum constant with the specified path, variable name, initial
@@ -64,11 +40,12 @@ public enum TmfStatePath {
    * @param initialState The initial state associated with the path.
    * @param finalState The final state associated with the path.
    */
-  TmfStatePath(String path, String variableName, String initialState, String finalState) {
+  TmfStatePath(String path, String variableName, String initialState, String finalState, boolean versioned) {
     this.path = path;
     this.variableName = variableName;
     this.initialState = initialState;
     this.finalState = finalState;
+    this.versioned = versioned;
   }
 
   /**
@@ -125,5 +102,9 @@ public enum TmfStatePath {
    */
   public String getFinalState() {
     return finalState;
+  }
+
+  public boolean isVersioned() {
+    return versioned;
   }
 }

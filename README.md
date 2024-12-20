@@ -47,7 +47,7 @@ The following classes have been implemented:
 
 
 - [DynamicGetListCallback.java](src/main/java/com/pia/mockserver/callback/DynamicGetListCallback.java)
-    - Decides the domain romm the path parameter.
+    - Decides the domain from the path parameter.
     - Extracts offset, limit, sort criteria, filter and fields from the httpRequest.
     - Applies jsonPath filter to the cached domain payloads.
     - Applies sorting to the filtered out domain payloads.
@@ -134,7 +134,7 @@ docker run -p 1080:1080 local/mockserver:1.0.0 -serverPort 1080
 Expectation to generate and return a fake WSO2 token.
 
 ```shell
-# define expectation for POST /serviceOrder 
+# define expectation for POST /token
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -177,7 +177,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 '{
     "httpRequest" : {
         "method": "GET",
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder.*"
+        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
         "callbackClass" : "com.pia.mockserver.callback.DynamicGetCallback"
@@ -187,7 +187,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 
 ### GET /serviceOrder
 ```shell
-# define expectation for GET /serviceOrder/{id} 
+# define expectation for GET /serviceOrder 
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -195,7 +195,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 '{
     "httpRequest" : {
         "method": "GET",
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder"
+        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder.*"
     },
     "httpResponseClassCallback" : {
         "callbackClass" : "com.pia.mockserver.callback.DynamicGetListCallback"
@@ -214,7 +214,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
     "httpRequest" : {
         "method": "PATCH",
         "headers": {"Content-Type": ["application/json-patch+json"]},
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder.*"
+        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
         "callbackClass" : "com.pia.mockserver.callback.DynamicJsonPatchCallback"
@@ -233,7 +233,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
     "httpRequest" : {
         "method": "PATCH",
         "headers": {"Content-Type": ["application/merge-patch+json"]},
-        "path": "/tmf-api/serviceOrdering/v4/serviceOrder.*"
+        "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
         "callbackClass" : "com.pia.mockserver.callback.DynamicMergePatchCallback"
@@ -251,7 +251,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 '{
     "httpRequest" : {
         "method": "DELETE",
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder.*"
+        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
         "callbackClass" : "com.pia.mockserver.callback.DynamicDeleteCallback"
@@ -304,8 +304,8 @@ curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-2
 
 ### GET /serviceOrder
 ```shell
-# should return a payload with id and state
-curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7 
+# should return a serviceOrder array each having id and state
+curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder
 
 # returns
 [{"id":"dce2ce9d-281b-43df-8150-6242c34c8cf7","state":"completed"}]
@@ -343,3 +343,9 @@ curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-2
 # returns 
 HTTP 204, No Content
 ```
+
+## Release Notes
+### 1.0.0
+- Initial Release
+### 1.0.1
+- Started supporting versioned entities. TMF-630 Part 4.2

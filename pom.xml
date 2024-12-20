@@ -193,7 +193,7 @@
                     <argument>image</argument>
                     <argument>rm</argument>
                     <argument>--force</argument>
-                    <argument>uc/mockserver:${project.version}</argument>
+                    <argument>local/mockserver:${project.version}</argument>
                   </arguments>
                   <executable>docker</executable>
                   <workingDirectory>${project.basedir}</workingDirectory>
@@ -202,7 +202,7 @@
                   <goal>exec</goal>
                 </goals>
                 <id>docker-clean</id>
-                <phase>install</phase>
+                <phase>clean</phase>
               </execution>
 
               <!-- Create new docker image -->
@@ -211,7 +211,7 @@
                   <arguments>
                     <argument>build</argument>
                     <argument>-t</argument>
-                    <argument>uc/mockserver:${project.version}</argument>
+                    <argument>local/mockserver:${project.version}</argument>
                     <argument>--build-arg</argument>
                     <argument>VERSION=${project.version}</argument>
                     <argument>.</argument>
@@ -223,7 +223,7 @@
                   <goal>exec</goal>
                 </goals>
                 <id>docker-build</id>
-                <phase>install</phase>
+                <phase>package</phase>
               </execution>
             </executions>
           </plugin>

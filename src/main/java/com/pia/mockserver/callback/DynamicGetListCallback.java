@@ -1,5 +1,7 @@
 package com.pia.mockserver.callback;
 
+import static com.pia.mockserver.model.TmfConstants.HREF;
+import static com.pia.mockserver.model.TmfConstants.ID;
 import static com.pia.mockserver.util.HttpRequestUtil.extractFields;
 import static com.pia.mockserver.util.HttpRequestUtil.extractFilter;
 import static com.pia.mockserver.util.HttpRequestUtil.extractLimit;
@@ -143,6 +145,8 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     if (fields == null || fields.isEmpty()) {
       return data;
     }
+    fields.add(ID);
+    fields.add(HREF);
 
     return data.stream().map(node -> filterFields(node, fields)).collect(Collectors.toList());
   }

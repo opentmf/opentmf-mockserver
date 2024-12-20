@@ -8,7 +8,9 @@ import static com.pia.mockserver.util.HttpRequestUtil.extractFields;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.pia.mockserver.model.Id;
 import com.pia.mockserver.model.TmfStatePath;
+import com.pia.mockserver.util.IdExtractor;
 import com.pia.mockserver.util.JacksonUtil;
 import com.pia.mockserver.util.PathExtractor;
 import com.pia.mockserver.util.PayloadCache;
@@ -65,13 +67,15 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
   public HttpResponse handle(HttpRequest httpRequest) {
     // Extract the domain and ID from the request path
     String domain = PathExtractor.extractDomainWithId(httpRequest.getPath().getValue());
-    String id = PathExtractor.extractLastPart(httpRequest.getPath().getValue());
-
     // Resolve the appropriate TmfStatePath based on the domain
     TmfStatePath tmfStatePath = TmfStatePath.resolveFromPath(domain);
 
+    Id id = IdExtractor.parseId(PathExtractor.extractLastPart(httpRequest.getPath().getValue()));
+
     // Retrieve the cached data associated with the domain and ID
-    JsonNode cachedData = CACHE.get(domain, id);
+    JsonNode cachedData = (id.isProvided() || !tmfStatePath.isVersioned())
+        ? CACHE.get(domain, id.getCompositeId())
+        : CACHE.getLatestOf(domain, id.getId());
 
     // If cached data is not found, return a not found response
     if (Objects.isNull(cachedData)) {
@@ -80,13 +84,13 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
 
     // Check if state transition is required based on TmfStatePath, and update cached data if
     // necessary
-    if (needToPatch(tmfStatePath, cachedData)) {
+    if (needToPatch(domain, tmfStatePath, cachedData)) {
       ((ObjectNode) cachedData).put(tmfStatePath.getVariableName(), tmfStatePath.getFinalState());
       setUpdateFields((ObjectNode) cachedData);
     }
 
     // Update the last access time of cached data in the cache
-    CACHE.touch(domain, id);
+    CACHE.touch(domain, id.getId());
 
     // Extract specified fields from the request
     Set<String> fields = extractFields(httpRequest);
@@ -112,6 +116,8 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
     if (fieldNames.isEmpty()) {
       return originalNode;
     }
+    fieldNames.add(ID);
+    fieldNames.add(HREF);
     ObjectNode filteredNode = JacksonUtil.createObjectNode();
     for (String fieldName : fieldNames) {
       if (originalNode.has(fieldName)) {
@@ -129,7 +135,14 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
    * @param cachedData The cached data associated with the domain and ID.
    * @return true if a state transition is required, false otherwise.
    */
-  private boolean needToPatch(TmfStatePath tmfStatePath, JsonNode cachedData) {
+  private boolean needToPatch(String domain, TmfStatePath tmfStatePath, JsonNode cachedData) {
+    if (tmfStatePath.isVersioned()) {
+      String latestVersion = CACHE.getLatestVersion(domain, cachedData.get(ID).asText());
+      String version = cachedData.get(VERSION).asText();
+      if (!Objects.equals(version, latestVersion)) {
+        return false;
+      }
+    }
     return !(cachedData.has(UPDATED_DATE) || cachedData.has(UPDATED_BY))
         && cachedData.has(tmfStatePath.getVariableName())
         && cachedData

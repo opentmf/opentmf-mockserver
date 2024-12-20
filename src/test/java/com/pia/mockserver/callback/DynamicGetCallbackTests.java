@@ -131,8 +131,7 @@ class DynamicGetCallbackTests {
     HttpResponse httpResponseSameId = dynamicPostCallback.handle(httpRequest);
     assertEquals(400, httpResponseSameId.getStatusCode());
     assertEquals(
-        "{\"code\":400,\"message\":\"This id is already exist. id: "
-            + idFromPayload
+        "{\"code\":400,\"message\":\"id = " + idFromPayload + " already exists."
             + "\",\"status\":\"BAD_REQUEST_400\"}",
         httpResponseSameId.getBodyAsString());
   }

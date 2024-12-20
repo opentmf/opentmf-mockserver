@@ -1,16 +1,18 @@
 package com.pia.mockserver.callback;
 
-import static com.pia.mockserver.model.TmfConstants.*;
+import static com.pia.mockserver.model.TmfConstants.HREF;
+import static com.pia.mockserver.model.TmfConstants.UPDATED_BY;
+import static com.pia.mockserver.model.TmfConstants.UPDATED_DATE;
 import static com.pia.mockserver.util.AuditFieldUtil.setCreateFields;
 import static com.pia.mockserver.util.ErrorResponseUtil.getErrorResponse;
 import static com.pia.mockserver.util.PathExtractor.extractDomainWithoutId;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.pia.mockserver.model.Id;
 import com.pia.mockserver.model.TmfStatePath;
+import com.pia.mockserver.util.IdExtractor;
 import com.pia.mockserver.util.JacksonUtil;
 import com.pia.mockserver.util.PayloadCache;
-import java.util.Objects;
-import java.util.UUID;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
@@ -94,16 +96,14 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
     ObjectNode parsedBody = (ObjectNode) JacksonUtil.readAsTree(body);
 
     // Check if the payload contains an ID that already exists in the cache
-    String idFromPayload = idFromPayload(parsedBody);
-    if (Objects.nonNull(idFromPayload) && Objects.nonNull(CACHE.get(domain, idFromPayload))) {
+    Id id = IdExtractor.extractId(tmfStatePath.isVersioned(), parsedBody);
+    if (id.isProvided() && CACHE.get(domain, id.getCompositeId()) != null) {
       return getErrorResponse(
-          HttpStatusCode.BAD_REQUEST_400, "This id is already exist. id: " + idFromPayload);
+          HttpStatusCode.BAD_REQUEST_400, "id = " + id.getCompositeId() + " already exists.");
     }
 
     // Generate a new ID if not already present in the payload
-    String id = idFromPayload == null ? UUID.randomUUID().toString() : idFromPayload;
-    parsedBody.put(ID, id);
-    parsedBody.put(HREF, httpRequest.getPath().getValue() + "/" + id);
+    parsedBody.put(HREF, httpRequest.getPath().getValue() + "/" + id.getHrefSuffix());
 
     // Set initial state if not already present in the payload
     if (!parsedBody.has(tmfStatePath.getVariableName())) {
@@ -119,15 +119,11 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
     // Generate response JSON
     String responseJson = JacksonUtil.writeAsString(parsedBody);
 
-    CACHE.put(domain, id, parsedBody);
+    CACHE.put(domain, id.getCompositeId(), parsedBody);
     return HttpResponse.response()
         .withStatusCode(HttpStatusCode.OK_200.code())
         .withContentType(MediaType.APPLICATION_JSON)
         .withBody(responseJson);
-  }
-
-  private String idFromPayload(ObjectNode parsedBody) {
-    return parsedBody.has(ID) ? parsedBody.get(ID).asText() : null;
   }
 
   private void removeUpdateFieldIfExist(ObjectNode objectNode) {
