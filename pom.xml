@@ -1,26 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.pia.commons</groupId>
-  <artifactId>dynamic-mock-expectations</artifactId>
+  <groupId>org.opentmf.mockserver</groupId>
+  <artifactId>opentmf-mockserver</artifactId>
   <version>1.0.2-SNAPSHOT</version>
+
+  <description>
+    Easy to use dynamic expectations for get, list, post, patch, delete and token retrieval.
+  </description>
+
+  <url>https://github.com/opentmf/opentmf-mockserver</url>
+
+  <organization>
+    <name>PiA Group</name>
+    <url>https://www.pia-group.net/</url>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+      <comments>A permissive open-source license</comments>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>gokhanus</id>
+      <name>Gokhan Demir</name>
+      <email>gokhan@opentmf.org</email>
+    </developer>
+    <developer>
+      <id>yusuf-bozkurt</id>
+      <name>Yusuf Bozkurt</name>
+      <email>yusuf.bozkurt@pia-team.com</email>
+    </developer>
+    <developer>
+      <id>cezmi-aslan</id>
+      <name>Cezmi Aslan</name>
+      <email>cezmi.aslan@pia-team.com</email>
+    </developer>
+  </developers>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>1.8</java.version>
     <mockserver.version>5.15.0</mockserver.version>
-    <junit-jupiter.version>5.11.4</junit-jupiter.version>
-    <awaitility.version>4.2.2</awaitility.version>
-    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <junit-jupiter.version>5.12.2</junit-jupiter.version>
+    <awaitility.version>4.3.0</awaitility.version>
+    <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
     <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
     <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
     <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
-    <nexus-staging-plugin.version>1.7.0</nexus-staging-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
-    <maven-deploy-plugin.version>3.1.3</maven-deploy-plugin.version>
+    <maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+    <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
+    <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+    <central-publishing-maven-plugin.version>0.7.0</central-publishing-maven-plugin.version>
   </properties>
 
   <dependencies>
@@ -52,6 +92,16 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-resources-plugin</artifactId>
           <version>${maven-resources-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>${maven-deploy-plugin.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -87,16 +137,6 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>${maven-jar-plugin.version}</version>
-        <configuration>
-          <archive>
-            <compress>false</compress>
-          </archive>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
         <version>${maven-dependency-plugin.version}</version>
         <executions>
@@ -123,8 +163,9 @@
         <executions>
           <execution>
             <id>attach-sources</id>
-            <phase>deploy</phase>
-            <goals><goal>jar-no-fork</goal></goals>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -135,7 +176,6 @@
         <executions>
           <execution>
             <id>attach-javadocs</id>
-            <phase>deploy</phase>
             <goals>
               <goal>jar</goal>
             </goals>
@@ -148,29 +188,35 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-deploy-plugin</artifactId>
-        <version>${maven-deploy-plugin.version}</version>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.sonatype.plugins</groupId>
-        <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>${nexus-staging-plugin.version}</version>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>${maven-gpg-plugin.version}</version>
         <executions>
           <execution>
-            <id>default-deploy</id>
-            <phase>deploy</phase>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
             <goals>
-              <goal>deploy</goal>
+              <goal>sign</goal>
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>${maven-release-plugin.version}</version>
         <configuration>
-          <serverId>pia-commons-release</serverId>
-          <nexusUrl>https://nexus.dnext-pia.com/</nexusUrl>
-          <skipStaging>true</skipStaging>
+          <useReleaseProfile>false</useReleaseProfile>
+          <goals>deploy</goals>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>${central-publishing-maven-plugin.version}</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>publish-to-central</publishingServerId>
+          <autoPublish>true</autoPublish>
         </configuration>
       </plugin>
     </plugins>
@@ -232,20 +278,10 @@
     </profile>
   </profiles>
 
-  <distributionManagement>
-    <repository>
-      <id>pia-commons-release</id>
-      <url>https://nexus.dnext-pia.com/repository/pia-commons-release/</url>
-    </repository>
-    <snapshotRepository>
-      <id>pia-commons-snapshot</id>
-      <url>https://nexus.dnext-pia.com/repository/pia-commons-snapshot/</url>
-    </snapshotRepository>
-  </distributionManagement>
-
   <scm>
-    <connection>scm:git:git@github.com:pia-commons/dynamic-mock-expectations.git</connection>
-    <developerConnection>scm:git:git@github.com:pia-commons/dynamic-mock-expectations.git</developerConnection>
+    <url>https://github.com/opentmf/opentmf-mockserver</url>
+    <connection>scm:git:git@github.com:opentmf/opentmf-mockserver.git</connection>
+    <developerConnection>scm:git:git@github.com:opentmf/opentmf-mockserver.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 

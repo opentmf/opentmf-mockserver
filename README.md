@@ -1,23 +1,24 @@
-# dynamic-mock-expectations
-This project contains ready-to-use, general purpose dynamic mock server expectations for post, get, patch, and delete. It also contains an expectation class for obtaining mock openid access tokens.
+# opentmf-mockserver
+
+This project consists of general purpose TMF-630 compatible dynamic expectation implementations for post, get, patch, and delete on top of [Mock Server Netty](www.mock-server.org).
 
 ## Why This Library
 
-- To minimize the requirement to create separate expectations at the mock server with the help of the provided reusable expectation classes.
+- To help the tests and minimize the requirement to create many expectations.
 - To provide getToken expectations for openid authentication servers.
 
 ## Working Model
 
-- The posted payloads will be cached, so that get, patch and delete methods can access the original payload.
+- The posted payloads will be cached for two hours, so that get, patch and delete methods can access the original payload within this time frame.
 - The cached payload will be evicted if not touched for two hours.
 - Get and Patch operations will mean a touch, which will reset the cache evict timer.
-- The implementations will take care of setting logical values for id, createdDate, createdBy, updatedDate, updatedBy and revision fields automatically.
+- The implementations will take care of setting logical values for id, createdDate, createdBy, updatedDate, updatedBy, revision, and status fields automatically.
 
 ## Implementation Details
 
 The following classes have been implemented:
 
-- [DynamicPostCallback.java](src/main/java/com/pia/mockserver/callback/DynamicPostCallback.java)
+- [DynamicPostCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicPostCallback.java)
     - If "id" is provided in the payload, checks if that id exists in the payload cache. Returns 400 if so.
     - Uses either the provided id, or generates a new id for the posted payload.
     - Adds createdBy, createdDate and revision fields. Overrides if they are already provided.
@@ -37,7 +38,7 @@ The following classes have been implemented:
     - Caches the payload, and returns 200.
 
 
-- [DynamicGetCallback.java](src/main/java/com/pia/mockserver/callback/DynamicGetCallback.java)
+- [DynamicGetCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetCallback.java)
     - Considers the last path parameter as the id.
     - Checks if a payload is found in the cache with that id.
     - Returns 404 if no payload is cached with that id.
@@ -46,7 +47,7 @@ The following classes have been implemented:
     - Returns 200 and the potentially manipulated payload.
 
 
-- [DynamicGetListCallback.java](src/main/java/com/pia/mockserver/callback/DynamicGetListCallback.java)
+- [DynamicGetListCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetListCallback.java)
     - Decides the domain from the path parameter.
     - Extracts offset, limit, sort criteria, filter and fields from the httpRequest.
     - Applies jsonPath filter to the cached domain payloads.
@@ -58,7 +59,7 @@ The following classes have been implemented:
     - Serves the response with http status 200 and content type application/json.
 
 
-- [DynamicJsonPatchCallback.java](src/main/java/com/pia/mockserver/callback/DynamicJsonPatchCallback.java)
+- [DynamicJsonPatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicJsonPatchCallback.java)
     - Considers the last path parameter as the id.
     - Checks if a payload is found in the cache with that id.
     - Returns 404 if no payload is cached with that id.
@@ -68,7 +69,7 @@ The following classes have been implemented:
     - Returns 200 and the updated payload.
 
 
-- [DynamicMergePatchCallback.java](src/main/java/com/pia/mockserver/callback/DynamicMergePatchCallback.java)
+- [DynamicMergePatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicMergePatchCallback.java)
     - Considers the last path parameter as the id.
     - Checks if a payload is found in the cache with that id.
     - Returns 404 if no payload is cached with that id.
@@ -78,7 +79,7 @@ The following classes have been implemented:
     - Returns 200 and the updated payload.
 
 
-- [DynamicDeleteCallback.java](src/main/java/com/pia/mockserver/callback/DynamicDeleteCallback.java)
+- [DynamicDeleteCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicDeleteCallback.java)
     - Considers the last path parameter as the id.
     - Checks if a payload is found in the cache with that id.
     - Returns 404 if no payload is cached with that id.
@@ -86,7 +87,7 @@ The following classes have been implemented:
     - Returns 204 No Content.
 
 
-- [OpenidTokenCallback.java](src/main/java/com/pia/mockserver/callback/OpenidTokenCallback.java)
+- [OpenidTokenCallback.java](src/main/java/org/opentmf/mockserver/callback/OpenidTokenCallback.java)
     - Checks if the payload contains necessary fields depending on the mandatory attribute "grant_type" and returns 400 Bad Request if a required parameter is missing from the request body.
     - Prepares and returns an OpenID token payload with httpStatus = 200.
 
@@ -145,7 +146,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
         "path" : "/token"
     },
     "httpResponseClassCallback" : {
-        "callbackClass" : "com.pia.mockserver.callback.OpenidTokenCallback"
+        "callbackClass" : "callback.mockserver.org.opentmf.OpenidTokenCallback"
     }
 }'
 ```
@@ -163,7 +164,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
         "path" : "/tmf-api/serviceOrdering/v4/serviceOrder"
     },
     "httpResponseClassCallback" : {
-        "callbackClass" : "com.pia.mockserver.callback.DynamicPostCallback"
+        "callbackClass" : "callback.mockserver.org.opentmf.DynamicPostCallback"
     }
 }'
 ```
@@ -180,7 +181,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
         "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
-        "callbackClass" : "com.pia.mockserver.callback.DynamicGetCallback"
+        "callbackClass" : "callback.mockserver.org.opentmf.DynamicGetCallback"
     }
 }'
 ```
@@ -198,7 +199,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
         "path" : "/tmf-api/serviceOrdering/v4/serviceOrder.*"
     },
     "httpResponseClassCallback" : {
-        "callbackClass" : "com.pia.mockserver.callback.DynamicGetListCallback"
+        "callbackClass" : "callback.mockserver.org.opentmf.DynamicGetListCallback"
     }
 }'
 ```
@@ -217,7 +218,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
         "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
-        "callbackClass" : "com.pia.mockserver.callback.DynamicJsonPatchCallback"
+        "callbackClass" : "callback.mockserver.org.opentmf.DynamicJsonPatchCallback"
     }
 }'
 ```
@@ -236,7 +237,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
         "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
-        "callbackClass" : "com.pia.mockserver.callback.DynamicMergePatchCallback"
+        "callbackClass" : "callback.mockserver.org.opentmf.DynamicMergePatchCallback"
     }
 }'
 ```
@@ -254,7 +255,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
         "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
     },
     "httpResponseClassCallback" : {
-        "callbackClass" : "com.pia.mockserver.callback.DynamicDeleteCallback"
+        "callbackClass" : "callback.mockserver.org.opentmf.DynamicDeleteCallback"
     }
 }'
 ```
@@ -349,3 +350,5 @@ HTTP 204, No Content
 - Initial Release
 ### 1.0.1
 - Started supporting versioned entities. TMF-630 Part 4.2
+### 1.0.2
+- The first open-source version
