@@ -33,6 +33,11 @@ public final class IdExtractor {
       id.setProvided(true);
       id.setVersion(pureId.substring(pureId.indexOf("version=") + 8, pureId.length() - 1));
       id.setId(pureId.substring(0, pureId.indexOf(":(version=")));
+    } else if (pureId.contains("version=")) {
+      id.setProvided(true);
+      String s = pureId.substring(pureId.indexOf("version=") + 8);
+      id.setVersion(s.contains("&") ? s.substring(0, s.indexOf("&")) : s);
+      id.setId(pureId.contains("?") ? pureId.substring(0, pureId.indexOf("?")) : pureId);
     } else {
       id.setProvided(false);
       id.setId(pureId);

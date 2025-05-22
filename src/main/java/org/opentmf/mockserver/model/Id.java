@@ -1,5 +1,7 @@
 package org.opentmf.mockserver.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 /**
  * @author Gokhan Demir
  */
@@ -38,5 +40,14 @@ public class Id {
 
   public void setVersion(String version) {
     this.version = version;
+  }
+
+  public static Id parse(JsonNode jsonNode) {
+    Id parsedId = new Id();
+    parsedId.setId(jsonNode.get("id").asText());
+    if (jsonNode.get("version") != null) {
+      parsedId.setVersion(jsonNode.get("version").asText());
+    }
+    return parsedId;
   }
 }

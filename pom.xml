@@ -41,6 +41,11 @@
       <name>Cezmi Aslan</name>
       <email>cezmi.aslan@pia-team.com</email>
     </developer>
+    <developer>
+      <id>abdullahbeker</id>
+      <name>Abdullah Beker</name>
+      <email>abdullah.beker@dnext-technology.com</email>
+    </developer>
   </developers>
 
   <properties>
@@ -239,7 +244,7 @@
                     <argument>image</argument>
                     <argument>rm</argument>
                     <argument>--force</argument>
-                    <argument>local/mockserver:${project.version}</argument>
+                    <argument>local/opentmf-mockserver:${project.version}</argument>
                   </arguments>
                   <executable>docker</executable>
                   <workingDirectory>${project.basedir}</workingDirectory>
@@ -257,7 +262,7 @@
                   <arguments>
                     <argument>build</argument>
                     <argument>-t</argument>
-                    <argument>local/mockserver:${project.version}</argument>
+                    <argument>local/opentmf-mockserver:${project.version}</argument>
                     <argument>--build-arg</argument>
                     <argument>VERSION=${project.version}</argument>
                     <argument>.</argument>

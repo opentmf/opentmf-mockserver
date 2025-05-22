@@ -78,6 +78,8 @@ public class DynamicJsonPatchCallback implements ExpectationResponseCallback {
       return getErrorResponse(HttpStatusCode.NOT_FOUND_404, createErrorContextForNotFound());
     }
 
+    id = Id.parse(cachedData);
+
     // Extract the JSON patch data from the request body
     String patchData = httpRequest.getBodyAsString();
     JsonNode patchedNode;

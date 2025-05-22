@@ -83,6 +83,8 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
       return getErrorResponse(HttpStatusCode.NOT_FOUND_404, createErrorContextForNotFound());
     }
 
+    id = Id.parse(cachedData);
+
     // Check if state transition is required based on TmfStatePath, and update cached data if
     // necessary
     if (needToPatch(domain, tmfStatePath, cachedData)) {
