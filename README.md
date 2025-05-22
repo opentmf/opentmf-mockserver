@@ -354,3 +354,5 @@ HTTP 204, No Content
 - The first open-source version
 ### 1.0.3
 - Enhanced the version resolving algorithm
+### 1.0.4
+- Introduced a release Dockerfile
