@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.opentmf.mockserver</groupId>
   <artifactId>opentmf-mockserver</artifactId>
-  <version>1.0.4-SNAPSHOT</version>
+  <version>1.0.4</version>
 
   <description>
     Easy to use dynamic expectations for get, list, post, patch, delete and token retrieval.
@@ -287,7 +287,7 @@
     <url>https://github.com/opentmf/opentmf-mockserver</url>
     <connection>scm:git:git@github.com:opentmf/opentmf-mockserver.git</connection>
     <developerConnection>scm:git:git@github.com:opentmf/opentmf-mockserver.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>opentmf-mockserver-1.0.4</tag>
   </scm>
 
 </project>
