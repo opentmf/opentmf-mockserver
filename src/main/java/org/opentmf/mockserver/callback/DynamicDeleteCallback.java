@@ -4,6 +4,9 @@ import static org.opentmf.mockserver.model.Error.createErrorContextForNotFound;
 import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.opentmf.mockserver.model.Id;
+import org.opentmf.mockserver.model.TmfStatePath;
+import org.opentmf.mockserver.util.IdExtractor;
 import org.opentmf.mockserver.util.PathExtractor;
 import org.opentmf.mockserver.util.PayloadCache;
 import java.util.Objects;
@@ -51,15 +54,19 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
   public HttpResponse handle(HttpRequest httpRequest) {
     // Extract the domain and ID of the resource from the request path
     String domain = PathExtractor.extractDomainWithId(httpRequest.getPath().getValue());
-    String id = PathExtractor.extractLastPart(httpRequest.getPath().getValue());
+    TmfStatePath tmfStatePath = TmfStatePath.resolveFromPath(domain);
+    Id id = IdExtractor.parseId(PathExtractor.extractLastPart(httpRequest.getPath().getValue()));
 
     // Retrieve the cached data associated with the domain and ID from the payload cache
-    JsonNode cachedData = CACHE.get(domain, id);
+    JsonNode cachedData = (id.isProvided() || !tmfStatePath.isVersioned())
+            ? CACHE.get(domain, id.getCompositeId())
+            : CACHE.getLatestOf(domain, id.getId());
 
     // If the data exists in the cache, indicating that the resource exists, delete it from the
     // cache and return a successful deletion response
     if (Objects.nonNull(cachedData)) {
-      CACHE.clear(domain, id);
+      id = Id.parse(cachedData);
+      CACHE.clear(domain, id.getCompositeId());
       return HttpResponse.response().withStatusCode(HttpStatusCode.NO_CONTENT_204.code());
     }
 

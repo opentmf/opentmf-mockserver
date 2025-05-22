@@ -352,3 +352,5 @@ HTTP 204, No Content
 - Started supporting versioned entities. TMF-630 Part 4.2
 ### 1.0.2
 - The first open-source version
+### 1.0.3
+- Enhanced the version resolving algorithm

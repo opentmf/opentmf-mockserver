@@ -75,6 +75,7 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
     // Patch provided in the request body
     // and store the updated data back in the cache
     if (Objects.nonNull(cachedData)) {
+      id = Id.parse(cachedData);
       // Extract the JSON Merge Patch from the request body
       String body = httpRequest.getBodyAsString();
       JsonMergePatch patchData = JacksonUtil.readAsJsonMerger(body);
