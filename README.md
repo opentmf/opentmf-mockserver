@@ -356,3 +356,5 @@ HTTP 204, No Content
 - Enhanced the version resolving algorithm
 ### 1.0.4
 - Introduced a release Dockerfile
+### 1.0.5
+- Fixed the target jar file path in release Dockerfile
