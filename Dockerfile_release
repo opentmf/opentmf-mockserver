@@ -8,7 +8,7 @@ RUN mvn -Dmaven.test.skip=true clean package
 FROM mockserver/mockserver:5.15.0
 ARG VERSION
 ENV PROJECT_VERSION=${VERSION}
-COPY --from=maven-build /build/target/*.jar ./libs/application.jar
+COPY --from=maven-build /build/target/*.jar /libs/application.jar
 ENV SERVER_PORT=1080
 ENV DEBUG_PORT=5005
 EXPOSE ${SERVER_PORT}
