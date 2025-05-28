@@ -1,13 +1,21 @@
 package org.opentmf.mockserver.util;
 
+import static org.opentmf.mockserver.model.TmfConstants.VERSION;
+import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
+import static org.opentmf.mockserver.util.Constants.TWO_HOURS;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.SortedMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
+import org.opentmf.mockserver.model.Id;
+import org.opentmf.mockserver.model.RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,16 +29,18 @@ import org.slf4j.LoggerFactory;
 public class PayloadCache {
 
   private static final Logger LOG = LoggerFactory.getLogger(PayloadCache.class);
-  public static final String NO_CACHE_ENTRY_FOUND_FOR_DOMAIN = "No cache entry found for domain = '{}'";
+  private static final String NO_CACHE_ENTRY_FOUND_FOR_DOMAIN = "No cache entry found for domain = \"{}\"";
+  private static final String START_EVICTING_OLD_CACHE_ITEMS = "Start evicting old cache items.";
+  private static final String DOMAIN_WITH = "domain = \"{}\" with [{}]";
 
-  private final Map<String, TreeMap<String, JsonNode>> dataCache = new HashMap<>();
-  private final Map<String, TreeMap<String, Long>> timeCache = new HashMap<>();
-  private static final long PROD_TTL = 1000L * 60 * 60 * 2;
+  private final Map<String, TreeMap<Id, JsonNode>> dataCache = new LinkedHashMap<>();
+  private final Map<String, TreeMap<Id, Long>> timeCache = new HashMap<>();
 
   private final long timeToLive;
 
   private PayloadCache(long timeToLive) {
     this.timeToLive = timeToLive;
+    LOG.info("Cache initialized to expire in {}", DurationUtil.formatDuration(timeToLive));
     // Schedule a timer task for cache eviction
     new Timer().scheduleAtFixedRate(new CacheEvictTimer(), 0L, timeToLive);
   }
@@ -45,7 +55,9 @@ public class PayloadCache {
    */
   public static PayloadCache getInstance() {
     if (instance == null) {
-      instance = new PayloadCache(PROD_TTL);
+      String cacheDurationMillis = System.getenv(CACHE_DURATION_MILLIS);
+      long milliseconds = Long.parseLong(cacheDurationMillis == null ? TWO_HOURS : cacheDurationMillis);
+      instance = new PayloadCache(milliseconds);
     }
     return instance;
   }
@@ -54,118 +66,81 @@ public class PayloadCache {
   private static class CacheEvictTimer extends TimerTask {
     @Override
     public void run() {
+      LOG.info(START_EVICTING_OLD_CACHE_ITEMS);
       getInstance().evictOldItems();
     }
   }
 
-  /**
-   * Stores a payload in the cache with the specified domain and key.
-   *
-   * @param domain The domain identifier for the cache entry.
-   * @param key The key identifier for the cache entry.
-   * @param value The payload to be cached.
-   */
-  public synchronized void put(String domain, String key, JsonNode value) {
-    dataCache.putIfAbsent(domain, new TreeMap<>());
-    timeCache.putIfAbsent(domain, new TreeMap<>());
+  public synchronized void put(RequestContext ctx, JsonNode value) {
+    dataCache.putIfAbsent(ctx.getDomain(), new TreeMap<>());
+    timeCache.putIfAbsent(ctx.getDomain(), new TreeMap<>());
 
-    if (dataCache.get(domain).containsKey(key)) {
-      throw new IllegalArgumentException();
+    if (dataCache.get(ctx.getDomain()).containsKey(ctx.getId())) {
+      throw new IllegalArgumentException("Key: [" + ctx.getId() + "] already exists in cache for domain ");
     }
 
-    touch(domain, key);
-    dataCache.get(domain).put(key, value);
-    LOG.debug("Cache entry for domain = '{}' and key = '{}' added", domain, key);
+    touch(ctx);
+    dataCache.get(ctx.getDomain()).put(ctx.getId(), value);
+    LOG.info("Cache entry for " + DOMAIN_WITH + " added", ctx.getDomain(), ctx.getId());
   }
 
-  /**
-   * Updates an existing cache entry with the specified domain and key.
-   *
-   * @param domain The domain identifier for the cache entry.
-   * @param key The key identifier for the cache entry.
-   * @param value The updated payload.
-   */
-  public synchronized void update(String domain, String key, JsonNode value) {
-    if (!dataCache.get(domain).containsKey(key)) {
+  public synchronized void update(RequestContext ctx, JsonNode value) {
+    if (!dataCache.get(ctx.getDomain()).containsKey(ctx.getId())) {
       throw new IllegalArgumentException();
     }
-
-    touch(domain, key);
-    dataCache.get(domain).put(key, value);
+    touch(ctx);
+    dataCache.get(ctx.getDomain()).put(ctx.getId(), value);
   }
 
-  /**
-   * Updates the last access time for the specified cache entry.
-   *
-   * @param domain The domain identifier for the cache entry.
-   * @param key The key identifier for the cache entry.
-   */
-  public synchronized void touch(String domain, String key) {
-    timeCache.get(domain).subMap(key, true, key + "z", true)
+  // Update the last access time of cached data in the cache
+  public synchronized void touch(RequestContext ctx) {
+    Id key = new Id();
+    key.setId(ctx.getId().getId());
+    key.setVersion("");
+    timeCache.get(ctx.getDomain()).subMap(key, true, allOf(key), true)
         .replaceAll((k, v) -> System.currentTimeMillis());
   }
 
-  public synchronized JsonNode getLatestOf(String domain, String key) {
-    if (dataCache.get(domain) == null) {
-      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
+  public synchronized JsonNode getLatestOf(RequestContext ctx) {
+    if (dataCache.get(ctx.getDomain()) == null) {
+      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, ctx.getDomain());
       return null;
     }
-    TreeMap<String, JsonNode> map = dataCache.get(domain);
-    return map.subMap(key, true, key + "z", true).lastEntry().getValue();
+    TreeMap<Id, JsonNode> map = dataCache.get(ctx.getDomain());
+    return map.subMap(ctx.getId(), true, allOf(ctx.getId()), true).lastEntry().getValue();
   }
 
-  public synchronized String getLatestVersion(String domain, String key) {
+  public synchronized String getLatestVersion(String domain, Id key) {
     if (dataCache.get(domain) == null) {
       LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
       return null;
     }
-    TreeMap<String, JsonNode> map = dataCache.get(domain);
-    return map.subMap(key, true, key + "z", true)
+    TreeMap<Id, JsonNode> map = dataCache.get(domain);
+    return map.subMap(key, true, allOf(key), true)
         .lastEntry()
         .getValue()
-        .get("version")
+        .get(VERSION)
         .asText();
   }
 
-  /**
-   * Retrieves the payload associated with the specified domain and key.
-   *
-   * @param domain The domain identifier for the cache entry.
-   * @param key The key identifier for the cache entry.
-   * @return The payload associated with the specified domain and key, or null if not found.
-   */
-  public synchronized JsonNode get(String domain, String key) {
-    LOG.info("Getting cache entry for domain = '{}' and key = '{}'", domain, key);
+  public synchronized JsonNode get(RequestContext ctx) {
+    LOG.info("Getting cache entry for " + DOMAIN_WITH, ctx.getDomain(), ctx.getId());
 
-    if (dataCache.get(domain) == null) {
-      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
+    if (dataCache.get(ctx.getDomain()) == null) {
+      LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, ctx.getDomain());
       return null;
     }
-    return dataCache.get(domain).get(key);
+    return dataCache.get(ctx.getDomain()).get(ctx.getId());
   }
 
-  /**
-   * Retrieves all cache entries associated with the specified domain.
-   *
-   * @param domain The domain identifier for the cache entries.
-   * @return A map containing all cache entries for the specified domain.
-   */
-  public synchronized Map<String, JsonNode> get(String domain) {
+  public synchronized SortedMap<Id, JsonNode> getAll(String domain) {
+    LOG.info("Getting cache entries for domain = \"{}\". Existing domain list: {}", domain, dataCache.keySet());
+
     if (dataCache.get(domain) == null) {
       LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
-      return Collections.emptyMap();
+      return Collections.emptySortedMap();
     }
     return dataCache.get(domain);
-  }
-
-  /**
-   * Checks if the cache is empty for the specified domain.
-   *
-   * @param domain The domain identifier to check.
-   * @return true if the cache is empty for the specified domain, false otherwise.
-   */
-  public synchronized boolean isEmpty(String domain) {
-    return dataCache.get(domain).isEmpty();
   }
 
   /**
@@ -174,33 +149,29 @@ public class PayloadCache {
    * @param domain The domain identifier for the cache entry.
    * @param key The key identifier for the cache entry.
    */
-  public synchronized void clear(String domain, String key) {
+  private synchronized void clear(String domain, Id key) {
     dataCache.get(domain).remove(key);
     timeCache.get(domain).remove(key);
-    LOG.info("Old cache entry for domain = '{}' and key = '{}' is removed", domain, key);
+    LOG.info("Old cache entry for " + DOMAIN_WITH + " is removed", domain, key);
   }
 
-  /**
-   * Clears all cache entries associated with the specified domain.
-   *
-   * @param domain The domain identifier for which cache entries will be cleared.
-   */
-  public synchronized void clear(String domain) {
-    dataCache.remove(domain);
-    timeCache.remove(domain);
-    LOG.info("All cache entries for domain = '{}' are removed", domain);
+  public synchronized void clear(RequestContext ctx) {
+    dataCache.get(ctx.getDomain()).remove(ctx.getId());
+    timeCache.get(ctx.getDomain()).remove(ctx.getId());
+    LOG.info("Old cache entry for " + DOMAIN_WITH + " is removed", ctx.getDomain(),
+        ctx.getId());
   }
 
   // Evicts old cache entries based on time-to-live (TTL)
   private void evictOldItems() {
-    LOG.info("Start evicting old cache items.");
+    LOG.info(START_EVICTING_OLD_CACHE_ITEMS);
     timeCache
         .keySet()
         .forEach(
             domain -> {
-              for (Iterator<String> iterator = timeCache.get(domain).keySet().iterator();
+              for (Iterator<Id> iterator = timeCache.get(domain).keySet().iterator();
                   iterator.hasNext(); ) {
-                String key = iterator.next();
+                Id key = iterator.next();
                 long t = timeCache.get(domain).get(key);
                 if (System.currentTimeMillis() - t >= timeToLive) {
                   iterator.remove();
@@ -209,5 +180,12 @@ public class PayloadCache {
               }
             });
     LOG.info("Evicting old cache items completed.");
+  }
+
+  private static Id allOf(Id key) {
+    Id key2 = new Id();
+    key2.setId(key.getId());
+    key2.setVersion(key.getVersion() == null ? "z" : key.getVersion() + "z");
+    return key2;
   }
 }

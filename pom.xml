@@ -50,10 +50,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <java.version>1.8</java.version>
+    <java.version>11</java.version>
     <mockserver.version>5.15.0</mockserver.version>
     <junit-jupiter.version>5.12.2</junit-jupiter.version>
     <awaitility.version>4.3.0</awaitility.version>
+    <system-stubs-jupiter.version>2.1.8</system-stubs-jupiter.version>
     <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
     <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
     <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
@@ -86,6 +87,12 @@
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
       <version>${awaitility.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>uk.org.webcompere</groupId>
+      <artifactId>system-stubs-jupiter</artifactId>
+      <version>${system-stubs-jupiter.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

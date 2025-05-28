@@ -4,14 +4,14 @@ import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 import static org.opentmf.mockserver.util.TokenUtil.generateRandomToken;
 
-import org.opentmf.mockserver.exception.TokenException;
-import org.opentmf.mockserver.model.OpenidTokenResponse;
-import org.opentmf.mockserver.model.TokenBase;
 import java.util.UUID;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
+import org.opentmf.mockserver.exception.TokenException;
+import org.opentmf.mockserver.model.OpenidTokenResponse;
+import org.opentmf.mockserver.model.TokenBase;
 
 /**
  * Token generator implementation for SH service. This class generates tokens specific to the SH

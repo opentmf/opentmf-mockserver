@@ -2,11 +2,11 @@ package org.opentmf.mockserver.util;
 
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 
-import org.opentmf.mockserver.model.Error;
-import org.opentmf.mockserver.model.TokenError;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
+import org.opentmf.mockserver.model.Error;
+import org.opentmf.mockserver.model.TokenError;
 
 /**
  * Utility class for generating error responses for HTTP requests. This class provides methods to

@@ -4,14 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.opentmf.mockserver.util.JacksonUtil;
-import org.opentmf.mockserver.util.PayloadCache;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
+import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.util.JacksonUtil;
+import org.opentmf.mockserver.util.PayloadCache;
+import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
 
+@ExtendWith(SystemStubsExtension.class)
 class DynamicMergePatchCallbackTests {
   private static final PayloadCache CACHE = PayloadCache.getInstance();
   private DynamicMergePatchCallback callback;
@@ -49,8 +53,9 @@ class DynamicMergePatchCallbackTests {
             + "}";
 
     httpRequest.withPath(domain+ "/" + id).withBody(requestBody);
+    RequestContext ctx = RequestContext.initialize(httpRequest, true, JacksonUtil.readAsTree(requestBody));
 
-    CACHE.put(domain, id, getInitialJson(id));
+    CACHE.put(ctx, getInitialJson(id));
 
     // When
     HttpResponse httpResponse = callback.handle(httpRequest);
@@ -58,7 +63,7 @@ class DynamicMergePatchCallbackTests {
     // Then
     assertEquals(200, httpResponse.getStatusCode());
 
-    JsonNode updatedServiceOrderJson = CACHE.get(domain, id);
+    JsonNode updatedServiceOrderJson = CACHE.get(ctx);
     assertNotNull(updatedServiceOrderJson);
 
     JsonNode relatedPartyNode = updatedServiceOrderJson.path("relatedParty");
