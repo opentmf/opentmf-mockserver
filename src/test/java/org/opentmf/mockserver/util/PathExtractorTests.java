@@ -1,13 +1,12 @@
 package org.opentmf.mockserver.util;
 
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.UUID;
-import java.util.stream.Stream;
 
 class PathExtractorTests {
 
@@ -34,6 +33,8 @@ class PathExtractorTests {
             Arguments.of("serviceOrder/", "serviceOrder"),
             Arguments.of("/serviceOrder", "serviceOrder"),
             Arguments.of("serviceOrder", "serviceOrder"),
+            Arguments.of("serviceOrder?version=1", "serviceOrder"),
+            Arguments.of("serviceOrder?xyz=1", "serviceOrder"),
             Arguments.of("/serviceOrder/test/", "serviceOrder/test"),
             Arguments.of("/serviceOrder/test", "serviceOrder/test"),
             Arguments.of("serviceOrder/test/", "serviceOrder/test"),
@@ -58,6 +59,8 @@ class PathExtractorTests {
             Arguments.of("/serviceOrder/123", "serviceOrder"),
             Arguments.of("serviceOrder/123/", "serviceOrder"),
             Arguments.of("serviceOrder/123", "serviceOrder"),
+            Arguments.of("serviceOrder/123:(version=1)", "serviceOrder"),
+            Arguments.of("serviceOrder/123?version=1", "serviceOrder"),
             Arguments.of("/serviceOrder/test/", "serviceOrder"),
             Arguments.of("/serviceOrder/test", "serviceOrder"),
             Arguments.of("serviceOrder/test/", "serviceOrder"),

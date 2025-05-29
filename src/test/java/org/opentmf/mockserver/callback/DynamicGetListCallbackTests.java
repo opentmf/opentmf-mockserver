@@ -1,26 +1,37 @@
 package org.opentmf.mockserver.callback;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
+import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
+import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.opentmf.mockserver.util.JacksonUtil;
 import java.util.Random;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
+import org.opentmf.mockserver.util.JacksonUtil;
+import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
+import uk.org.webcompere.systemstubs.jupiter.SystemStub;
+import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
 
+@ExtendWith(SystemStubsExtension.class)
 class DynamicGetListCallbackTests {
 
-  private DynamicGetListCallback dynamicGetListCallback;
+  private final DynamicGetListCallback dynamicGetListCallback = new DynamicGetListCallback();
 
-  @BeforeEach
-  public void setup() {
-    dynamicGetListCallback = new DynamicGetListCallback();
-  }
+  @SystemStub
+  private static final EnvironmentVariables TEST_ENV_VARIABLES =
+      new EnvironmentVariables(
+          CACHE_DURATION_MILLIS, THREE_SECONDS,
+          ADDITIONAL_FIELDS, "project"
+      );
 
   @Test
   void testResponseWithValidParameters() {
@@ -281,11 +292,14 @@ class DynamicGetListCallbackTests {
       node.put("orderNumber", i);
       node.put("bigRandomNumber", new Random().nextInt(1000));
 
-      HttpRequest httpRequest =
-          new HttpRequest().withPath("/" + domain).withBody(JacksonUtil.writeAsString(node));
-
-      DynamicPostCallback dynamicPostCallback = new DynamicPostCallback();
-      dynamicPostCallback.handle(httpRequest);
+      post(new HttpRequest().withPath("/" + domain).withBody(JacksonUtil.writeAsString(node)));
     }
+  }
+
+  private final DynamicPostCallback dynamicPostCallback = new DynamicPostCallback();
+
+  void post(HttpRequest httpRequest) {
+    HttpResponse handle = dynamicPostCallback.handle(httpRequest);
+    assertEquals(200, handle.getStatusCode());
   }
 }

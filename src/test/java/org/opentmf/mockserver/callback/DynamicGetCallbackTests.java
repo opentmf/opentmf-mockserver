@@ -2,22 +2,37 @@ package org.opentmf.mockserver.callback;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockserver.model.HttpResponse.notFoundResponse;
+import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
+import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
+import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.opentmf.mockserver.util.JacksonUtil;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
+import org.opentmf.mockserver.util.JacksonUtil;
+import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
+import uk.org.webcompere.systemstubs.jupiter.SystemStub;
+import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
 
+@ExtendWith(SystemStubsExtension.class)
 class DynamicGetCallbackTests {
 
   private DynamicGetCallback dynamicGetCallback;
 
+  @SystemStub
+  private static final EnvironmentVariables TEST_ENV_VARIABLES =
+      new EnvironmentVariables(
+          CACHE_DURATION_MILLIS, THREE_SECONDS,
+          ADDITIONAL_FIELDS, "project"
+      );
+
   @BeforeEach
-  public void setup() {
+  void setup() {
     dynamicGetCallback = new DynamicGetCallback();
   }
 
@@ -131,8 +146,7 @@ class DynamicGetCallbackTests {
     HttpResponse httpResponseSameId = dynamicPostCallback.handle(httpRequest);
     assertEquals(400, httpResponseSameId.getStatusCode());
     assertEquals(
-        "{\"code\":400,\"message\":\"id = " + idFromPayload + " already exists."
-            + "\",\"status\":\"BAD_REQUEST_400\"}",
+        "{\"code\":400,\"message\":\"[id='testId', version=null] already exists.\",\"status\":\"BAD_REQUEST_400\"}",
         httpResponseSameId.getBodyAsString());
   }
 

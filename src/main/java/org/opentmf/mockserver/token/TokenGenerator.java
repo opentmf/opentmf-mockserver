@@ -1,13 +1,13 @@
 package org.opentmf.mockserver.token;
 
-import org.opentmf.mockserver.exception.TokenException;
-import org.opentmf.mockserver.model.TokenError;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
+import org.opentmf.mockserver.exception.TokenException;
+import org.opentmf.mockserver.model.TokenError;
 
 /**
  * Abstract class for generating tokens. This class provides methods for token generation and

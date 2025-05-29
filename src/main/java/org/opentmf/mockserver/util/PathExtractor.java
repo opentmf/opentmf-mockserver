@@ -40,6 +40,14 @@ public class PathExtractor {
     // Remove trailing slash
     path = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
     path = path.startsWith("/") ? path.substring(1) : path;
+    int pos = path.indexOf(":");
+    if (pos > 0) {
+      path = path.substring(0, pos);
+    }
+    pos = path.indexOf("?");
+    if (pos > 0) {
+      path = path.substring(0, pos);
+    }
     return path;
   }
 

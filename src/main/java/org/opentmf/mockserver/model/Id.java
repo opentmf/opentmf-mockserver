@@ -1,29 +1,17 @@
 package org.opentmf.mockserver.model;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Objects;
 
 /**
  * @author Gokhan Demir
  */
-public class Id {
-  private boolean provided;
+public class Id implements Comparable<Id> {
+
   private String id;
   private String version;
 
   public String getHrefSuffix() {
     return version == null ? id : id + ":(version=" + version + ")";
-  }
-
-  public String getCompositeId() {
-    return version == null ? id : id + "-" + version;
-  }
-
-  public boolean isProvided() {
-    return provided;
-  }
-
-  public void setProvided(boolean provided) {
-    this.provided = provided;
   }
 
   public String getId() {
@@ -42,12 +30,43 @@ public class Id {
     this.version = version;
   }
 
-  public static Id parse(JsonNode jsonNode) {
-    Id parsedId = new Id();
-    parsedId.setId(jsonNode.get("id").asText());
-    if (jsonNode.get("version") != null) {
-      parsedId.setVersion(jsonNode.get("version").asText());
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof Id)) {
+      return false;
     }
-    return parsedId;
+    Id that = (Id) obj;
+    return Objects.equals(id, that.id) && Objects.equals(version, that.version);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id, version);
+  }
+
+  @Override
+  public int compareTo(Id other) {
+    // First compare by id since it's mandatory
+    int idCompare = this.id.compareTo(other.id);
+    if (idCompare != 0) {
+      return idCompare;
+    }
+    // If ids are equal, handle version comparison with null checking
+    if (this.version == null && other.version == null) {
+      return 0;
+    }
+    if (this.version == null) {
+      return -1;  // Null version comes first
+    }
+    if (other.version == null) {
+      return 1;   // Null version comes first
+    }
+    return this.version.compareTo(other.version);
+  }
+
+  @Override
+  public String toString() {
+    return "id='" + id + "', version=" +
+        (version == null ? "null" : "'" + version + "'");
   }
 }

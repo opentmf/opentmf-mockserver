@@ -5,6 +5,7 @@ import static org.opentmf.mockserver.model.TmfConstants.*;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Utility class for setting audit fields in JSON objects. This class provides methods to set
@@ -22,7 +23,7 @@ public class AuditFieldUtil {
    */
   public static void setUpdateFields(ObjectNode objectNode) {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    String updatedUser = RandomStringUtils.randomString(10);
+    String updatedUser = RandomStringUtils.randomAlphabetic(10);
     objectNode.put(UPDATED_DATE, now.toString());
     objectNode.put(UPDATED_BY, updatedUser);
 
@@ -40,7 +41,7 @@ public class AuditFieldUtil {
    */
   public static void setCreateFields(ObjectNode objectNode) {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    String updatedUser = RandomStringUtils.randomString(10);
+    String updatedUser = RandomStringUtils.randomAlphabetic(10);
     objectNode.put(CREATED_DATE, now.toString());
     objectNode.put(CREATED_BY, updatedUser);
     objectNode.put(REVISION, 0L);

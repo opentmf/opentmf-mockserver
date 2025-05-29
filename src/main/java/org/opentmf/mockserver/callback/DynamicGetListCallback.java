@@ -12,29 +12,38 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jayway.jsonpath.JsonPath;
-import org.opentmf.mockserver.util.JacksonUtil;
-import org.opentmf.mockserver.util.PathExtractor;
-import org.opentmf.mockserver.util.PayloadCache;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.stream.Collectors;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
+import org.opentmf.mockserver.model.Id;
+import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.util.JacksonUtil;
+import org.opentmf.mockserver.util.PayloadCache;
 
 /**
- * Represents an implementation of the ExpectationResponseCallback interface to handle incoming HTTP
- * GET requests for retrieving a list of resources and generating appropriate responses for dynamic
- * GET list requests in the MockServer.
  *
- * <p>This class is responsible for processing the request, retrieving the cached data, applying
- * necessary transformations (filtering, sorting, paging), and generating a response containing the
- * requested resource list.
+ *
+ * <h2>DynamicGetListCallback</h2>
+ *
+ * <ul>
+ *   <li>Decides the domain from the path parameter.
+ *   <li>Extracts offset, limit, sort criteria, filter and fields from the httpRequest.
+ *   <li>Applies jsonPath filter to the cached domain payloads.
+ *   <li>Applies sorting to the filtered out domain payloads.
+ *   <li>Restricts the set by applying paging depending on the offset and limit.
+ *   <li>Applies fields filtering to the payloads to return.
+ *   <li>Finds the total result count and sets header X-Total-Count as per TMF-630 specification.
+ *   <li>Finds the items' content range and sets header Content-Range as per TMF-630 specification.
+ *   <li>Serves the response with http status 200 and content type application/json.
+ * </ul>
  *
  * @author Yusuf BOZKURT
  */
@@ -42,42 +51,12 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
 
   private static final PayloadCache CACHE = PayloadCache.getInstance();
 
-  /**
-   * Handles incoming HTTP GET requests for retrieving a list of resources and generates appropriate
-   * responses for dynamic GET list requests in the MockServer. This method is invoked by the
-   * MockServer when a dynamic GET list request is received, and it is responsible for processing
-   * the request, retrieving the cached data, applying necessary transformations (filtering,
-   * sorting, paging), and generating a response containing the requested resource list.
-   *
-   * <p>Upon receiving a dynamic GET list request, this method extracts the domain from the request
-   * path and retrieves the cached data associated with the domain. It then extracts parameters such
-   * as limit, offset, sort, and filter from the request to determine the scope and ordering of the
-   * response data.
-   *
-   * <p>It applies filtering to the cached data based on the provided filter expression, if any,
-   * using JsonPath. Then, it sorts and paginates the filtered data according to the specified
-   * sorting order, offset, and limit.
-   *
-   * <p>After applying all transformations, it constructs the response body containing the filtered,
-   * sorted, and paginated resource list. It also includes headers such as X-Total-Count and
-   * Content-Range to provide information about the total count of resources and the range of
-   * resources returned in the response.
-   *
-   * <p>This method is essential for simulating dynamic GET list endpoints in the service during
-   * testing, allowing developers to verify endpoint behavior and data retrieval under various
-   * scenarios. By using this method, developers can thoroughly test the service's functionality and
-   * ensure it retrieves and processes resource lists correctly in different situations.
-   *
-   * @param httpRequest The incoming HTTP request to be handled.
-   * @return The generated HTTP response containing the requested resource list.
-   */
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    // Extract the domain from the request path
-    String domain = PathExtractor.extractDomainWithoutId(httpRequest.getPath().getValue());
+    RequestContext ctx = RequestContext.initialize(httpRequest, false, null);
 
     // Retrieve the cached data associated with the domain
-    Map<String, JsonNode> cachedData = CACHE.get(domain);
+    SortedMap<Id, JsonNode> cachedData = CACHE.getAll(ctx.getDomain());
 
     // Extract limit, offset, sort, and filter parameters from the request
     int limit = extractLimit(httpRequest);
