@@ -377,3 +377,5 @@ HTTP 204, No Content
 - Started supporting version resolution from query parameters as well
 - Started supporting ADDITIONAL_FIELDS environment variable
 - Started supporting CACHE_DURATION_MILLIS environment variable
+### 1.0.7
+- RequestContext initialization is performed on the decoded URL string

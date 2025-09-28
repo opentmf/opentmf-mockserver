@@ -4,6 +4,9 @@ import static org.opentmf.mockserver.model.TmfConstants.ID;
 import static org.opentmf.mockserver.model.TmfConstants.VERSION;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.UUID;
 import org.mockserver.model.HttpRequest;
@@ -93,7 +96,7 @@ public class RequestContext {
       JsonNode parsedBody) {
     RequestContext ctx = new RequestContext();
     ctx.httpRequest = httpRequest;
-    String rawPath = httpRequest.getPath().getValue();
+    String rawPath = URLDecoder.decode(httpRequest.getPath().getValue(), StandardCharsets.UTF_8);
 
     ctx.setDomain(pathContainsId
         ? PathExtractor.extractDomainWithId(rawPath)
