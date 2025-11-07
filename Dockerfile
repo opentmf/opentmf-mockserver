@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 ARG MOCKSERVER_VERSION=5.15.0
 
-# --- Fetch the MockServer shaded JAR (standalone) -----------------------------
+# --- Fetch the MockServer jar-with-dependencies JAR (standalone) -----------------------------
 FROM alpine:3.20 AS fetch
 ARG MOCKSERVER_VERSION
 RUN apk add --no-cache curl jq
-RUN curl -fsSL -o /mockserver-netty-shaded.jar \
-  "https://repo1.maven.org/maven2/org/mock-server/mockserver-netty/${MOCKSERVER_VERSION}/mockserver-netty-${MOCKSERVER_VERSION}-shaded.jar"
+RUN curl -fsSL -o /mockserver-netty-jar-with-dependencies.jar \
+  "https://repo1.maven.org/maven2/org/mock-server/mockserver-netty/${MOCKSERVER_VERSION}/mockserver-netty-${MOCKSERVER_VERSION}-jar-with-dependencies.jar"
 
 # --- Final runtime: tiny distro + JRE + curl + tini ---------------------------
 FROM eclipse-temurin:11-jre-noble
@@ -23,7 +23,7 @@ RUN mkdir -p /opt/mockserver /libs /config \
 USER mockserver
 
 # MockServer server jar + your callback extensions
-COPY --chown=mockserver:mockserver --from=fetch  /mockserver-netty-shaded.jar /opt/mockserver/mockserver-netty.jar
+COPY --chown=mockserver:mockserver --from=fetch  /mockserver-netty-jar-with-dependencies.jar /opt/mockserver/mockserver-netty.jar
 COPY --chown=mockserver:mockserver target/*.jar /libs/opentmf-extensions.jar
 
 # Copy entrypoint and make it executable

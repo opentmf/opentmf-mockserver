@@ -1,5 +1,56 @@
 # opentmf-mockserver
 
+<!-- TOC -->
+* [opentmf-mockserver](#opentmf-mockserver)
+  * [Introduction](#introduction)
+  * [Why This Library](#why-this-library)
+  * [Working Model](#working-model)
+  * [Implementation Details](#implementation-details)
+    * [DynamicPostCallback.java](#dynamicpostcallbackjava)
+    * [DynamicGetCallback.java](#dynamicgetcallbackjava)
+    * [DynamicGetListCallback.java](#dynamicgetlistcallbackjava)
+    * [DynamicJsonPatchCallback.java](#dynamicjsonpatchcallbackjava)
+    * [DynamicMergePatchCallback.java](#dynamicmergepatchcallbackjava)
+    * [DynamicDeleteCallback.java](#dynamicdeletecallbackjava)
+    * [OpenidTokenCallback.java](#openidtokencallbackjava)
+  * [Build & Run](#build--run)
+    * [A) Using Standalone MockServer](#a-using-standalone-mockserver)
+      * [Prepare Standalone MockServer](#prepare-standalone-mockserver)
+      * [Build & Copy Dependencies](#build--copy-dependencies)
+      * [Start Standalone MockServer](#start-standalone-mockserver)
+    * [B) Using Local Docker Image](#b-using-local-docker-image)
+  * [Create Expectations](#create-expectations)
+    * [POST /ShToken](#post-shtoken)
+    * [POST /serviceOrder](#post-serviceorder)
+    * [GET /serviceOrder/{id}](#get-serviceorderid)
+    * [GET /serviceOrder](#get-serviceorder)
+    * [JSON - PATCH /serviceOrder/{id}](#json---patch-serviceorderid)
+    * [MERGE - PATCH /serviceOrder/{id}](#merge---patch-serviceorderid)
+    * [DELETE /serviceOrder/{id}](#delete-serviceorderid)
+  * [Test](#test)
+    * [POST /openidToken](#post-openidtoken)
+    * [POST /serviceOrder](#post-serviceorder-1)
+    * [GET /serviceOrder/{id}](#get-serviceorderid-1)
+    * [GET /serviceOrder](#get-serviceorder-1)
+    * [MERGE-PATCH /serviceOrder/{id}](#merge-patch-serviceorderid)
+    * [JSON-PATCH /serviceOrder/{id}](#json-patch-serviceorderid)
+    * [DELETE /serviceOrder/{id}](#delete-serviceorderid-1)
+  * [Release Notes](#release-notes)
+    * [1.0.0](#100)
+    * [1.0.1](#101)
+    * [1.0.2](#102)
+    * [1.0.3](#103)
+    * [1.0.4](#104)
+    * [1.0.5](#105)
+    * [1.0.6](#106)
+    * [1.0.7](#107)
+    * [1.0.8](#108)
+    * [1.0.9](#109)
+    * [1.1.0](#110)
+<!-- TOC -->
+
+## Introduction
+
 This project consists of general purpose TMF-630 compatible dynamic expectation implementations for post, get, patch, and delete on top of [Mock Server Netty](https://www.mock-server.org).
 
 ## Why This Library
@@ -375,5 +426,7 @@ HTTP 204, No Content
 - RequestContext initialization is performed on the decoded URL string
 ### 1.0.8
 - Improvement: Starts applying also the query parameters filter to the cached domain payloads
-### 1.0.8
+### 1.0.9
 - Fixes the docker image
+### 1.1.0
+- Fixes the docker image again. 1.0.8 and 1.0.9 is not behaving as expected.
