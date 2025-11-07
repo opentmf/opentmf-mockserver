@@ -375,3 +375,5 @@ HTTP 204, No Content
 - RequestContext initialization is performed on the decoded URL string
 ### 1.0.8
 - Improvement: Starts applying also the query parameters filter to the cached domain payloads
+### 1.0.8
+- Fixes the docker image
