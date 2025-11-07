@@ -1,24 +1,51 @@
-# Stage 1: Build the JAR using Maven
-FROM maven:3.9.9-eclipse-temurin-17 AS maven-build
+# syntax=docker/dockerfile:1.7
+ARG MOCKSERVER_VERSION=5.15.0
+
+# --- Build your extension JAR -------------------------------------------------
+FROM maven:3.9.9-eclipse-temurin-11 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY src ./src
-RUN mvn -Dmaven.test.skip=true clean package
+RUN mvn -B -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true clean package
 
-FROM mockserver/mockserver:5.15.0
-ARG VERSION
-ENV PROJECT_VERSION=${VERSION}
-COPY --from=maven-build /build/target/*.jar /libs/application.jar
+# --- Fetch the MockServer shaded JAR (standalone) -----------------------------
+FROM alpine:3.20 AS fetch
+ARG MOCKSERVER_VERSION
+RUN apk add --no-cache curl
+RUN curl -fsSL -o /mockserver-netty-shaded.jar \
+  "https://repo1.maven.org/maven2/org/mock-server/mockserver-netty/${MOCKSERVER_VERSION}/mockserver-netty-${MOCKSERVER_VERSION}-shaded.jar"
+
+# --- Final runtime: tiny distro + JRE + curl + tini ---------------------------
+FROM eclipse-temurin:11-jre-alpine
+RUN apk add --no-cache tini curl jq
+
+# Non-root user & writable dirs
+RUN addgroup -S mockserver && adduser -S -G mockserver mockserver
+
+WORKDIR /opt/mockserver
+RUN mkdir -p /opt/mockserver /libs /config \
+ && chown -R mockserver:mockserver /opt/mockserver /libs /config
+
+USER mockserver
+
+# MockServer server jar + your callback extensions
+COPY --chown=mockserver:mockserver --from=fetch /mockserver-netty-shaded.jar /opt/mockserver/mockserver-netty.jar
+COPY --chown=mockserver:mockserver --from=build /build/target/*.jar /libs/opentmf-extensions.jar
+
+# Copy entrypoint and make it executable
+COPY --chown=mockserver:mockserver docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 ENV SERVER_PORT=1080
-ENV DEBUG_PORT=5005
-EXPOSE ${SERVER_PORT}
-EXPOSE ${DEBUG_PORT}
-ENTRYPOINT ["java", \
-            "-Dfile.encoding=UTF-8", \
-            "-Dmockserver.logLevel=WARN", \
-            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", \
-            "-cp", \
-            "/mockserver-netty-jar-with-dependencies.jar:/libs/*", \
-            "-Dmockserver.propertyFile=/config/mockserver.properties", \
-            "org.mockserver.cli.Main"]
-CMD []
+EXPOSE 1080
+
+# Healthcheck uses the same port via sh -c for env expansion
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
+  CMD ["sh","-c","curl -fsS -X PUT http://127.0.0.1:${SERVER_PORT}/mockserver/status >/dev/null || exit 1"]
+
+# Sensible defaults; users can still override via -e JAVA_TOOL_OPTIONS / JVM_OPTS
+ENV JVM_OPTS="-Dfile.encoding=UTF-8 -Dmockserver.logLevel=WARN"
+
+# tini as PID1; script does the rest
+ENTRYPOINT ["/sbin/tini","-g","--","/usr/local/bin/docker-entrypoint.sh"]
+# no CMD needed; entrypoint decides everything

@@ -24,7 +24,7 @@ There is another useful environment variable called `ADDITIONAL_FIELDS`. This ca
 
 The following classes have been implemented:
 
-- [DynamicPostCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicPostCallback.java)
+### [DynamicPostCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicPostCallback.java)
   - Tries to retrieve `id` and `version` (if versioned entity) from the payload.
   - If versioned entity but no version in the payload, tries to retrieve the version from the path using `:(version=XYZ)`
   - If versioned entity but no version found yet, tries to obtain the version from the query paramaters like `?version=XYZ`
@@ -35,7 +35,7 @@ The following classes have been implemented:
   - Removes updatedDate and updatedBy, if they are provided in the payload.
   - Decides the state field name and initial value according to the path.
   - If state (or status) is not provided, sets the state value to the default initial. Here is the state value matrix that matches configured path according to type field:
-            
+
     | Type      | Field name      | Initial Value | Final Value |
     |-----------|-----------------|---------------|-------------|
     | Orders    | state           | acknowledged  | completed   |
@@ -48,8 +48,7 @@ The following classes have been implemented:
   - If environment variable ADDITIONAL_FIELDS is provided, splits it using comma, and for each item, if the item is provided as `key=value`, sets to the resulting payload `"key": "value"`. If the item is provided without an equals sign, sets to the resulting payload `"item": "${randomAlphanumeric_10_characters}"
   - Caches the payload, and returns 200.
 
-
-- [DynamicGetCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetCallback.java)
+### [DynamicGetCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetCallback.java)
   - Considers the last path parameter as the id.
   - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
   - Checks if a payload is found in the cache with that id (and version if versioned entity).
@@ -58,20 +57,19 @@ The following classes have been implemented:
   - Touches the cache, so that the eviction timer restarts for this particular payload.
   - Returns 200 and the potentially manipulated payload.
 
-
-- [DynamicGetListCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetListCallback.java)
+### [DynamicGetListCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetListCallback.java)
   - Decides the domain from the path parameter.
   - Extracts offset, limit, sort criteria, filter and fields from the httpRequest.
-  - Applies jsonPath filter to the cached domain payloads.
-  - Applies sorting to the filtered out domain payloads.
-  - Restricts the set by applying paging depending on the offset and limit.
+  - Applies query parameters filter to the cached domain payloads
+  - Applies jsonPath filter to the filtered out result
+  - Sorts the filtered-out result according to the sort criteria.
+  - Restricts the set by applying paging obeying offset and limit.
   - Applies fields filtering to the payloads to return.
   - Finds the total result count and sets header X-Total-Count as per TMF-630 specification.
   - Finds the items' content range and sets header Content-Range as per TMF-630 specification.
   - Serves the response with http status 200 and content type application/json.
 
-
-- [DynamicJsonPatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicJsonPatchCallback.java)
+### [DynamicJsonPatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicJsonPatchCallback.java)
   - Considers the last path parameter as the id.
   - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
   - Checks if a payload is found in the cache with that id (and version if versioned entity).
@@ -81,8 +79,7 @@ The following classes have been implemented:
   - Adds/overrides updatedDate, updatedBy fields, plus, increases the revision field's value by one.
   - Returns 200 and the updated payload.
 
-
-- [DynamicMergePatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicMergePatchCallback.java)
+### [DynamicMergePatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicMergePatchCallback.java)
   - Considers the last path parameter as the id.
   - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
   - Checks if a payload is found in the cache with that id (and version if versioned entity).
@@ -92,8 +89,7 @@ The following classes have been implemented:
   - Adds/overrides updatedDate, updatedBy fields, plus, increases the revision field's value by one.
   - Returns 200 and the updated payload.
 
-
-- [DynamicDeleteCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicDeleteCallback.java)
+### [DynamicDeleteCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicDeleteCallback.java)
   - Considers the last path parameter as the id.
   - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
   - Checks if a payload is found in the cache with that id (and version if versioned entity).
@@ -101,11 +97,9 @@ The following classes have been implemented:
   - Removes the cached payload from the cache, with that id.
   - Returns 204 No Content.
 
-
-- [OpenidTokenCallback.java](src/main/java/org/opentmf/mockserver/callback/OpenidTokenCallback.java)
+### [OpenidTokenCallback.java](src/main/java/org/opentmf/mockserver/callback/OpenidTokenCallback.java)
   - Checks if the payload contains the necessary fields depending on the mandatory attribute "grant_type" and returns 400 Bad Request if a required parameter is missing from the request body.
   - Prepares and returns an OpenID token payload with httpStatus = 200.
-
 
 ## Build & Run
 
@@ -120,7 +114,7 @@ wget https://repo1.maven.org/maven2/org/mock-server/mockserver-netty-no-dependen
 
 #### Build & Copy Dependencies
 ```shell
-cd /path/to/project 
+cd /path/to/project
 mvn clean install
 cp -r target/libs /path/to/mockserver
 cp target/dynamic-mock-expectations.jar path/to/mockserver/libs
@@ -136,7 +130,7 @@ cd /path/to/mockserver
 ### B) Using Local Docker Image
 
 ```shell
-# build the project and auto-create a docker image for mockserver 
+# build the project and auto-create a docker image for mockserver
 mvn -P docker clean package
 
 # run the created docker container
@@ -168,7 +162,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 
 ### POST /serviceOrder
 ```shell
-# define expectation for POST /serviceOrder 
+# define expectation for POST /serviceOrder
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -185,7 +179,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 ```
 ### GET /serviceOrder/{id}
 ```shell
-# define expectation for GET /serviceOrder/{id} 
+# define expectation for GET /serviceOrder/{id}
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -203,7 +197,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 
 ### GET /serviceOrder
 ```shell
-# define expectation for GET /serviceOrder 
+# define expectation for GET /serviceOrder
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -221,7 +215,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 
 ### JSON - PATCH /serviceOrder/{id}
 ```shell
-# define expectation for PATCH /serviceOrder/{id} 
+# define expectation for PATCH /serviceOrder/{id}
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -240,7 +234,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 
 ### MERGE - PATCH /serviceOrder/{id}
 ```shell
-# define expectation for PATCH /serviceOrder/{id} 
+# define expectation for PATCH /serviceOrder/{id}
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -259,7 +253,7 @@ curl -X PUT http://localhost:1080/mockserver/expectation \
 
 ### DELETE /serviceOrder/{id}
 ```shell
-# define expectation for DELETE /serviceOrder/{id} 
+# define expectation for DELETE /serviceOrder/{id}
 curl -X PUT http://localhost:1080/mockserver/expectation \
 -H "Content-Type: application/json" \
 -H "Accept: application/json" \
@@ -312,7 +306,7 @@ curl -X POST http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
 ### GET /serviceOrder/{id}
 ```shell
 # should return a payload with id and state
-curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7 
+curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7
 
 # returns
 {"id":"dce2ce9d-281b-43df-8150-6242c34c8cf7","state":"completed"}
@@ -356,7 +350,7 @@ curl -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2
 # should return no content
 curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7
 
-# returns 
+# returns
 HTTP 204, No Content
 ```
 
@@ -379,3 +373,5 @@ HTTP 204, No Content
 - Started supporting CACHE_DURATION_MILLIS environment variable
 ### 1.0.7
 - RequestContext initialization is performed on the decoded URL string
+### 1.0.8
+- Improvement: Starts applying also the query parameters filter to the cached domain payloads

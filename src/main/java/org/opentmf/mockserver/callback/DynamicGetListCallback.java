@@ -15,6 +15,7 @@ import com.jayway.jsonpath.JsonPath;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.stream.Collectors;
@@ -25,6 +26,7 @@ import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.Id;
 import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.util.CacheQuery;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 
@@ -65,8 +67,11 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     String filter = extractFilter(httpRequest);
     Set<String> fields = extractFields(httpRequest);
 
+    // first, narrow down the results by applying query parameter filters
+    Map<Id, JsonNode> filteredData = CacheQuery.filter(cachedData, httpRequest);
+
     // Convert cached data to a list for further processing
-    List<JsonNode> jsonNodesBeforeFilter = new ArrayList<>(cachedData.values());
+    List<JsonNode> jsonNodesBeforeFilter = new ArrayList<>(filteredData.values());
 
     // Apply filter to the data
     List<JsonNode> afterFiltered = applyFilter(jsonNodesBeforeFilter, filter);
@@ -82,7 +87,13 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     int resultCount = dataList.size();
 
     // Construct Content-Range header to indicate the range of returned resources
-    String contentRange = "items " + (offset + 1) + "-" + (offset + resultCount) + "/" + totalCount;
+    String contentRange =
+        "items "
+            + (resultCount == 0 ? resultCount : offset + 1)
+            + "-"
+            + (resultCount == 0 ? 0 : resultCount + offset)
+            + "/"
+            + totalCount;
 
     // Convert the filtered, sorted, and paginated data to a JSON array
     ArrayNode arrayNode = JacksonUtil.createArrayNode();

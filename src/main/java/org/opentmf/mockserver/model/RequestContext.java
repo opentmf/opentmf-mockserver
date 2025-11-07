@@ -9,6 +9,8 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.UUID;
+
+import org.apache.commons.lang3.StringUtils;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.Parameters;
 import org.opentmf.mockserver.util.PathExtractor;
@@ -108,6 +110,10 @@ public class RequestContext {
       ctx.setId(parseId(PathExtractor.extractLastPart(rawPath)));
     } else if (parsedBody != null && parsedBody.has(ID)) {
       ctx.setId(parseId(parsedBody));
+    }
+
+    if (ctx.getId() == null && !StringUtils.isEmpty(httpRequest.getFirstQueryStringParameter(ID))) {
+      ctx.setId(parseId(httpRequest.getFirstQueryStringParameter(ID)));
     }
 
     if (ctx.getId() != null && ctx.getId().getVersion() == null) {
