@@ -9,11 +9,12 @@ RUN curl -fsSL -o /mockserver-netty-shaded.jar \
   "https://repo1.maven.org/maven2/org/mock-server/mockserver-netty/${MOCKSERVER_VERSION}/mockserver-netty-${MOCKSERVER_VERSION}-shaded.jar"
 
 # --- Final runtime: tiny distro + JRE + curl + tini ---------------------------
-FROM eclipse-temurin:11-jre-alpine
-RUN apk add --no-cache tini curl
-
-# Non-root user & writable dirs
-RUN addgroup -S mockserver && adduser -S -G mockserver mockserver
+FROM eclipse-temurin:11-jre-noble
+RUN apt-get update && \
+    apt-get install -y tini curl jq && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd -r mockserver && \
+    useradd -r -g mockserver -M -N -s /usr/sbin/nologin mockserver
 
 WORKDIR /opt/mockserver
 RUN mkdir -p /opt/mockserver /libs /config \
@@ -43,5 +44,5 @@ ENV JVM_OPTS="-Dfile.encoding=UTF-8 -Dmockserver.logLevel=WARN"
 ENV DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${DEBUG_PORT}"
 
 # tini as PID1; script does the rest
-ENTRYPOINT ["/sbin/tini","-g","--","/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini","-g","--","/usr/local/bin/docker-entrypoint.sh"]
 # no CMD needed; entrypoint decides everything
