@@ -9,6 +9,7 @@
     * [DynamicPostCallback.java](#dynamicpostcallbackjava)
     * [DynamicGetCallback.java](#dynamicgetcallbackjava)
     * [DynamicGetListCallback.java](#dynamicgetlistcallbackjava)
+      * [Content-Range Calculations](#content-range-calculations)
     * [DynamicJsonPatchCallback.java](#dynamicjsonpatchcallbackjava)
     * [DynamicMergePatchCallback.java](#dynamicmergepatchcallbackjava)
     * [DynamicDeleteCallback.java](#dynamicdeletecallbackjava)
@@ -47,6 +48,7 @@
     * [1.0.8](#108)
     * [1.0.9](#109)
     * [1.1.0](#110)
+    * [1.1.1](#111)
 <!-- TOC -->
 
 ## Introduction
@@ -110,15 +112,49 @@ The following classes have been implemented:
 
 ### [DynamicGetListCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetListCallback.java)
   - Decides the domain from the path parameter.
-  - Extracts offset, limit, sort criteria, filter and fields from the httpRequest.
+  - Extracts offset, limit, sort criteria, filter, and fields from the httpRequest.
   - Applies query parameters filter to the cached domain payloads
   - Applies jsonPath filter to the filtered out result
   - Sorts the filtered-out result according to the sort criteria.
   - Restricts the set by applying paging obeying offset and limit.
   - Applies fields filtering to the payloads to return.
   - Finds the total result count and sets header X-Total-Count as per TMF-630 specification.
+  - Finds the served result count and sets header X-Result-Count as per TMF-630 specification.
   - Finds the items' content range and sets header Content-Range as per TMF-630 specification.
-  - Serves the response with http status 200 and content type application/json.
+  - Responds with:
+    - 200: if the result is not empty.
+    - 416: if the requested offset is greater than the total result count.
+
+#### Content-Range Calculations
+The `DynamicGetListCallback` class calculates and sets `Content-Range` header. The resulting `Content-Range` can include either zero or one based offset values. The environment variable `CONTENT_RANGE_OFFSET_BASE` determines the base value for the offset. The default value is 1 if this environment variable is not set.
+
+The Content-Range header is defined by the TMF-630 REST API Design Guidelines and contains the following information:
+
+`Content-Range: items <start>-<end>/<total>`
+
+- If start or end is not known, a `*` is used instead.
+- If total is not known, a `*` is used instead.
+
+The following examples assume that a 1-based content range offset (the default) is in place. You can calculate the zero-based values by subtracting 1 from both start and end values. The total is the same for either zero-based or one-based content ranges.
+
+Let's suppose there are 23 items in the requested domain:
+
+| requested offset | requested limit  | HTTP Status | Content-Range  | Body  |
+|:----------------:|:----------------:|:-----------:|:---------------|:------|
+|        0         |        10        |     200     | items 1-10/23  | Array |
+|        10        |        10        |     200     | items 11-20/23 | Array |
+|        20        |        10        |     200     | items 21-23/23 | Array |
+|        30        |        10        |     416     | items */23     | Error |
+
+And the following table assumes there are 23 items in the requested domain, but because of query parameter or jsonPath filtering, the hit counts are different:
+
+| requested offset  | requested limit | hit count | HTTP Status | Content-Range   | Body   |
+|:-----------------:|:---------------:|:---------:|:-----------:|:----------------|:-------|
+|         0         |       10        |    12     |     200     | items 1-10/12   | Array  |
+|        10         |       10        |    12     |     200     | items 11-12/12  | Array  |
+|        20         |       10        |    12     |     416     | items */12      | Error  |
+
+If the offset and limit are not provided, they default to 0 and 10 respectively.
 
 ### [DynamicJsonPatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicJsonPatchCallback.java)
   - Considers the last path parameter as the id.
@@ -430,3 +466,7 @@ HTTP 204, No Content
 - Fixes the docker image
 ### 1.1.0
 - Fixes the docker image again. 1.0.8 and 1.0.9 is not behaving as expected.
+### 1.1.1
+- Started returning "416 Range Not Satisfiable" when offset > 0 and offset >= totalCount
+- Started supporting CONTENT_RANGE_OFFSET_BASE environment variable to accept 0 or 1, default 1 if not specified.
+- Started setting "X-Result-Count" header on getList.

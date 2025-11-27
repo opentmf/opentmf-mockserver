@@ -11,9 +11,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Random;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.opentmf.mockserver.util.JacksonUtil;
@@ -279,6 +284,35 @@ class DynamicGetListCallbackTests {
         assertFalse(arrayNode.get(i).get("isEven").asBoolean());
       }
     }
+  }
+
+  public static Stream<Arguments> expectedOutcome() {
+    return Stream.of(
+        Arguments.of(10, 0, 5, "items 1-5/10", 200),
+        Arguments.of(10, 5, 5, "items 6-10/10", 200),
+        Arguments.of(10, 10, 5, "items */10", 416),
+        Arguments.of(10, 0, 15, "items 1-10/10", 200),
+        Arguments.of(0, 0, 5, "items */0", 200)
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("expectedOutcome")
+  void testGetList_withGivenContext_returnsAsExpected(
+      int count, int offset, int limit, String contentRange, int statusCode) {
+
+    String domain = RandomStringUtils.randomAlphabetic(5);
+    addDataToCache(domain, count);
+    HttpRequest httpRequest =
+        new HttpRequest()
+            .withPath("/" + domain)
+            .withQueryStringParameter("offset", String.valueOf(offset))
+            .withQueryStringParameter("limit", String.valueOf(limit));
+
+    HttpResponse httpResponse = dynamicGetListCallback.handle(httpRequest);
+
+    Assertions.assertEquals(statusCode, httpResponse.getStatusCode());
+    Assertions.assertEquals(contentRange, httpResponse.getHeader("Content-Range").get(0));
   }
 
   private void addDataToCache(String domain, int count) {

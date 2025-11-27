@@ -2,6 +2,9 @@ package org.opentmf.mockserver.util;
 
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 
+import java.util.Collections;
+import java.util.List;
+import org.mockserver.model.Header;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
@@ -26,10 +29,15 @@ public class ErrorResponseUtil {
    * @return HttpResponse object representing the error response.
    */
   public static HttpResponse getErrorResponse(HttpStatusCode statusCode, String message) {
+    return getErrorResponse(statusCode, message, Collections.emptyList());
+  }
+
+  public static HttpResponse getErrorResponse(HttpStatusCode statusCode, String message, List<Header> headers) {
     Error error = new Error(message, statusCode.code(), statusCode.name());
     return HttpResponse.response()
         .withStatusCode(statusCode.code())
         .withContentType(MediaType.APPLICATION_JSON)
+        .withHeaders(headers)
         .withBody(writeAsString(error));
   }
 

@@ -1,5 +1,6 @@
 package org.opentmf.mockserver.callback;
 
+import static org.apache.commons.lang3.math.NumberUtils.toInt;
 import static org.opentmf.mockserver.model.TmfConstants.HREF;
 import static org.opentmf.mockserver.model.TmfConstants.ID;
 import static org.opentmf.mockserver.util.HttpRequestUtil.extractFields;
@@ -20,6 +21,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.stream.Collectors;
 import org.mockserver.mock.action.ExpectationResponseCallback;
+import org.mockserver.model.Header;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
@@ -27,6 +29,7 @@ import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.Id;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.util.CacheQuery;
+import org.opentmf.mockserver.util.ErrorResponseUtil;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 
@@ -53,6 +56,8 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
 
   private static final PayloadCache CACHE = PayloadCache.getInstance();
 
+  private static final int CONTENT_RANGE_OFFSET_BASE = contentRangeOffsetBase();
+
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
     RequestContext ctx = RequestContext.initialize(httpRequest, false, null);
@@ -77,7 +82,7 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     List<JsonNode> afterFiltered = applyFilter(jsonNodesBeforeFilter, filter);
 
     // Get the total count of filtered data
-    long totalCount = afterFiltered.size();
+    int totalCount = afterFiltered.size();
 
     // Apply sorting, paging, and fields filtering to the filtered data
     List<JsonNode> dataList = applySortingAndPaging(afterFiltered, sortList, offset, limit);
@@ -86,26 +91,52 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     // Get the count of results after sorting and filtering
     int resultCount = dataList.size();
 
-    // Construct Content-Range header to indicate the range of returned resources
-    String contentRange =
-        "items "
-            + (resultCount == 0 ? resultCount : offset + 1)
-            + "-"
-            + (resultCount == 0 ? 0 : resultCount + offset)
-            + "/"
-            + totalCount;
-
     // Convert the filtered, sorted, and paginated data to a JSON array
     ArrayNode arrayNode = JacksonUtil.createArrayNode();
     dataList.forEach(arrayNode::add);
 
     // Generate and return the response containing the filtered, sorted, and paginated resource list
+    int returnStatus = getStatusCode(offset, totalCount);
+
+    if (returnStatus == 416) {
+      return ErrorResponseUtil.getErrorResponse(
+          HttpStatusCode.REQUESTED_RANGE_NOT_SATISFIABLE_416,
+          "offset = " + offset + "is higher than the total found items " + totalCount,
+          responseHeaders(resultCount, totalCount, offset));
+    }
+
     return HttpResponse.response()
-        .withStatusCode(HttpStatusCode.OK_200.code())
-        .withContentType(MediaType.APPLICATION_JSON)
+        .withStatusCode(returnStatus)
         .withBody(JacksonUtil.writeAsString(arrayNode))
-        .withHeader("X-Total-Count", String.valueOf(totalCount))
-        .withHeader("Content-Range", contentRange);
+        .withHeaders(responseHeaders(resultCount, totalCount, offset));
+  }
+
+  private List<Header> responseHeaders(int resultCount, int totalCount, int offset) {
+    return List.of(
+        new Header("Content-Type", MediaType.APPLICATION_JSON.toString()),
+        new Header("X-Total-Count", String.valueOf(totalCount)),
+        new Header("X-Result-Count", String.valueOf(resultCount)),
+        new Header("Content-Range", contentRange(resultCount, totalCount, offset)));
+  }
+
+  private String contentRange(int resultCount, int totalCount, int offset) {
+    return "items "
+        + ((resultCount == 0)
+            ? "*"
+            : ((offset + CONTENT_RANGE_OFFSET_BASE)
+                + "-"
+                + (resultCount + offset - (1 - CONTENT_RANGE_OFFSET_BASE))))
+        + "/"
+        + totalCount;
+  }
+
+  private int getStatusCode(int offset, int totalCount) {
+    return offset > 0 && offset >= totalCount ? 416 : 200;
+  }
+
+  private static int contentRangeOffsetBase() {
+    int configuredValue = toInt(System.getenv("CONTENT_RANGE_OFFSET_BASE"), 1);
+    return (configuredValue < 0 || configuredValue > 1) ? 1 : configuredValue;
   }
 
   private List<JsonNode> applyFilter(List<JsonNode> data, String filter) {
