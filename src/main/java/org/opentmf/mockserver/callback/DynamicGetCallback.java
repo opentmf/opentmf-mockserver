@@ -19,6 +19,7 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 
@@ -48,6 +49,12 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
+    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
+        httpRequest, "reader", "writer", "admin");
+    if (authError != null) {
+      return authError;
+    }
+
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
     // Retrieve the cached data associated with the domain and ID

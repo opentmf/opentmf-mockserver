@@ -5,10 +5,11 @@ import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.TWO_HOURS;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.Timer;
@@ -41,12 +42,10 @@ public class PayloadCache {
   private PayloadCache(long timeToLive) {
     this.timeToLive = timeToLive;
     LOG.info("Cache initialized to expire in {}", DurationUtil.formatDuration(timeToLive));
-    // Schedule a timer task for cache eviction
-    new Timer().scheduleAtFixedRate(new CacheEvictTimer(), 0L, timeToLive);
+    new Timer(true).scheduleAtFixedRate(new CacheEvictTimer(), timeToLive, timeToLive);
   }
 
-  // Singleton instance of PayloadCache
-  private static PayloadCache instance = null;
+  private static volatile PayloadCache instance = null;
 
   /**
    * Returns the singleton instance of PayloadCache with default TTL.
@@ -55,9 +54,14 @@ public class PayloadCache {
    */
   public static PayloadCache getInstance() {
     if (instance == null) {
-      String cacheDurationMillis = System.getenv(CACHE_DURATION_MILLIS);
-      long milliseconds = Long.parseLong(cacheDurationMillis == null ? TWO_HOURS : cacheDurationMillis);
-      instance = new PayloadCache(milliseconds);
+      synchronized (PayloadCache.class) {
+        if (instance == null) {
+          String cacheDurationMillis = System.getenv(CACHE_DURATION_MILLIS);
+          long milliseconds =
+              Long.parseLong(cacheDurationMillis == null ? TWO_HOURS : cacheDurationMillis);
+          instance = new PayloadCache(milliseconds);
+        }
+      }
     }
     return instance;
   }
@@ -79,8 +83,8 @@ public class PayloadCache {
       throw new IllegalArgumentException("Key: [" + ctx.getId() + "] already exists in cache for domain ");
     }
 
-    touch(ctx);
     dataCache.get(ctx.getDomain()).put(ctx.getId(), value);
+    timeCache.get(ctx.getDomain()).put(ctx.getId(), System.currentTimeMillis());
     LOG.info("Cache entry for " + DOMAIN_WITH + " added", ctx.getDomain(), ctx.getId());
   }
 
@@ -92,12 +96,13 @@ public class PayloadCache {
     dataCache.get(ctx.getDomain()).put(ctx.getId(), value);
   }
 
-  // Update the last access time of cached data in the cache
   public synchronized void touch(RequestContext ctx) {
-    Id key = new Id();
-    key.setId(ctx.getId().getId());
-    key.setVersion("");
-    timeCache.get(ctx.getDomain()).subMap(key, true, allOf(key), true)
+    Id lowerBound = new Id();
+    lowerBound.setId(ctx.getId().getId());
+    // null sorts before everything in Id.compareTo, so use null as the lower bound
+    // to capture both non-versioned (version=null) and all versioned entries
+    lowerBound.setVersion(null);
+    timeCache.get(ctx.getDomain()).subMap(lowerBound, true, allOf(lowerBound), true)
         .replaceAll((k, v) -> System.currentTimeMillis());
   }
 
@@ -107,7 +112,9 @@ public class PayloadCache {
       return null;
     }
     TreeMap<Id, JsonNode> map = dataCache.get(ctx.getDomain());
-    return map.subMap(ctx.getId(), true, allOf(ctx.getId()), true).lastEntry().getValue();
+    Map.Entry<Id, JsonNode> lastEntry =
+        map.subMap(ctx.getId(), true, allOf(ctx.getId()), true).lastEntry();
+    return lastEntry != null ? lastEntry.getValue() : null;
   }
 
   public synchronized String getLatestVersion(String domain, Id key) {
@@ -116,11 +123,12 @@ public class PayloadCache {
       return null;
     }
     TreeMap<Id, JsonNode> map = dataCache.get(domain);
-    return map.subMap(key, true, allOf(key), true)
-        .lastEntry()
-        .getValue()
-        .get(VERSION)
-        .asText();
+    Map.Entry<Id, JsonNode> lastEntry =
+        map.subMap(key, true, allOf(key), true).lastEntry();
+    if (lastEntry == null || lastEntry.getValue() == null || !lastEntry.getValue().has(VERSION)) {
+      return null;
+    }
+    return lastEntry.getValue().get(VERSION).asText();
   }
 
   public synchronized JsonNode get(RequestContext ctx) {
@@ -143,18 +151,6 @@ public class PayloadCache {
     return dataCache.get(domain);
   }
 
-  /**
-   * Clears a specific cache entry identified by domain and key.
-   *
-   * @param domain The domain identifier for the cache entry.
-   * @param key The key identifier for the cache entry.
-   */
-  private synchronized void clear(String domain, Id key) {
-    dataCache.get(domain).remove(key);
-    timeCache.get(domain).remove(key);
-    LOG.info("Old cache entry for " + DOMAIN_WITH + " is removed", domain, key);
-  }
-
   public synchronized void clear(RequestContext ctx) {
     dataCache.get(ctx.getDomain()).remove(ctx.getId());
     timeCache.get(ctx.getDomain()).remove(ctx.getId());
@@ -162,30 +158,30 @@ public class PayloadCache {
         ctx.getId());
   }
 
-  // Evicts old cache entries based on time-to-live (TTL)
-  private void evictOldItems() {
+  private synchronized void evictOldItems() {
     LOG.info(START_EVICTING_OLD_CACHE_ITEMS);
-    timeCache
-        .keySet()
-        .forEach(
-            domain -> {
-              for (Iterator<Id> iterator = timeCache.get(domain).keySet().iterator();
-                  iterator.hasNext(); ) {
-                Id key = iterator.next();
-                long t = timeCache.get(domain).get(key);
-                if (System.currentTimeMillis() - t >= timeToLive) {
-                  iterator.remove();
-                  clear(domain, key);
-                }
-              }
-            });
+    long now = System.currentTimeMillis();
+    for (String domain : new ArrayList<>(timeCache.keySet())) {
+      List<Id> expiredKeys = new ArrayList<>();
+      for (Map.Entry<Id, Long> entry : timeCache.get(domain).entrySet()) {
+        if (now - entry.getValue() >= timeToLive) {
+          expiredKeys.add(entry.getKey());
+        }
+      }
+      for (Id key : expiredKeys) {
+        timeCache.get(domain).remove(key);
+        dataCache.get(domain).remove(key);
+        LOG.info("Old cache entry for " + DOMAIN_WITH + " is removed", domain, key);
+      }
+    }
     LOG.info("Evicting old cache items completed.");
   }
 
   private static Id allOf(Id key) {
     Id key2 = new Id();
     key2.setId(key.getId());
-    key2.setVersion(key.getVersion() == null ? "z" : key.getVersion() + "z");
+    String suffix = String.valueOf(Character.MAX_VALUE);
+    key2.setVersion(key.getVersion() == null ? suffix : key.getVersion() + suffix);
     return key2;
   }
 }

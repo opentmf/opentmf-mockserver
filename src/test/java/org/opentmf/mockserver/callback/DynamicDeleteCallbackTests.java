@@ -81,6 +81,6 @@ class DynamicDeleteCallbackTests {
 
     DynamicPostCallback dynamicPostCallback = new DynamicPostCallback();
     HttpResponse httpResponse = dynamicPostCallback.handle(request);
-    assertEquals(200, httpResponse.getStatusCode());
+    assertEquals(201, httpResponse.getStatusCode());
   }
 }

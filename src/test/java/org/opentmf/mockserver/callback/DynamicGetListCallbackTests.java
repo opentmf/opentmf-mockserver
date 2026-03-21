@@ -334,6 +334,6 @@ class DynamicGetListCallbackTests {
 
   void post(HttpRequest httpRequest) {
     HttpResponse handle = dynamicPostCallback.handle(httpRequest);
-    assertEquals(200, handle.getStatusCode());
+    assertEquals(201, handle.getStatusCode());
   }
 }

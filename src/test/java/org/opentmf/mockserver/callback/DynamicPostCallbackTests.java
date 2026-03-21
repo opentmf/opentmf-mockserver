@@ -99,7 +99,7 @@ class DynamicPostCallbackTests {
         (ObjectNode) JacksonUtil.readAsTree(httpResponse.getBodyAsString());
     setIdFromResponse(expectedResponse, ctx);
 
-    assertEquals(200, httpResponse.getStatusCode());
+    assertEquals(201, httpResponse.getStatusCode());
     assertNotNull(expectedResponse.get("id"));
     assertFalse(expectedResponse.get("id").asText().isEmpty());
     assertNotNull(expectedResponse.get("state"));
@@ -169,7 +169,7 @@ class DynamicPostCallbackTests {
 
     setIdFromResponse(expectedResponse, ctx);
 
-    assertEquals(200, httpResponse.getStatusCode());
+    assertEquals(201, httpResponse.getStatusCode());
     assertNotNull(expectedResponse.get("id"));
     assertFalse(expectedResponse.get("id").asText().isEmpty());
     assertNotNull(expectedResponse.get("state"));
@@ -207,7 +207,7 @@ class DynamicPostCallbackTests {
   void post(HttpRequest httpRequest, String id, String version) {
     httpRequest.withBody(payload(id, version));
     HttpResponse handle = callback.handle(httpRequest);
-    assertEquals(200, handle.getStatusCode());
+    assertEquals(201, handle.getStatusCode());
     ObjectNode result = (ObjectNode) JacksonUtil.readAsTree(handle.getBodyAsString());
     System.out.println(JacksonUtil.writeAsString(result));
     Assertions.assertNotNull(result.get("id"));
