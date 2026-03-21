@@ -82,7 +82,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
 
     if (!clientCfg.isPublicClient()) {
       String expectedSecret = clientCfg.getClientSecret();
-      if (expectedSecret != null && !expectedSecret.equals(clientSecret)) {
+      if (expectedSecret == null || !expectedSecret.equals(clientSecret)) {
         return tokenError(401, "unauthorized_client", "Bad client credentials");
       }
     }
