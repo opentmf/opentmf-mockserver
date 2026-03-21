@@ -1,6 +1,11 @@
 package org.opentmf.mockserver.util;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Optional;
+import java.util.Set;
 import org.mockserver.model.HttpRequest;
 
 /** Utility class for extracting parameters from HTTP requests. */
@@ -41,7 +46,7 @@ public class HttpRequestUtil {
    */
   public static Set<String> extractSort(HttpRequest httpRequest) {
     String sortParam = extractStringParameter(httpRequest, "sort", "createdDate");
-    return new HashSet<>(Arrays.asList(sortParam.split(",")));
+    return new LinkedHashSet<>(Arrays.asList(sortParam.split(",")));
   }
 
   /**

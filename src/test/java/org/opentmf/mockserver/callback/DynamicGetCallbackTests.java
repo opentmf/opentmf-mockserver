@@ -140,7 +140,7 @@ class DynamicGetCallbackTests {
 
     // When
     HttpResponse httpResponse = dynamicPostCallback.handle(httpRequest);
-    assertEquals(200, httpResponse.getStatusCode());
+    assertEquals(201, httpResponse.getStatusCode());
 
     // Then
     HttpResponse httpResponseSameId = dynamicPostCallback.handle(httpRequest);
@@ -160,6 +160,6 @@ class DynamicGetCallbackTests {
 
     DynamicPostCallback dynamicPostCallback = new DynamicPostCallback();
     HttpResponse httpResponse = dynamicPostCallback.handle(httpRequest);
-    assertEquals(200, httpResponse.getStatusCode());
+    assertEquals(201, httpResponse.getStatusCode());
   }
 }

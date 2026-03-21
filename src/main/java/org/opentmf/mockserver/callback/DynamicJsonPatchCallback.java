@@ -1,10 +1,12 @@
 package org.opentmf.mockserver.callback;
 
 import static org.opentmf.mockserver.model.Error.createErrorContextForNotFound;
+import static org.opentmf.mockserver.util.AuditFieldUtil.setUpdateFields;
 import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
 
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
 import java.io.IOException;
@@ -15,6 +17,7 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 
@@ -41,6 +44,12 @@ public class DynamicJsonPatchCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
+    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
+        httpRequest, "writer", "admin");
+    if (authError != null) {
+      return authError;
+    }
+
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
     // Retrieve the cached data associated with the domain and ID
@@ -66,6 +75,8 @@ public class DynamicJsonPatchCallback implements ExpectationResponseCallback {
       // If the patch application fails, return a bad request response with the error message
       return getErrorResponse(HttpStatusCode.BAD_REQUEST_400, e.getMessage());
     }
+
+    setUpdateFields((ObjectNode) patchedNode);
 
     // Update the cached data with the patched data
     CACHE.update(ctx, patchedNode);

@@ -2,7 +2,7 @@
 ARG MOCKSERVER_VERSION=5.15.0
 
 # --- Build your extension JAR -------------------------------------------------
-FROM maven:3.9.9-eclipse-temurin-11 AS build
+FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY src ./src
@@ -16,7 +16,7 @@ RUN curl -fsSL -o /mockserver-netty-jar-with-dependencies.jar \
   "https://repo1.maven.org/maven2/org/mock-server/mockserver-netty/${MOCKSERVER_VERSION}/mockserver-netty-${MOCKSERVER_VERSION}-jar-with-dependencies.jar"
 
 # --- Final runtime: tiny distro + JRE + curl + tini ---------------------------
-FROM eclipse-temurin:11-jre-noble
+FROM eclipse-temurin:17-jre-noble
 RUN apt-get update && \
     apt-get install -y tini curl jq && \
     rm -rf /var/lib/apt/lists/* && \

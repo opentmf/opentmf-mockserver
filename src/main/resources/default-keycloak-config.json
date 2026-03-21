@@ -1,0 +1,46 @@
+{
+  "baseUrl": "http://localhost:1080",
+  "realms": [
+    {
+      "name": "realm1",
+      "roles": ["admin", "writer", "reader"],
+      "clients": [
+        {
+          "clientId": "client1",
+          "clientSecret": "client1Secret",
+          "publicClient": false,
+          "allowedGrantTypes": ["client_credentials"],
+          "serviceAccountRoles": ["admin", "writer", "reader"]
+        },
+        {
+          "clientId": "client2",
+          "clientSecret": "client2Secret",
+          "publicClient": false,
+          "allowedGrantTypes": ["password"]
+        },
+        {
+          "clientId": "uiClient",
+          "publicClient": true,
+          "allowedGrantTypes": ["password", "refresh_token"]
+        }
+      ],
+      "users": [
+        {
+          "username": "admin_usr",
+          "password": "admin_pwd",
+          "roles": ["admin", "writer", "reader"]
+        },
+        {
+          "username": "writer_usr",
+          "password": "writer_pwd",
+          "roles": ["writer", "reader"]
+        },
+        {
+          "username": "reader_usr",
+          "password": "reader_pwd",
+          "roles": ["reader"]
+        }
+      ]
+    }
+  ]
+}

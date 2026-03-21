@@ -1,0 +1,81 @@
+{
+  "realm": "realm1",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": false,
+  "requiredActions": [],
+  "roles": {
+    "realm": [
+      { "name": "admin", "composite": false },
+      { "name": "writer", "composite": false },
+      { "name": "reader", "composite": false }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "client1",
+      "enabled": true,
+      "secret": "client1Secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "client2",
+      "enabled": true,
+      "secret": "client2Secret",
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "uiClient",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "admin_usr",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [{ "type": "password", "value": "admin_pwd", "temporary": false }],
+      "realmRoles": ["admin", "writer", "reader"]
+    },
+    {
+      "username": "writer_usr",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [{ "type": "password", "value": "writer_pwd", "temporary": false }],
+      "realmRoles": ["writer", "reader"]
+    },
+    {
+      "username": "reader_usr",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [{ "type": "password", "value": "reader_pwd", "temporary": false }],
+      "realmRoles": ["reader"]
+    },
+    {
+      "username": "service-account-client1",
+      "enabled": true,
+      "serviceAccountClientId": "client1",
+      "realmRoles": ["admin", "writer", "reader"]
+    }
+  ]
+}

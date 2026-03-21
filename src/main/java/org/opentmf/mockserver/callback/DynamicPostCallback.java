@@ -17,6 +17,7 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 
@@ -100,6 +101,12 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
+    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
+        httpRequest, "writer", "admin");
+    if (authError != null) {
+      return authError;
+    }
+
     // Parse the request body
     String body = httpRequest.getBodyAsString();
     ObjectNode parsedBody = (ObjectNode) JacksonUtil.readAsTree(body);
@@ -140,7 +147,7 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
 
     CACHE.put(ctx, parsedBody);
     return HttpResponse.response()
-        .withStatusCode(HttpStatusCode.OK_200.code())
+        .withStatusCode(HttpStatusCode.CREATED_201.code())
         .withContentType(MediaType.APPLICATION_JSON)
         .withBody(responseJson);
   }

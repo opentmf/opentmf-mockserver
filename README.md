@@ -1,472 +1,380 @@
 # opentmf-mockserver
 
+General-purpose, [TMF-630](https://www.tmforum.org/resources/specification/tmf630-rest-api-design-guidelines-4-2-0/)-compatible dynamic mock server built on top of [MockServer Netty](https://www.mock-server.org). Ships with **out-of-the-box Keycloak-like OIDC support** -- realms, clients, users, roles, real signed JWTs, JWKS, and token enforcement are all included without any external dependencies.
+
 <!-- TOC -->
 * [opentmf-mockserver](#opentmf-mockserver)
-  * [Introduction](#introduction)
-  * [Why This Library](#why-this-library)
-  * [Working Model](#working-model)
-  * [Implementation Details](#implementation-details)
-    * [DynamicPostCallback.java](#dynamicpostcallbackjava)
-    * [DynamicGetCallback.java](#dynamicgetcallbackjava)
-    * [DynamicGetListCallback.java](#dynamicgetlistcallbackjava)
-      * [Content-Range Calculations](#content-range-calculations)
-    * [DynamicJsonPatchCallback.java](#dynamicjsonpatchcallbackjava)
-    * [DynamicMergePatchCallback.java](#dynamicmergepatchcallbackjava)
-    * [DynamicDeleteCallback.java](#dynamicdeletecallbackjava)
-    * [OpenidTokenCallback.java](#openidtokencallbackjava)
-  * [Build & Run](#build--run)
-    * [A) Using Standalone MockServer](#a-using-standalone-mockserver)
-      * [Prepare Standalone MockServer](#prepare-standalone-mockserver)
-      * [Build & Copy Dependencies](#build--copy-dependencies)
-      * [Start Standalone MockServer](#start-standalone-mockserver)
-    * [B) Using Local Docker Image](#b-using-local-docker-image)
+  * [Features](#features)
+  * [Quick Start](#quick-start)
+    * [Docker](#docker)
+    * [Standalone](#standalone)
+  * [Keycloak Mock](#keycloak-mock)
+    * [What You Get for Free](#what-you-get-for-free)
+    * [Default Configuration](#default-configuration)
+    * [Obtaining Tokens](#obtaining-tokens)
+    * [OIDC Discovery and JWKS](#oidc-discovery-and-jwks)
+    * [Custom Keycloak Configuration](#custom-keycloak-configuration)
+  * [Token Enforcement and Role-Based Access](#token-enforcement-and-role-based-access)
+    * [Validating Against an External Keycloak](#validating-against-an-external-keycloak)
+    * [Role Matrix](#role-matrix)
+  * [Dynamic Callbacks](#dynamic-callbacks)
+    * [POST (DynamicPostCallback)](#post-dynamicpostcallback)
+    * [GET by ID (DynamicGetCallback)](#get-by-id-dynamicgetcallback)
+    * [GET List (DynamicGetListCallback)](#get-list-dynamicgetlistcallback)
+    * [JSON Patch (DynamicJsonPatchCallback)](#json-patch-dynamicjsonpatchcallback)
+    * [Merge Patch (DynamicMergePatchCallback)](#merge-patch-dynamicmergepatchcallback)
+    * [DELETE (DynamicDeleteCallback)](#delete-dynamicdeletecallback)
   * [Create Expectations](#create-expectations)
-    * [POST /ShToken](#post-shtoken)
-    * [POST /serviceOrder](#post-serviceorder)
-    * [GET /serviceOrder/{id}](#get-serviceorderid)
-    * [GET /serviceOrder](#get-serviceorder)
-    * [JSON - PATCH /serviceOrder/{id}](#json---patch-serviceorderid)
-    * [MERGE - PATCH /serviceOrder/{id}](#merge---patch-serviceorderid)
-    * [DELETE /serviceOrder/{id}](#delete-serviceorderid)
-  * [Test](#test)
-    * [POST /openidToken](#post-openidtoken)
-    * [POST /serviceOrder](#post-serviceorder-1)
-    * [GET /serviceOrder/{id}](#get-serviceorderid-1)
-    * [GET /serviceOrder](#get-serviceorder-1)
-    * [MERGE-PATCH /serviceOrder/{id}](#merge-patch-serviceorderid)
-    * [JSON-PATCH /serviceOrder/{id}](#json-patch-serviceorderid)
-    * [DELETE /serviceOrder/{id}](#delete-serviceorderid-1)
+  * [Environment Variables](#environment-variables)
+  * [Content-Range Calculations](#content-range-calculations)
   * [Release Notes](#release-notes)
-    * [1.0.0](#100)
-    * [1.0.1](#101)
-    * [1.0.2](#102)
-    * [1.0.3](#103)
-    * [1.0.4](#104)
-    * [1.0.5](#105)
-    * [1.0.6](#106)
-    * [1.0.7](#107)
-    * [1.0.8](#108)
-    * [1.0.9](#109)
-    * [1.1.0](#110)
-    * [1.1.1](#111)
 <!-- TOC -->
 
-## Introduction
+## Features
 
-This project consists of general purpose TMF-630 compatible dynamic expectation implementations for post, get, patch, and delete on top of [Mock Server Netty](https://www.mock-server.org).
+- **Zero-configuration TMF mocking** -- POST, GET, GET List, JSON Patch, Merge Patch, and DELETE with automatic `id`, `href`, state transitions, audit fields, and paging.
+- **Built-in Keycloak mock** -- real RSA-signed JWTs, OIDC discovery, JWKS endpoint, configurable realms / clients / users / roles. No real Keycloak needed.
+- **Token enforcement** -- optionally validate Bearer tokens on every request, with role-based access control (reader / writer / admin).
+- **External IdP support** -- validate tokens against a real Keycloak (or any OIDC provider) via `JWKS_URI` or `TOKEN_ISSUER` auto-discovery.
+- **TMF-630 compliant** -- Content-Range, X-Total-Count, X-Result-Count headers, status-field lifecycle, versioned entities, query parameters, jsonPath filters, `fields=` parameter.
 
-## Why This Library
+## Quick Start
 
-- To help the tests and minimize the requirement to create many expectations.
-- To provide getToken expectations for openid authentication servers.
+### Docker
 
-## Working Model
-
-- The posted payloads will be cached for two hours, so that get, patch and delete methods can access the original payload within this time frame.
-- The cached payload will be evicted if not touched for two hours.
-- Get and Patch operations will mean a touch, which will reset the cache evict timer.
-- The implementations will take care of setting logical values for id, createdDate, createdBy, updatedDate, updatedBy, revision, and status fields automatically.
-
-## Implementation Details
-
-The opentmf-mockserver is memorizing the created and updated payloads within a memory cache that is configured to expire after two hours. Each get, post, patch operation will reset the timer to evict the payload from the cache.
-
-The cache evict duration can be specified with an O/S environment variable: `CACHE_DURATION_MILLIS`. The value is expected to be milliseconds.
-
-There is another useful environment variable called `ADDITIONAL_FIELDS`. This can be a comma-separated list of either key names or key=value pairs. At POST, if this environment variable is provided, it will be reflected to the cached payload and returned as such. If the item does not include an equals sign, an alphanumeric value of 10 digits will be generated as the value of the field.
-
-The following classes have been implemented:
-
-### [DynamicPostCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicPostCallback.java)
-  - Tries to retrieve `id` and `version` (if versioned entity) from the payload.
-  - If versioned entity but no version in the payload, tries to retrieve the version from the path using `:(version=XYZ)`
-  - If versioned entity but no version found yet, tries to obtain the version from the query paramaters like `?version=XYZ`
-  - If `id` and `version` (if versioned entity) is provided, checks if that exists in the payload cache. Returns 400 if so.
-  - Uses either the provided id, or generates a new id for the posted payload.
-  - If versioned entity and version is not provided, sets `version="0"`.
-  - Adds createdBy, createdDate and revision fields. Overrides if they are already provided.
-  - Removes updatedDate and updatedBy, if they are provided in the payload.
-  - Decides the state field name and initial value according to the path.
-  - If state (or status) is not provided, sets the state value to the default initial. Here is the state value matrix that matches configured path according to type field:
-
-    | Type      | Field name      | Initial Value | Final Value |
-    |-----------|-----------------|---------------|-------------|
-    | Orders    | state           | acknowledged  | completed   |
-    | Inventory | status          | created       | active      |
-    | Catalog   | lifecycleStatus | inStudy       | inDesign    |
-    | Candidate | lifecycleStatus | inStudy       | inDesign    |
-    | Default   | state           | acknowledged  | completed   |
-
-  - If at least two of the state, status and/or lifecycleStatus are provided at the same time, returns 400.
-  - If environment variable ADDITIONAL_FIELDS is provided, splits it using comma, and for each item, if the item is provided as `key=value`, sets to the resulting payload `"key": "value"`. If the item is provided without an equals sign, sets to the resulting payload `"item": "${randomAlphanumeric_10_characters}"
-  - Caches the payload, and returns 200.
-
-### [DynamicGetCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetCallback.java)
-  - Considers the last path parameter as the id.
-  - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
-  - Checks if a payload is found in the cache with that id (and version if versioned entity).
-  - Returns 404 if no payload is cached with that id.
-  - If the cached payload is not previously patched, and if its state field is still at initial value, then sets the final value to the state field, and adds updatedDate, updatedBy fields, plus, increases the revision field.
-  - Touches the cache, so that the eviction timer restarts for this particular payload.
-  - Returns 200 and the potentially manipulated payload.
-
-### [DynamicGetListCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicGetListCallback.java)
-  - Decides the domain from the path parameter.
-  - Extracts offset, limit, sort criteria, filter, and fields from the httpRequest.
-  - Applies query parameters filter to the cached domain payloads
-  - Applies jsonPath filter to the filtered out result
-  - Sorts the filtered-out result according to the sort criteria.
-  - Restricts the set by applying paging obeying offset and limit.
-  - Applies fields filtering to the payloads to return.
-  - Finds the total result count and sets header X-Total-Count as per TMF-630 specification.
-  - Finds the served result count and sets header X-Result-Count as per TMF-630 specification.
-  - Finds the items' content range and sets header Content-Range as per TMF-630 specification.
-  - Responds with:
-    - 200: if the result is not empty.
-    - 416: if the requested offset is greater than the total result count.
-
-#### Content-Range Calculations
-The `DynamicGetListCallback` class calculates and sets `Content-Range` header. The resulting `Content-Range` can include either zero or one based offset values. The environment variable `CONTENT_RANGE_OFFSET_BASE` determines the base value for the offset. The default value is 1 if this environment variable is not set.
-
-The Content-Range header is defined by the TMF-630 REST API Design Guidelines and contains the following information:
-
-`Content-Range: items <start>-<end>/<total>`
-
-- If start or end is not known, a `*` is used instead.
-- If total is not known, a `*` is used instead.
-
-The following examples assume that a 1-based content range offset (the default) is in place. You can calculate the zero-based values by subtracting 1 from both start and end values. The total is the same for either zero-based or one-based content ranges.
-
-Let's suppose there are 23 items in the requested domain:
-
-| requested offset | requested limit  | HTTP Status | Content-Range  | Body  |
-|:----------------:|:----------------:|:-----------:|:---------------|:------|
-|        0         |        10        |     200     | items 1-10/23  | Array |
-|        10        |        10        |     200     | items 11-20/23 | Array |
-|        20        |        10        |     200     | items 21-23/23 | Array |
-|        30        |        10        |     416     | items */23     | Error |
-
-And the following table assumes there are 23 items in the requested domain, but because of query parameter or jsonPath filtering, the hit counts are different:
-
-| requested offset  | requested limit | hit count | HTTP Status | Content-Range   | Body   |
-|:-----------------:|:---------------:|:---------:|:-----------:|:----------------|:-------|
-|         0         |       10        |    12     |     200     | items 1-10/12   | Array  |
-|        10         |       10        |    12     |     200     | items 11-12/12  | Array  |
-|        20         |       10        |    12     |     416     | items */12      | Error  |
-
-If the offset and limit are not provided, they default to 0 and 10 respectively.
-
-### [DynamicJsonPatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicJsonPatchCallback.java)
-  - Considers the last path parameter as the id.
-  - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
-  - Checks if a payload is found in the cache with that id (and version if versioned entity).
-  - Returns 404 if no payload is cached with that id.
-  - Applies the jsonPatch body to the cached payload.
-  - Updates the cached payload with the patch result and restarts the cache evict timer.
-  - Adds/overrides updatedDate, updatedBy fields, plus, increases the revision field's value by one.
-  - Returns 200 and the updated payload.
-
-### [DynamicMergePatchCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicMergePatchCallback.java)
-  - Considers the last path parameter as the id.
-  - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
-  - Checks if a payload is found in the cache with that id (and version if versioned entity).
-  - Returns 404 if no payload is cached with that id.
-  - Applies the mergePatch body to the cached payload.
-  - Updates the cached payload with the patch result and restarts the cache evict timer.
-  - Adds/overrides updatedDate, updatedBy fields, plus, increases the revision field's value by one.
-  - Returns 200 and the updated payload.
-
-### [DynamicDeleteCallback.java](src/main/java/org/opentmf/mockserver/callback/DynamicDeleteCallback.java)
-  - Considers the last path parameter as the id.
-  - Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
-  - Checks if a payload is found in the cache with that id (and version if versioned entity).
-  - Returns 404 if no payload is cached with that id.
-  - Removes the cached payload from the cache, with that id.
-  - Returns 204 No Content.
-
-### [OpenidTokenCallback.java](src/main/java/org/opentmf/mockserver/callback/OpenidTokenCallback.java)
-  - Checks if the payload contains the necessary fields depending on the mandatory attribute "grant_type" and returns 400 Bad Request if a required parameter is missing from the request body.
-  - Prepares and returns an OpenID token payload with httpStatus = 200.
-
-## Build & Run
-
-### A) Using Standalone MockServer
-
-#### Prepare Standalone MockServer
 ```shell
-mkdir /path/to/mockserver
-cd /path/to/mockserver
-wget https://repo1.maven.org/maven2/org/mock-server/mockserver-netty-no-dependencies/5.15.0/mockserver-netty-no-dependencies-5.15.0.jar
+# Build
+mvn -P docker clean package
+
+# Run
+docker run -p 1080:1080 local/opentmf-mockserver:1.1.2-SNAPSHOT
 ```
 
-#### Build & Copy Dependencies
+The server starts on port 1080. Keycloak endpoints and JWKS are available immediately -- no extra setup needed.
+
+### Standalone
+
 ```shell
+# Prepare
+mkdir /path/to/mockserver && cd /path/to/mockserver
+wget https://repo1.maven.org/maven2/org/mock-server/mockserver-netty-no-dependencies/5.15.0/mockserver-netty-no-dependencies-5.15.0.jar
+
+# Build and copy
 cd /path/to/project
 mvn clean install
 cp -r target/libs /path/to/mockserver
-cp target/dynamic-mock-expectations.jar path/to/mockserver/libs
-cp src/main/config/scripts/run.sh /path/to/mockserver
-```
+cp target/*.jar /path/to/mockserver/libs/
 
-#### Start Standalone MockServer
-```shell
-# Start the standalone mockserver
+# Start
 cd /path/to/mockserver
-./run.sh
-```
-### B) Using Local Docker Image
-
-```shell
-# build the project and auto-create a docker image for mockserver
-mvn -P docker clean package
-
-# run the created docker container
-docker run -p 1080:1080 local/mockserver:1.0.0 -serverPort 1080
+java -Dmockserver.initializationClass=org.opentmf.mockserver.callback.JwksExpectationInitializer \
+  -cp mockserver-netty-no-dependencies-5.15.0.jar:libs/* \
+  org.mockserver.cli.Main -serverPort 1080
 ```
 
-## Create Expectations
+## Keycloak Mock
 
-### POST /ShToken
+### What You Get for Free
 
-Expectation to generate and return a fake WSO2 token.
+On startup, the following endpoints are automatically registered for each configured realm (no expectations to create):
+
+| Endpoint | Description |
+|---|---|
+| `GET /realms/{realm}/protocol/openid-connect/certs` | JWKS (public keys for token verification) |
+| `GET /realms/{realm}/.well-known/openid-configuration` | OIDC discovery document |
+| `POST /realms/{realm}/protocol/openid-connect/token` | Token endpoint (issue JWTs) |
+| `GET /.well-known/jwks.json` | Global JWKS (backward-compatible) |
+
+All issued tokens are **real, parsable, RSA-signed JWTs** with Keycloak-compatible claims (`iss`, `sub`, `azp`, `realm_access`, `resource_access`, `preferred_username`, `exp`, etc.).
+
+### Default Configuration
+
+The built-in default configuration provides a ready-to-use setup:
+
+**Realm:** `realm1`
+
+**Clients:**
+
+| Client ID | Type | Secret | Allowed Grants |
+|---|---|---|---|
+| `client1` | Confidential | `client1Secret` | `client_credentials` |
+| `client2` | Confidential | `client2Secret` | `password` |
+| `uiClient` | Public | -- | `password`, `refresh_token` |
+
+**Users:**
+
+| Username | Password | Roles |
+|---|---|---|
+| `admin_usr` | `admin_pwd` | `admin`, `writer`, `reader` |
+| `writer_usr` | `writer_pwd` | `writer`, `reader` |
+| `reader_usr` | `reader_pwd` | `reader` |
+
+### Obtaining Tokens
 
 ```shell
-# define expectation for POST /token
-curl -X PUT http://localhost:1080/mockserver/expectation \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d \
-'{
-    "httpRequest" : {
-        "method": "POST",
-        "path" : "/token"
-    },
-    "httpResponseClassCallback" : {
-        "callbackClass" : "callback.mockserver.org.opentmf.OpenidTokenCallback"
-    }
-}'
+# client_credentials (service account)
+curl -s -X POST 'http://localhost:1080/realms/realm1/protocol/openid-connect/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=client_credentials&client_id=client1&client_secret=client1Secret'
+
+# password grant (user login)
+curl -s -X POST 'http://localhost:1080/realms/realm1/protocol/openid-connect/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password&client_id=uiClient&username=admin_usr&password=admin_pwd'
+
+# refresh_token grant
+curl -s -X POST 'http://localhost:1080/realms/realm1/protocol/openid-connect/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=refresh_token&client_id=uiClient&refresh_token=<refresh_token_from_above>'
 ```
 
-### POST /serviceOrder
-```shell
-# define expectation for POST /serviceOrder
-curl -X PUT http://localhost:1080/mockserver/expectation \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d \
-'{
-    "httpRequest" : {
-        "method": "POST",
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder"
-    },
-    "httpResponseClassCallback" : {
-        "callbackClass" : "callback.mockserver.org.opentmf.DynamicPostCallback"
-    }
-}'
-```
-### GET /serviceOrder/{id}
-```shell
-# define expectation for GET /serviceOrder/{id}
-curl -X PUT http://localhost:1080/mockserver/expectation \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d \
-'{
-    "httpRequest" : {
-        "method": "GET",
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
-    },
-    "httpResponseClassCallback" : {
-        "callbackClass" : "callback.mockserver.org.opentmf.DynamicGetCallback"
-    }
-}'
-```
+The response follows the standard OAuth 2.0 token response format:
 
-### GET /serviceOrder
-```shell
-# define expectation for GET /serviceOrder
-curl -X PUT http://localhost:1080/mockserver/expectation \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d \
-'{
-    "httpRequest" : {
-        "method": "GET",
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder.*"
-    },
-    "httpResponseClassCallback" : {
-        "callbackClass" : "callback.mockserver.org.opentmf.DynamicGetListCallback"
-    }
-}'
-```
-
-### JSON - PATCH /serviceOrder/{id}
-```shell
-# define expectation for PATCH /serviceOrder/{id}
-curl -X PUT http://localhost:1080/mockserver/expectation \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d \
-'{
-    "httpRequest" : {
-        "method": "PATCH",
-        "headers": {"Content-Type": ["application/json-patch+json"]},
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
-    },
-    "httpResponseClassCallback" : {
-        "callbackClass" : "callback.mockserver.org.opentmf.DynamicJsonPatchCallback"
-    }
-}'
-```
-
-### MERGE - PATCH /serviceOrder/{id}
-```shell
-# define expectation for PATCH /serviceOrder/{id}
-curl -X PUT http://localhost:1080/mockserver/expectation \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d \
-'{
-    "httpRequest" : {
-        "method": "PATCH",
-        "headers": {"Content-Type": ["application/merge-patch+json"]},
-        "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
-    },
-    "httpResponseClassCallback" : {
-        "callbackClass" : "callback.mockserver.org.opentmf.DynamicMergePatchCallback"
-    }
-}'
-```
-
-### DELETE /serviceOrder/{id}
-```shell
-# define expectation for DELETE /serviceOrder/{id}
-curl -X PUT http://localhost:1080/mockserver/expectation \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d \
-'{
-    "httpRequest" : {
-        "method": "DELETE",
-        "path" : "/tmf-api/serviceOrdering/v4/serviceOrder/.*"
-    },
-    "httpResponseClassCallback" : {
-        "callbackClass" : "callback.mockserver.org.opentmf.DynamicDeleteCallback"
-    }
-}'
-```
-
-## Test
-### POST /openidToken
-```shell
-# should return a payload with id and state
-curl -X POST 'http://localhost:1080/token' \
--H 'Content-Type: application/x-www-form-urlencoded' \
--d 'grant_type=password' \
--d 'username=XXXXXXX' \
--d 'password=XXXXXXX' \
--d 'scope=openid'
-
-# returns
+```json
 {
-    "access_token": "DIglUJL_SvoYq6L7aoIuOnLHz77JoXZkFPTvkpwNU2U.tQlNXyx5k6AmJqVg5XfYYiM_KqV3_vFEltNmNJfRLecUGATpYFA1oc83G8OTUvKD92svP2yXOGvRY6uNHgVEJQ.3_zat_lkhcJO9_FuFIOhhW_ZdalfT42lhmSpokyB6qE",
-    "token_type": "Bearer",
-    "scope": "openid",
-    "refresh_token": "84cf59dc-6e72-4431-832e-dbd1939d6b94",
-    "id_token": "BmZmNiAvcw1ISYCO8WybHf2P9uOTBhTeQTExLrtYqsA.NbMMnncRtf44DGscWAzr-C-v1eLoc8KniPE_MZksnH-_XSz1x6nyp4qWkJ-RwiVbJl2tKIdmORCa_cmCLvLX_w.aLjX7Ys1c2TEWvAzR2l7dBvskd6pQQkgI54hstgQp5g",
-    "expires_in": 3599
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6...",
+  "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6...",
+  "scope": "openid profile email"
 }
 ```
 
-### POST /serviceOrder
-```shell
-# should return a payload with id and state
-curl -X POST http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--d '{}'
+### OIDC Discovery and JWKS
 
-# returns
-{"id":"dce2ce9d-281b-43df-8150-6242c34c8cf7","state":"acknowledged"}
+```shell
+# Discovery document
+curl -s http://localhost:1080/realms/realm1/.well-known/openid-configuration | jq .
+
+# JWKS (public keys)
+curl -s http://localhost:1080/realms/realm1/protocol/openid-connect/certs | jq .
 ```
 
-### GET /serviceOrder/{id}
-```shell
-# should return a payload with id and state
-curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7
+### Custom Keycloak Configuration
 
-# returns
-{"id":"dce2ce9d-281b-43df-8150-6242c34c8cf7","state":"completed"}
+Override the default configuration by providing a JSON file:
+
+```shell
+# Docker
+docker run -p 1080:1080 \
+  -v /path/to/my-keycloak-config.json:/config/keycloak-mock.json \
+  local/opentmf-mockserver:1.1.2-SNAPSHOT
+
+# Or via environment variable
+docker run -p 1080:1080 \
+  -e KEYCLOAK_CONFIG=/config/my-config.json \
+  -v /path/to/my-config.json:/config/my-config.json \
+  local/opentmf-mockserver:1.1.2-SNAPSHOT
 ```
 
-### GET /serviceOrder
-```shell
-# should return a serviceOrder array each having id and state
-curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder
+The JSON format:
 
-# returns
-[{"id":"dce2ce9d-281b-43df-8150-6242c34c8cf7","state":"completed"}]
+```json
+{
+  "baseUrl": "http://localhost:1080",
+  "realms": [
+    {
+      "name": "my-realm",
+      "roles": ["admin", "user"],
+      "clients": [
+        {
+          "clientId": "my-app",
+          "clientSecret": "secret",
+          "publicClient": false,
+          "allowedGrantTypes": ["client_credentials", "password"],
+          "serviceAccountRoles": ["admin"]
+        },
+        {
+          "clientId": "my-spa",
+          "publicClient": true,
+          "allowedGrantTypes": ["password", "refresh_token"]
+        }
+      ],
+      "users": [
+        {
+          "username": "alice",
+          "password": "alice123",
+          "roles": ["admin", "user"]
+        }
+      ]
+    }
+  ]
+}
 ```
 
-### MERGE-PATCH /serviceOrder/{id}
-```shell
-# should return a payload with id and state
-curl -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7 \
--H "Content-Type: application/merge-patch+json" \
--H "Accept: application/json" \
--d '{"state": "started"}'
+## Token Enforcement and Role-Based Access
 
-# returns
-{"id":"dce2ce9d-281b-43df-8150-6242c34c8cf7","state":"started"}
+Enable token validation on all dynamic callbacks with a single environment variable:
+
+```shell
+docker run -p 1080:1080 -e ENFORCE_TOKEN=true local/opentmf-mockserver:1.1.2-SNAPSHOT
 ```
 
-### JSON-PATCH /serviceOrder/{id}
-```shell
-# should return a payload with id and state
-curl -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7 \
--H "Content-Type: application/json-patch+json" \
--H "Accept: application/json" \
--d '[{"op": "replace","path": "/state","value": "started"}]'
+When enabled, every request to a dynamic callback must include a valid `Authorization: Bearer <token>` header. The token's signature, expiration, and (optionally) issuer are verified. In addition, the token's roles are checked against the operation being performed.
 
-# returns
-{"id":"dce2ce9d-281b-43df-8150-6242c34c8cf7","state":"started"}
+### Validating Against an External Keycloak
+
+You can point the enforcer at a real Keycloak (or any OIDC provider) instead of the built-in mock keys:
+
+```shell
+# Option 1: Explicit JWKS URI (takes precedence)
+docker run -p 1080:1080 \
+  -e ENFORCE_TOKEN=true \
+  -e JWKS_URI=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs \
+  -e TOKEN_ISSUER=https://keycloak.example.com/realms/myrealm \
+  local/opentmf-mockserver:1.1.2-SNAPSHOT
+
+# Option 2: OIDC auto-discovery (JWKS URI is resolved from the issuer's discovery endpoint)
+docker run -p 1080:1080 \
+  -e ENFORCE_TOKEN=true \
+  -e TOKEN_ISSUER=https://keycloak.example.com/realms/myrealm \
+  local/opentmf-mockserver:1.1.2-SNAPSHOT
 ```
 
-### DELETE /serviceOrder/{id}
-```shell
-# should return no content
-curl -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/dce2ce9d-281b-43df-8150-6242c34c8cf7
+When `TOKEN_ISSUER` is set, the `iss` claim in the token is also validated against it.
 
-# returns
-HTTP 204, No Content
+### Role Matrix
+
+Roles are extracted from the JWT's `realm_access.roles` claim (Keycloak standard).
+
+| Operation | Required Role (any of) |
+|---|---|
+| GET, GET List | `reader`, `writer`, `admin` |
+| POST, JSON Patch, Merge Patch | `writer`, `admin` |
+| DELETE | `admin` |
+
+Insufficient roles return **403 Forbidden**; missing/invalid tokens return **401 Unauthorized**.
+
+## Dynamic Callbacks
+
+All callbacks share these behaviors:
+- Payloads are cached in-memory with a configurable TTL (default: 2 hours).
+- GET, POST, and PATCH operations reset the eviction timer.
+- `id`, `href`, `createdDate`, `createdBy`, `updatedDate`, `updatedBy`, `revision`, and state fields are managed automatically.
+- Versioned entities are supported via `:(version=XYZ)` in the path or `?version=XYZ` query parameter.
+
+### POST (DynamicPostCallback)
+
+- Generates a UUID `id` if not provided; returns 400 if the ID already exists.
+- Sets `createdDate`, `createdBy`, `revision`, `href`, and the initial state field.
+- Sets `version="0"` for versioned entities if not provided.
+- Returns **201 Created**.
+
+State field mapping by path:
+
+| Type | Field | Initial | Final |
+|---|---|---|---|
+| Orders | `state` | `acknowledged` | `completed` |
+| Inventory | `status` | `created` | `active` |
+| Catalog | `lifecycleStatus` | `inStudy` | `inDesign` |
+| Candidate | `lifecycleStatus` | `inStudy` | `inDesign` |
+| Default | `state` | `acknowledged` | `completed` |
+
+### GET by ID (DynamicGetCallback)
+
+- Returns the cached payload for the given ID (404 if not found).
+- On first GET, transitions the state field from initial to final value and sets `updatedDate`, `updatedBy`, `revision`.
+- Returns **200 OK**.
+
+### GET List (DynamicGetListCallback)
+
+- Returns all cached payloads for the domain, filtered/sorted/paged per TMF-630.
+- Supports query parameters: `offset`, `limit`, `sort`, `fields`, and attribute-based filtering.
+- Sets `X-Total-Count`, `X-Result-Count`, and `Content-Range` headers.
+- Returns **200 OK** or **416 Range Not Satisfiable** if offset exceeds total count.
+
+### JSON Patch (DynamicJsonPatchCallback)
+
+- Applies an [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Patch to the cached payload.
+- Sets `updatedDate`, `updatedBy` and increments `revision`.
+- Returns **200 OK** (or 404/400 on error).
+
+### Merge Patch (DynamicMergePatchCallback)
+
+- Applies an [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON Merge Patch to the cached payload.
+- Sets `updatedDate`, `updatedBy` and increments `revision`.
+- Returns **200 OK** (or 404/400 on error).
+
+### DELETE (DynamicDeleteCallback)
+
+- Removes the cached payload for the given ID (404 if not found).
+- Returns **204 No Content**.
+
+## Create Expectations
+
+Token and OIDC endpoints are auto-registered. For TMF resource endpoints, register expectations as needed:
+
+```shell
+# POST
+curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "POST", "path": "/tmf-api/serviceOrdering/v4/serviceOrder" },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPostCallback" }
+}'
+
+# GET by ID
+curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetCallback" }
+}'
+
+# GET List
+curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder.*" },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetListCallback" }
+}'
+
+# JSON Patch
+curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
+                   "headers": { "Content-Type": ["application/json-patch+json"] } },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCallback" }
+}'
+
+# Merge Patch
+curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
+                   "headers": { "Content-Type": ["application/merge-patch+json"] } },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicMergePatchCallback" }
+}'
+
+# DELETE
+curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "DELETE", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicDeleteCallback" }
+}'
 ```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `SERVER_PORT` | `1080` | MockServer listen port |
+| `CACHE_DURATION_MILLIS` | `7200000` (2h) | Payload cache TTL in milliseconds |
+| `ADDITIONAL_FIELDS` | -- | Comma-separated `key` or `key=value` pairs added to POST payloads |
+| `CONTENT_RANGE_OFFSET_BASE` | `1` | `0` or `1` -- base for Content-Range offset calculation |
+| `KEYCLOAK_CONFIG` | `/config/keycloak-mock.json` | Path to Keycloak mock configuration JSON |
+| `ENFORCE_TOKEN` | `false` | `true` to require valid Bearer JWT on all dynamic callbacks |
+| `TOKEN_ISSUER` | -- | Expected `iss` claim; also enables OIDC auto-discovery |
+| `JWKS_URI` | -- | Explicit JWKS endpoint URL (takes precedence over discovery) |
+
+## Content-Range Calculations
+
+The `Content-Range` header follows the TMF-630 REST API Design Guidelines:
+
+`Content-Range: items <start>-<end>/<total>`
+
+Given 23 items in the domain (1-based offset, the default):
+
+| Offset | Limit | Status | Content-Range |
+|:---:|:---:|:---:|---|
+| 0 | 10 | 200 | `items 1-10/23` |
+| 10 | 10 | 200 | `items 11-20/23` |
+| 20 | 10 | 200 | `items 21-23/23` |
+| 30 | 10 | 416 | `items */23` |
+
+Set `CONTENT_RANGE_OFFSET_BASE=0` for zero-based offset values. Default offset is 0, default limit is 10.
 
 ## Release Notes
-### 1.0.0
-- Initial Release
-### 1.0.1
-- Started supporting versioned entities. TMF-630 Part 4.2
-### 1.0.2
-- The first open-source version
-### 1.0.3
-- Enhanced the version resolving algorithm
-### 1.0.4
-- Introduced a release Dockerfile
-### 1.0.5
-- Fixed the target jar file path in the release Dockerfile
-### 1.0.6
-- Started supporting version resolution from query parameters as well
-- Started supporting ADDITIONAL_FIELDS environment variable
-- Started supporting CACHE_DURATION_MILLIS environment variable
-### 1.0.7
-- RequestContext initialization is performed on the decoded URL string
-### 1.0.8
-- Improvement: Starts applying also the query parameters filter to the cached domain payloads
-### 1.0.9
-- Fixes the docker image
-### 1.1.0
-- Fixes the docker image again. 1.0.8 and 1.0.9 is not behaving as expected.
-### 1.1.1
-- Started returning "416 Range Not Satisfiable" when offset > 0 and offset >= totalCount
-- Started supporting CONTENT_RANGE_OFFSET_BASE environment variable to accept 0 or 1, default 1 if not specified.
-- Started setting "X-Result-Count" header on getList.
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed list of changes per version.

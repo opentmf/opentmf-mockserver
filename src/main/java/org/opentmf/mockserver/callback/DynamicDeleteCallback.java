@@ -10,6 +10,7 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.PayloadCache;
 
 /**
@@ -35,6 +36,12 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
+    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
+        httpRequest, "admin");
+    if (authError != null) {
+      return authError;
+    }
+
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
     // Retrieve the cached data associated with the domain and ID
@@ -45,6 +52,7 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
       return getErrorResponse(HttpStatusCode.NOT_FOUND_404, createErrorContextForNotFound());
     }
 
+    ctx.obtainVersionFromPayloadIfNecessary(cachedData);
     CACHE.clear(ctx);
     return HttpResponse.response().withStatusCode(HttpStatusCode.NO_CONTENT_204.code());
   }

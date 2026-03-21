@@ -28,6 +28,7 @@ import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.Id;
 import org.opentmf.mockserver.model.RequestContext;
+import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.CacheQuery;
 import org.opentmf.mockserver.util.ErrorResponseUtil;
 import org.opentmf.mockserver.util.JacksonUtil;
@@ -60,6 +61,12 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
+    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
+        httpRequest, "reader", "writer", "admin");
+    if (authError != null) {
+      return authError;
+    }
+
     RequestContext ctx = RequestContext.initialize(httpRequest, false, null);
 
     // Retrieve the cached data associated with the domain
@@ -101,7 +108,7 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     if (returnStatus == 416) {
       return ErrorResponseUtil.getErrorResponse(
           HttpStatusCode.REQUESTED_RANGE_NOT_SATISFIABLE_416,
-          "offset = " + offset + "is higher than the total found items " + totalCount,
+          "offset = " + offset + " is higher than the total found items " + totalCount,
           responseHeaders(resultCount, totalCount, offset));
     }
 
@@ -183,14 +190,23 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
   }
 
   private int compare(String sortField, JsonNode node1, JsonNode node2) {
-    if (node1.get(sortField).isNumber() && node2.get(sortField).isNumber()) {
-      return Integer.compare(node1.get(sortField).asInt(), node2.get(sortField).asInt());
-    } else if (node1.get(sortField).isTextual() && node2.get(sortField).isTextual()) {
-      return node1.get(sortField).asText().compareTo(node2.get(sortField).asText());
-    } else if (node1.get(sortField).isBoolean() && node2.get(sortField).isBoolean()) {
-      return Boolean.compare(node1.get(sortField).asBoolean(), node2.get(sortField).asBoolean());
+    JsonNode val1 = node1.get(sortField);
+    JsonNode val2 = node2.get(sortField);
+    if (val1 == null && val2 == null) {
+      return 0;
+    }
+    if (val1 == null) {
+      return -1;
+    }
+    if (val2 == null) {
+      return 1;
+    }
+    if (val1.isNumber() && val2.isNumber()) {
+      return Integer.compare(val1.asInt(), val2.asInt());
+    } else if (val1.isBoolean() && val2.isBoolean()) {
+      return Boolean.compare(val1.asBoolean(), val2.asBoolean());
     } else {
-      return node1.get(sortField).asText().compareTo(node2.get(sortField).asText());
+      return val1.asText().compareTo(val2.asText());
     }
   }
 
