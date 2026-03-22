@@ -2,6 +2,9 @@ package org.opentmf.mockserver.callback;
 
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,6 +56,11 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
       expectations.add(realmJwks(oidcBase, jwksJson));
       expectations.add(realmDiscovery(realmName, baseUrl));
       expectations.add(realmToken(oidcBase));
+    }
+
+    Expectation openapi = openapiSpec();
+    if (openapi != null) {
+      expectations.add(openapi);
     }
 
     LOG.info("Registered {} OIDC expectations ({} realm(s))",
@@ -134,5 +142,32 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
             HttpClassCallback.callback(KeycloakTokenCallback.class.getName()));
     LOG.info("  POST {}", path);
     return e;
+  }
+
+  private static final String OPENAPI_RESOURCE = "opentmf-mockserver-openapi.yaml";
+  private static final String OPENAPI_PATH = "/mockserver/openapi";
+
+  private Expectation openapiSpec() {
+    try (InputStream is = getClass().getClassLoader().getResourceAsStream(OPENAPI_RESOURCE)) {
+      if (is == null) {
+        LOG.warn("OpenAPI spec not found on classpath: {}", OPENAPI_RESOURCE);
+        return null;
+      }
+      String yaml = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+      Expectation e = Expectation.when(
+              HttpRequest.request().withMethod("GET").withPath(OPENAPI_PATH),
+              Times.unlimited(), null)
+          .thenRespond(
+              HttpResponse.response()
+                  .withStatusCode(200)
+                  .withHeader("Content-Type", "application/yaml")
+                  .withHeader("Cache-Control", "public, max-age=3600")
+                  .withBody(yaml));
+      LOG.info("  GET {}", OPENAPI_PATH);
+      return e;
+    } catch (IOException e) {
+      LOG.warn("Failed to load OpenAPI spec: {}", e.getMessage());
+      return null;
+    }
   }
 }

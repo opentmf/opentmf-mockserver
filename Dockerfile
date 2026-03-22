@@ -1,6 +1,4 @@
 # syntax=docker/dockerfile:1.7
-ARG VERSION=2.0.1-SNAPSHOT
-
 FROM eclipse-temurin:17-jre-noble
 RUN apt-get update && \
     apt-get install -y tini curl jq && \
@@ -14,8 +12,7 @@ RUN mkdir -p /opt/mockserver /config \
 
 USER mockserver
 
-ARG VERSION
-COPY --chown=mockserver:mockserver target/opentmf-mockserver-${VERSION}.jar /opt/mockserver/opentmf-mockserver.jar
+COPY --chown=mockserver:mockserver target/opentmf-mockserver-*.jar /opt/mockserver/opentmf-mockserver.jar
 COPY --chown=mockserver:mockserver target/libs/ /opt/mockserver/libs/
 
 COPY --chown=mockserver:mockserver docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

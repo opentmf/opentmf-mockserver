@@ -6,7 +6,7 @@ import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
 import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ class DynamicJsonPatchCallbackTests {
   @Test
   void shouldApplyJsonPatch() {
     // Given
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     String domain = RandomStringUtils.randomAlphabetic(5);
     addDataToCache(domain, id);
     String requestBody =
@@ -81,7 +81,7 @@ class DynamicJsonPatchCallbackTests {
   @Test
   void testApplyPatch_withNonExistId() {
     // Given
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     String domain = RandomStringUtils.randomAlphabetic(5);
     addDataToCache(domain, "nonExistId");
     String requestBody =

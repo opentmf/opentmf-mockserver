@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import java.util.stream.Collectors;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
@@ -209,7 +209,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("azp", clientId);
     claims.put("iat", now / 1000);
     claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("jti", TSID.Factory.getTsid().toString());
     claims.put("scope", scope);
 
     LinkedHashMap<String, Serializable> realmAccess = new LinkedHashMap<>();
@@ -238,7 +238,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("azp", clientId);
     claims.put("iat", now / 1000);
     claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("jti", TSID.Factory.getTsid().toString());
     if (preferredUsername != null) {
       claims.put("preferred_username", preferredUsername);
     }
@@ -259,7 +259,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("azp", clientId);
     claims.put("iat", now / 1000);
     claims.put("exp", (now + refreshExpiry) / 1000);
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("jti", TSID.Factory.getTsid().toString());
     claims.put("roles", (Serializable) roles);
     if (preferredUsername != null) {
       claims.put("preferred_username", preferredUsername);

@@ -1,6 +1,10 @@
 # opentmf-mockserver
 
-General-purpose, [TMF-630](https://www.tmforum.org/resources/specification/tmf630-rest-api-design-guidelines-4-2-0/)-compatible dynamic mock server built on top of [MockServer Netty](https://www.mock-server.org). Ships with **out-of-the-box Keycloak-like OIDC support** -- realms, clients, users, roles, real signed JWTs, JWKS, and token enforcement are all included without any external dependencies.
+General-purpose, [TMF-630](https://www.tmforum.org/resources/specification/tmf630-rest-api-design-guidelines-4-2-0/)-compatible dynamic mock server built on top of [MockServer](https://github.com/mock-server/mockserver). Ships with **out-of-the-box Keycloak-like OIDC support** -- realms, clients, users, roles, real signed JWTs, JWKS, and token enforcement are all included without any external dependencies.
+
+> **MockServer feature matrix** -- This project embeds a subset of MockServer. For a detailed
+> breakdown of what is included and what is intentionally excluded (OpenAPI, XML matching,
+> dashboard, proxy, templates, etc.), see [MOCKSERVER.md](MOCKSERVER.md).
 
 <!-- TOC -->
 * [opentmf-mockserver](#opentmf-mockserver)
@@ -27,6 +31,9 @@ General-purpose, [TMF-630](https://www.tmforum.org/resources/specification/tmf63
   * [Create Expectations](#create-expectations)
   * [Environment Variables](#environment-variables)
   * [Content-Range Calculations](#content-range-calculations)
+  * [API Reference](#api-reference)
+  * [MockServer Feature Matrix](#mockserver-feature-matrix)
+  * [Acknowledgments](#acknowledgments)
   * [Release Notes](#release-notes)
 <!-- TOC -->
 
@@ -47,7 +54,7 @@ General-purpose, [TMF-630](https://www.tmforum.org/resources/specification/tmf63
 mvn -P docker clean package
 
 # Run
-docker run -p 1080:1080 local/opentmf-mockserver:1.1.2-SNAPSHOT
+docker run -p 1080:1080 local/opentmf-mockserver:2.1.0-SNAPSHOT
 ```
 
 The server starts on port 1080. Keycloak endpoints and JWKS are available immediately -- no extra setup needed.
@@ -55,20 +62,12 @@ The server starts on port 1080. Keycloak endpoints and JWKS are available immedi
 ### Standalone
 
 ```shell
-# Prepare
-mkdir /path/to/mockserver && cd /path/to/mockserver
-wget https://repo1.maven.org/maven2/org/mock-server/mockserver-netty-no-dependencies/5.15.0/mockserver-netty-no-dependencies-5.15.0.jar
-
-# Build and copy
-cd /path/to/project
-mvn clean install
-cp -r target/libs /path/to/mockserver
-cp target/*.jar /path/to/mockserver/libs/
+# Build (produces target/opentmf-mockserver-*.jar + target/libs/)
+mvn clean package
 
 # Start
-cd /path/to/mockserver
 java -Dmockserver.initializationClass=org.opentmf.mockserver.callback.JwksExpectationInitializer \
-  -cp mockserver-netty-no-dependencies-5.15.0.jar:libs/* \
+  -cp target/opentmf-mockserver-*.jar:target/libs/* \
   org.mockserver.cli.Main -serverPort 1080
 ```
 
@@ -84,6 +83,7 @@ On startup, the following endpoints are automatically registered for each config
 | `GET /realms/{realm}/.well-known/openid-configuration` | OIDC discovery document |
 | `POST /realms/{realm}/protocol/openid-connect/token` | Token endpoint (issue JWTs) |
 | `GET /.well-known/jwks.json` | Global JWKS (backward-compatible) |
+| `GET /mockserver/openapi` | OpenAPI 3.1 specification (YAML) |
 
 All issued tokens are **real, parsable, RSA-signed JWTs** with Keycloak-compatible claims (`iss`, `sub`, `azp`, `realm_access`, `resource_access`, `preferred_username`, `exp`, etc.).
 
@@ -159,13 +159,13 @@ Override the default configuration by providing a JSON file:
 # Docker
 docker run -p 1080:1080 \
   -v /path/to/my-keycloak-config.json:/config/keycloak-mock.json \
-  local/opentmf-mockserver:1.1.2-SNAPSHOT
+  local/opentmf-mockserver:2.1.0-SNAPSHOT
 
 # Or via environment variable
 docker run -p 1080:1080 \
   -e KEYCLOAK_CONFIG=/config/my-config.json \
   -v /path/to/my-config.json:/config/my-config.json \
-  local/opentmf-mockserver:1.1.2-SNAPSHOT
+  local/opentmf-mockserver:2.1.0-SNAPSHOT
 ```
 
 The JSON format:
@@ -208,7 +208,7 @@ The JSON format:
 Enable token validation on all dynamic callbacks with a single environment variable:
 
 ```shell
-docker run -p 1080:1080 -e ENFORCE_TOKEN=true local/opentmf-mockserver:1.1.2-SNAPSHOT
+docker run -p 1080:1080 -e ENFORCE_TOKEN=true local/opentmf-mockserver:2.1.0-SNAPSHOT
 ```
 
 When enabled, every request to a dynamic callback must include a valid `Authorization: Bearer <token>` header. The token's signature, expiration, and (optionally) issuer are verified. In addition, the token's roles are checked against the operation being performed.
@@ -223,13 +223,13 @@ docker run -p 1080:1080 \
   -e ENFORCE_TOKEN=true \
   -e JWKS_URI=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs \
   -e TOKEN_ISSUER=https://keycloak.example.com/realms/myrealm \
-  local/opentmf-mockserver:1.1.2-SNAPSHOT
+  local/opentmf-mockserver:2.1.0-SNAPSHOT
 
 # Option 2: OIDC auto-discovery (JWKS URI is resolved from the issuer's discovery endpoint)
 docker run -p 1080:1080 \
   -e ENFORCE_TOKEN=true \
   -e TOKEN_ISSUER=https://keycloak.example.com/realms/myrealm \
-  local/opentmf-mockserver:1.1.2-SNAPSHOT
+  local/opentmf-mockserver:2.1.0-SNAPSHOT
 ```
 
 When `TOKEN_ISSUER` is set, the `iss` claim in the token is also validated against it.
@@ -374,6 +374,38 @@ Given 23 items in the domain (1-based offset, the default):
 | 30 | 10 | 416 | `items */23` |
 
 Set `CONTENT_RANGE_OFFSET_BASE=0` for zero-based offset values. Default offset is 0, default limit is 10.
+
+## API Reference
+
+The full API is documented in [opentmf-mockserver-openapi.yaml](opentmf-mockserver-openapi.yaml) (OpenAPI 3.1). It covers all three
+endpoint groups: the MockServer control plane, the Keycloak OIDC mock, and the dynamic TMF
+resource callbacks.
+
+The OpenAPI spec is also served at runtime:
+
+```
+GET /mockserver/openapi
+```
+
+You can point any OpenAPI viewer (e.g. [Swagger Editor](https://editor.swagger.io),
+VS Code OpenAPI extension) directly at `http://localhost:1080/mockserver/openapi`.
+
+## MockServer Feature Matrix
+
+This project embeds a tailored subset of MockServer. For a detailed breakdown of included
+features (HTTP mocking, JSON matching, TLS, callbacks, forwarding) and excluded features
+(OpenAPI, XML/XPath matching, dashboard UI, SOCKS proxy, template engines, Prometheus), see
+[MOCKSERVER.md](MOCKSERVER.md).
+
+## Acknowledgments
+
+This project includes source code from [MockServer](https://github.com/mock-server/mockserver)
+(v5.15.0) by James D Bloom, licensed under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). The `org.mockserver` package
+contains code originally from the `mockserver-core`, `mockserver-netty`, and
+`mockserver-client-java` modules of that project. The code has been modified to migrate from
+Jackson 2.x to Jackson 3.x and to remove features not needed for TMF mock usage (UI dashboard,
+proxy/SOCKS, template engines, XML/XPath body matching, OpenAPI/Swagger, and Prometheus metrics).
 
 ## Release Notes
 

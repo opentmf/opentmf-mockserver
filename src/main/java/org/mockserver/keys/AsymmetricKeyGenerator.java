@@ -3,12 +3,12 @@ package org.mockserver.keys;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.spec.ECGenParameterSpec;
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 
 public class AsymmetricKeyGenerator {
 
     public static AsymmetricKeyPair createAsymmetricKeyPair(AsymmetricKeyPairAlgorithm algorithm) {
-        return new AsymmetricKeyPair(UUID.randomUUID().toString(), algorithm, createKeyPair(algorithm));
+        return new AsymmetricKeyPair(TSID.Factory.getTsid().toString(), algorithm, createKeyPair(algorithm));
     }
 
     public static KeyPair createKeyPair(AsymmetricKeyPairAlgorithm algorithm) {

@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import org.mockserver.keys.AsymmetricKeyConverter;
 import org.mockserver.keys.AsymmetricKeyPair;
 import org.mockserver.serialization.ObjectMapperFactory;
@@ -38,7 +38,7 @@ public class JWTGenerator {
                     .type(JOSEObjectType.JWT)
                     .build(),
                 new Payload(ImmutableMap.of(
-                    "sub", UUID.randomUUID().toString(),
+                    "sub", TSID.Factory.getTsid().toString(),
                     "aud", "https://www.mock-server.com",
                     "iss", "https://www.mock-server.com",
                     "nbf", now.minus(4, ChronoUnit.HOURS).getEpochSecond(),

@@ -8,7 +8,7 @@ import java.net.Socket;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509KeyManager;
@@ -40,7 +40,7 @@ public class UniqueCertificateChainSSLContextBuilder {
             String originalPrivateKeyPath = configuration.privateKeyPath();
             String originalX509CertificatePath = configuration.x509CertificatePath();
             try {
-                File tempDirectory = new File(File.createTempFile("prefix", "suffix").getParentFile().getAbsolutePath() + "/" + UUID.randomUUID());
+                File tempDirectory = new File(File.createTempFile("prefix", "suffix").getParentFile().getAbsolutePath() + "/" + TSID.Factory.getTsid());
                 if (!tempDirectory.mkdir()) {
                     throw new RuntimeException("Exception creating temporary directory for test certificates " + tempDirectory);
                 }

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-22
+
+### Changed
+- **Jackson 3.x migration**: Migrated from Jackson 2.x (`com.fasterxml.jackson`) to Jackson 3.x
+  (`tools.jackson`). This project no longer pulls any Jackson 2.x transitive dependencies, making
+  it compatible with Spring Boot 4.x and other Jackson 3.x consumers.
+- **Embedded MockServer core**: Source code from
+  [mock-server/mockserver](https://github.com/mock-server/mockserver) v5.15.0 (Apache-2.0, by
+  James D Bloom) is now bundled directly instead of depending on the external `mockserver-netty`
+  artifact. This enabled the Jackson 3.x migration and the removal of unused features.
+- **JSON Patch and Merge Patch** now use `org.opentmf:opentmf-json-patch:1.1.0`.
+- Upgraded all runtime dependencies to their latest versions. All dependency versions are now
+  managed via Maven properties for easy tracking with `mvn versions:display-property-updates`.
+  Notable updates: Netty 4.2.10.Final, BouncyCastle 1.83, nimbus-jose-jwt 10.8,
+  json-schema-validator 3.0.1, json-path 3.0.0, Guava 33.5.0-jre, Commons Lang3 3.20.0,
+  SLF4J 2.0.17.
+
+### Removed
+- External `org.mock-server:mockserver-netty` and `org.mock-server:mockserver-client-java`
+  dependencies.
+- UI dashboard, proxy/SOCKS support, template engines (JavaScript/Velocity), XML/XPath/XmlSchema
+  body matching, OpenAPI/Swagger expectation support, and Prometheus metrics -- these features are
+  not needed for TMF mock usage and carried heavy transitive dependencies.
+- `javax.servlet` dependency.
+
 ## [2.0.0] - 2026-03-21
 
 ### Added
@@ -115,7 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/opentmf/opentmf-mockserver/compare/1.1.1...HEAD
+[Unreleased]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.0...HEAD
+[2.1.0]: https://github.com/opentmf/opentmf-mockserver/compare/2.0.0...2.1.0
+[2.0.0]: https://github.com/opentmf/opentmf-mockserver/compare/1.1.1...2.0.0
 [1.1.1]: https://github.com/opentmf/opentmf-mockserver/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/opentmf/opentmf-mockserver/compare/1.0.9...1.1.0
 [1.0.9]: https://github.com/opentmf/opentmf-mockserver/compare/1.0.8...1.0.9

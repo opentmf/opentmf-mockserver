@@ -3,7 +3,7 @@ package org.opentmf.mockserver.callback;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +30,7 @@ class DynamicMergePatchCallbackTests {
   @Test
   void shouldReturnUpdatedServiceOrder() {
     // Given
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     String domain = "mockserver";
     String requestBody =
         "{\n"
@@ -95,7 +95,7 @@ class DynamicMergePatchCallbackTests {
   @Test
   void testApplyPatch_withNonExistId() {
     // Given
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     String domain = "mockserver";
     String requestBody =
         "{\n"

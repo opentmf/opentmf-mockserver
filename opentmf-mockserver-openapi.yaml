@@ -1,0 +1,1041 @@
+openapi: 3.1.0
+info:
+  title: opentmf-mockserver API
+  description: |
+    API reference for **opentmf-mockserver** — a TMF-630-compatible dynamic mock server with
+    built-in Keycloak OIDC support.
+
+    The endpoints are organised into three groups:
+
+    | Tag | Description |
+    |-----|-------------|
+    | **MockServer** | Control-plane API for managing expectations, verification, and server lifecycle. |
+    | **Keycloak Mock** | OIDC endpoints automatically registered at startup (discovery, JWKS, token). |
+    | **TMF Resources** | Dynamic CRUD operations backed by class callbacks (user-registered expectations). |
+  version: ${project.version}
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: OpenTMF
+    url: https://github.com/opentmf/opentmf-mockserver
+
+servers:
+  - url: http://localhost:1080
+    description: Default local MockServer
+
+tags:
+  - name: MockServer
+    description: Control-plane API inherited from MockServer
+  - name: Keycloak Mock
+    description: Auto-registered OIDC / OAuth 2.0 endpoints
+  - name: TMF Resources
+    description: Dynamic CRUD for TMF-630 resources (callback-backed)
+
+paths:
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  MockServer control plane
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  /mockserver/status:
+    put:
+      tags: [MockServer]
+      operationId: getStatus
+      summary: Server status
+      description: Returns the listening ports. Also useful as a health check.
+      responses:
+        "200":
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ports:
+                    type: array
+                    items:
+                      type: integer
+                    example: [1080]
+
+  /mockserver/expectation:
+    put:
+      tags: [MockServer]
+      operationId: upsertExpectation
+      summary: Create or update expectations
+      description: |
+        Registers one or more expectations. Each expectation pairs a request matcher with an
+        action (static response, class callback, forward, error, etc.).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Expectation"
+            example:
+              httpRequest:
+                method: POST
+                path: /tmf-api/serviceOrdering/v4/serviceOrder
+              httpResponseClassCallback:
+                callbackClass: org.opentmf.mockserver.callback.DynamicPostCallback
+      responses:
+        "201":
+          description: Expectation created
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expectation"
+        "400":
+          description: Invalid expectation
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /mockserver/clear:
+    put:
+      tags: [MockServer]
+      operationId: clear
+      summary: Clear expectations and/or logs
+      description: |
+        Clears expectations and/or recorded requests. The request body can be either a
+        **request matcher** (matches expectations by path, method, etc.) or an
+        **expectation ID** (`{"id": "..."}`) to clear a single expectation.
+
+        Use the `type` query parameter to control what is cleared (defaults to `all`).
+      parameters:
+        - name: type
+          in: query
+          description: "What to clear — accepted values: `all` (default), `log`, `expectations`"
+          schema:
+            type: string
+          examples:
+            all:
+              value: all
+              summary: Clear everything (default)
+            log:
+              value: log
+              summary: Clear logs only
+            expectations:
+              value: expectations
+              summary: Clear expectations only
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/RequestDefinition"
+                - $ref: "#/components/schemas/ExpectationId"
+            examples:
+              byRequestMatcher:
+                summary: Clear by request matcher
+                value:
+                  path: /tmf-api/serviceOrdering/v4/serviceOrder
+              byExpectationId:
+                summary: Clear by expectation ID
+                value:
+                  id: my-expectation-id
+      responses:
+        "200":
+          description: Cleared
+
+  /mockserver/reset:
+    put:
+      tags: [MockServer]
+      operationId: reset
+      summary: Reset everything
+      description: Clears all expectations, recorded requests, and logs.
+      responses:
+        "200":
+          description: Reset complete
+
+  /mockserver/retrieve:
+    put:
+      tags: [MockServer]
+      operationId: retrieve
+      summary: Retrieve recorded requests, expectations, or logs
+      parameters:
+        - name: type
+          in: query
+          description: "What to retrieve — accepted values: `requests` (default), `request_responses`, `recorded_expectations`, `active_expectations`, `logs`"
+          schema:
+            type: string
+          examples:
+            requests:
+              value: requests
+              summary: Recorded requests (default)
+            request_responses:
+              value: request_responses
+              summary: Request-response pairs
+            recorded_expectations:
+              value: recorded_expectations
+              summary: Recorded expectations
+            active_expectations:
+              value: active_expectations
+              summary: Active expectations
+            logs:
+              value: logs
+              summary: Log entries
+        - name: format
+          in: query
+          description: "Response format — accepted values: `json` (default), `java`, `log_entries`"
+          schema:
+            type: string
+          examples:
+            json:
+              value: json
+              summary: JSON (default)
+            java:
+              value: java
+              summary: Java code
+            log_entries:
+              value: log_entries
+              summary: Log entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestDefinition"
+      responses:
+        "200":
+          description: Retrieved data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /mockserver/verify:
+    put:
+      tags: [MockServer]
+      operationId: verify
+      summary: Verify requests were received
+      description: |
+        Verifies that a request matching the given matcher was received the expected number of
+        times. Returns 202 on success, 406 on failure.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Verification"
+      responses:
+        "202":
+          description: Verification passed
+        "406":
+          description: Verification failed
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /mockserver/verifySequence:
+    put:
+      tags: [MockServer]
+      operationId: verifySequence
+      summary: Verify requests were received in order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationSequence"
+      responses:
+        "202":
+          description: Sequence verification passed
+        "406":
+          description: Sequence verification failed
+          content:
+            application/json:
+              schema:
+                type: string
+
+  /mockserver/bind:
+    put:
+      tags: [MockServer]
+      operationId: bind
+      summary: Bind additional ports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ports:
+                  type: array
+                  items:
+                    type: integer
+              example:
+                ports: [1081, 1082]
+      responses:
+        "200":
+          description: Ports bound
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ports:
+                    type: array
+                    items:
+                      type: integer
+
+  /mockserver/stop:
+    put:
+      tags: [MockServer]
+      operationId: stop
+      summary: Stop the server
+      responses:
+        "200":
+          description: Server stopping
+
+  /mockserver/openapi:
+    get:
+      tags: [MockServer]
+      operationId: getOpenApiSpec
+      summary: OpenAPI specification
+      description: Returns this OpenAPI 3.1 specification document as YAML.
+      responses:
+        "200":
+          description: OpenAPI spec (YAML)
+          content:
+            application/yaml:
+              schema:
+                type: string
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  Keycloak mock – OIDC
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  /.well-known/jwks.json:
+    get:
+      tags: [Keycloak Mock]
+      operationId: getGlobalJwks
+      summary: Global JWKS
+      description: Returns the JSON Web Key Set containing the RSA public key used to sign all JWTs.
+      responses:
+        "200":
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Jwks"
+
+  /realms/{realm}/.well-known/openid-configuration:
+    get:
+      tags: [Keycloak Mock]
+      operationId: getOidcDiscovery
+      summary: OIDC discovery document
+      description: |
+        Returns the OpenID Connect discovery document for the given realm, including
+        `issuer`, `token_endpoint`, `jwks_uri`, and supported grant types.
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      responses:
+        "200":
+          description: Discovery document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcDiscovery"
+
+  /realms/{realm}/protocol/openid-connect/certs:
+    get:
+      tags: [Keycloak Mock]
+      operationId: getRealmJwks
+      summary: Realm JWKS
+      description: Returns the JWKS for the specified realm (same keys as the global endpoint).
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      responses:
+        "200":
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Jwks"
+
+  /realms/{realm}/protocol/openid-connect/token:
+    post:
+      tags: [Keycloak Mock]
+      operationId: issueToken
+      summary: Issue a token
+      description: |
+        OAuth 2.0 token endpoint. Supports `client_credentials`, `password`, and `refresh_token`
+        grant types. Client authentication via form parameters or HTTP Basic.
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type]
+              properties:
+                grant_type:
+                  type: string
+                  enum: [client_credentials, password, refresh_token]
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                username:
+                  type: string
+                  description: Required for `password` grant
+                password:
+                  type: string
+                  description: Required for `password` grant
+                refresh_token:
+                  type: string
+                  description: Required for `refresh_token` grant
+                scope:
+                  type: string
+                  default: openid profile email
+            examples:
+              client_credentials:
+                summary: Service account
+                value:
+                  grant_type: client_credentials
+                  client_id: client1
+                  client_secret: client1Secret
+              password:
+                summary: User login
+                value:
+                  grant_type: password
+                  client_id: uiClient
+                  username: admin_usr
+                  password: admin_pwd
+              refresh_token:
+                summary: Refresh
+                value:
+                  grant_type: refresh_token
+                  client_id: uiClient
+                  refresh_token: eyJhbGciOiJSUzI1Ni...
+      responses:
+        "200":
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Bad request (missing parameters, unsupported grant type)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenError"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenError"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  TMF dynamic resources (callback-backed)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  /{basePath}:
+    post:
+      tags: [TMF Resources]
+      operationId: createResource
+      summary: Create a resource
+      description: |
+        Creates a new resource in the domain derived from the path. Generates `id`, `href`,
+        `createdDate`, `createdBy`, `revision`, and the initial state/status field automatically.
+        Returns **400** if a resource with the same `id` already exists.
+
+        **Callback:** `DynamicPostCallback`
+      parameters:
+        - $ref: "#/components/parameters/basePath"
+      security:
+        - bearer: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TmfResource"
+            example:
+              description: My new order
+      responses:
+        "201":
+          description: Resource created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TmfResource"
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: application/json
+        "400":
+          description: Duplicate ID or invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      tags: [TMF Resources]
+      operationId: listResources
+      summary: List resources
+      description: |
+        Returns all resources for the domain, with TMF-630 paging, sorting, filtering, and
+        field selection.
+
+        **Callback:** `DynamicGetListCallback`
+      parameters:
+        - $ref: "#/components/parameters/basePath"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: Comma-separated fields, prefix with `-` for descending
+          schema:
+            type: string
+          example: -createdDate,name
+        - name: fields
+          in: query
+          description: Comma-separated field names to include in the response
+          schema:
+            type: string
+          example: id,href,name,state
+      security:
+        - bearer: []
+        - {}
+      responses:
+        "200":
+          description: Resource list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TmfResource"
+          headers:
+            X-Total-Count:
+              description: Total number of matching resources
+              schema:
+                type: integer
+            X-Result-Count:
+              description: Number of resources in this page
+              schema:
+                type: integer
+            Content-Range:
+              description: "TMF-630 content range (e.g. `items 1-10/23`)"
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "416":
+          description: Offset exceeds total count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /{basePath}/{id}:
+    get:
+      tags: [TMF Resources]
+      operationId: getResource
+      summary: Get a resource by ID
+      description: |
+        Returns a single resource. On first GET, transitions the state/status field from its
+        initial to its final value and sets `updatedDate`, `updatedBy`, `revision`.
+
+        **Callback:** `DynamicGetCallback`
+      parameters:
+        - $ref: "#/components/parameters/basePath"
+        - $ref: "#/components/parameters/resourceId"
+        - name: version
+          in: query
+          description: Version identifier for versioned entities
+          schema:
+            type: string
+      security:
+        - bearer: []
+        - {}
+      responses:
+        "200":
+          description: Resource found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TmfResource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [TMF Resources]
+      operationId: patchResource
+      summary: Patch a resource (JSON Patch or Merge Patch)
+      description: |
+        Applies a patch to the resource. The `Content-Type` header determines the patch format:
+        - `application/json-patch+json` → RFC 6902 JSON Patch (`DynamicJsonPatchCallback`)
+        - `application/merge-patch+json` → RFC 7396 JSON Merge Patch (`DynamicMergePatchCallback`)
+
+        Sets `updatedDate`, `updatedBy` and increments `revision`.
+      parameters:
+        - $ref: "#/components/parameters/basePath"
+        - $ref: "#/components/parameters/resourceId"
+        - name: version
+          in: query
+          description: Version identifier for versioned entities
+          schema:
+            type: string
+      security:
+        - bearer: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json-patch+json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/JsonPatchOperation"
+            example:
+              - op: replace
+                path: /description
+                value: Updated description
+          application/merge-patch+json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              description: Updated description
+      responses:
+        "200":
+          description: Resource patched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TmfResource"
+        "400":
+          description: Invalid patch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [TMF Resources]
+      operationId: deleteResource
+      summary: Delete a resource
+      description: |
+        Removes the resource from the in-memory cache.
+
+        **Callback:** `DynamicDeleteCallback`
+      parameters:
+        - $ref: "#/components/parameters/basePath"
+        - $ref: "#/components/parameters/resourceId"
+        - name: version
+          in: query
+          description: Version identifier for versioned entities
+          schema:
+            type: string
+      security:
+        - bearer: []
+        - {}
+      responses:
+        "204":
+          description: Resource deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from the Keycloak mock token endpoint. Required when
+        `ENFORCE_TOKEN=true`. Roles are extracted from the `realm_access.roles` claim.
+
+  parameters:
+    realm:
+      name: realm
+      in: path
+      required: true
+      schema:
+        type: string
+      example: realm1
+    basePath:
+      name: basePath
+      in: path
+      required: true
+      description: |
+        TMF resource base path (e.g. `tmf-api/serviceOrdering/v4/serviceOrder`).
+        Determined by the expectation path matcher.
+      schema:
+        type: string
+      example: tmf-api/serviceOrdering/v4/serviceOrder
+    resourceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+  responses:
+    Unauthorized:
+      description: Missing, malformed, expired, or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TokenError"
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            example: 'Bearer error="invalid_token", error_description="Token has expired"'
+    Forbidden:
+      description: Token is valid but lacks the required role
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TokenError"
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            example: 'Bearer error="insufficient_scope", error_description="Insufficient role. Required: [writer, admin]"'
+
+  schemas:
+    # ── MockServer schemas ──────────────────────────────────────────────────
+
+    ExpectationId:
+      type: object
+      description: Identifies a single expectation by its ID
+      required: [id]
+      properties:
+        id:
+          type: string
+          example: my-expectation-id
+
+    RequestDefinition:
+      type: object
+      description: MockServer request matcher
+      properties:
+        method:
+          type: string
+          example: GET
+        path:
+          type: string
+          example: /tmf-api/serviceOrdering/v4/serviceOrder
+        headers:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        queryStringParameters:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        body:
+          type: object
+
+    Expectation:
+      type: object
+      description: Pairs a request matcher with an action
+      properties:
+        id:
+          type: string
+        priority:
+          type: integer
+        httpRequest:
+          $ref: "#/components/schemas/RequestDefinition"
+        httpResponse:
+          type: object
+          description: Static response action
+          properties:
+            statusCode:
+              type: integer
+            headers:
+              type: object
+            body:
+              type: string
+        httpResponseClassCallback:
+          type: object
+          description: Server-side Java class callback
+          properties:
+            callbackClass:
+              type: string
+              example: org.opentmf.mockserver.callback.DynamicPostCallback
+        httpResponseObjectCallback:
+          type: object
+          description: Client-side object callback (via WebSocket)
+        httpForward:
+          type: object
+          description: Forward action
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            scheme:
+              type: string
+              enum: [HTTP, HTTPS]
+        httpError:
+          type: object
+          description: Error action (drop connection or return garbage)
+        times:
+          type: object
+          properties:
+            remainingTimes:
+              type: integer
+            unlimited:
+              type: boolean
+        timeToLive:
+          type: object
+          properties:
+            timeUnit:
+              type: string
+              enum: [HOURS, MINUTES, SECONDS, MILLISECONDS]
+            timeToLive:
+              type: integer
+            unlimited:
+              type: boolean
+
+    Verification:
+      type: object
+      properties:
+        httpRequest:
+          $ref: "#/components/schemas/RequestDefinition"
+        times:
+          type: object
+          properties:
+            atLeast:
+              type: integer
+            atMost:
+              type: integer
+
+    VerificationSequence:
+      type: object
+      properties:
+        httpRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestDefinition"
+
+    # ── Keycloak / OAuth schemas ────────────────────────────────────────────
+
+    Jwks:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kty:
+                type: string
+                example: RSA
+              kid:
+                type: string
+              use:
+                type: string
+                example: sig
+              alg:
+                type: string
+                example: RS256
+              n:
+                type: string
+                description: RSA modulus (base64url)
+              e:
+                type: string
+                description: RSA exponent (base64url)
+                example: AQAB
+
+    OidcDiscovery:
+      type: object
+      properties:
+        issuer:
+          type: string
+          example: http://localhost:1080/realms/realm1
+        token_endpoint:
+          type: string
+          example: http://localhost:1080/realms/realm1/protocol/openid-connect/token
+        jwks_uri:
+          type: string
+          example: http://localhost:1080/realms/realm1/protocol/openid-connect/certs
+        authorization_endpoint:
+          type: string
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+          example: [authorization_code, client_credentials, password, refresh_token]
+        response_types_supported:
+          type: array
+          items:
+            type: string
+        subject_types_supported:
+          type: array
+          items:
+            type: string
+        id_token_signing_alg_values_supported:
+          type: array
+          items:
+            type: string
+          example: [RS256]
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: Signed JWT access token
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+          example: 3600
+        refresh_token:
+          type: string
+          description: Signed JWT refresh token
+        id_token:
+          type: string
+          description: Signed JWT ID token
+        scope:
+          type: string
+          example: openid profile email
+
+    TokenError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: invalid_token
+        error_description:
+          type: string
+          example: Token has expired
+        error_uri:
+          type: string
+
+    # ── TMF resource schemas ────────────────────────────────────────────────
+
+    TmfResource:
+      type: object
+      description: |
+        Generic TMF resource. The exact fields depend on the domain. The following fields are
+        managed automatically by the dynamic callbacks.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        href:
+          type: string
+          format: uri
+          readOnly: true
+        state:
+          type: string
+          description: Lifecycle state (field name varies by domain — `state`, `status`, or `lifecycleStatus`)
+          example: acknowledged
+        version:
+          type: string
+          description: Present for versioned entities
+          example: "0"
+        createdDate:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: string
+          readOnly: true
+        updatedDate:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedBy:
+          type: string
+          readOnly: true
+        revision:
+          type: integer
+          readOnly: true
+      additionalProperties: true
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: The server has not found anything matching the Request-URI
+        reason:
+          type: string
+        status:
+          type: string
+          example: Not Found
+
+    JsonPatchOperation:
+      type: object
+      required: [op, path]
+      properties:
+        op:
+          type: string
+          enum: [add, remove, replace, move, copy, test]
+        path:
+          type: string
+          description: JSON Pointer (RFC 6901)
+          example: /description
+        value:
+          description: Value for add/replace/test operations
+        from:
+          type: string
+          description: Source pointer for move/copy operations

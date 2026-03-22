@@ -1,6 +1,6 @@
 package org.opentmf.mockserver.util;
 
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -65,10 +65,10 @@ class PathExtractorTests {
             Arguments.of("/serviceOrder/test", "serviceOrder"),
             Arguments.of("serviceOrder/test/", "serviceOrder"),
             Arguments.of("serviceOrder/test", "serviceOrder"),
-            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID() + "/", "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID() + "/", "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID(), "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID(), "tmf-api/resourceOrdering/v4/resourceOrder")
+            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid() + "/", "tmf-api/resourceOrdering/v4/resourceOrder"),
+            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid() + "/", "tmf-api/resourceOrdering/v4/resourceOrder"),
+            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid(), "tmf-api/resourceOrdering/v4/resourceOrder"),
+            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid(), "tmf-api/resourceOrdering/v4/resourceOrder")
     );
   }
 }
