@@ -2,7 +2,6 @@ package org.opentmf.mockserver.callback;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.SignedJWT;
@@ -12,6 +11,7 @@ import org.mockserver.mock.Expectation;
 import org.opentmf.mockserver.keycloak.KeycloakConfig;
 import org.opentmf.mockserver.token.JwtKeyProvider;
 import org.opentmf.mockserver.util.JacksonUtil;
+import tools.jackson.databind.JsonNode;
 
 class JwksExpectationInitializerTests {
 

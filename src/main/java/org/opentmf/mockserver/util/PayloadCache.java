@@ -4,7 +4,6 @@ import static org.opentmf.mockserver.model.TmfConstants.VERSION;
 import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.TWO_HOURS;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,6 +18,7 @@ import org.opentmf.mockserver.model.Id;
 import org.opentmf.mockserver.model.RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Utility class for caching payloads with time-based eviction. This class provides methods to put,

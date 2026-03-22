@@ -3,7 +3,6 @@ package org.opentmf.mockserver.integration;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockserver.model.HttpRequest.request;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.io.IOException;
@@ -23,6 +22,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Integration test that starts a real Keycloak container, obtains real tokens,

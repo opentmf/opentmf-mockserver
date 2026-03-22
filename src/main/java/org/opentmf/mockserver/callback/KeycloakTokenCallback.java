@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,8 +207,8 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("sub", subject);
     claims.put("typ", "Bearer");
     claims.put("azp", clientId);
-    claims.put("iat", new Date(now));
-    claims.put("exp", new Date(now + (long) EXPIRES_IN_SECONDS * 1000));
+    claims.put("iat", now / 1000);
+    claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
     claims.put("jti", UUID.randomUUID().toString());
     claims.put("scope", scope);
 
@@ -237,8 +236,8 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("sub", subject);
     claims.put("typ", "ID");
     claims.put("azp", clientId);
-    claims.put("iat", new Date(now));
-    claims.put("exp", new Date(now + (long) EXPIRES_IN_SECONDS * 1000));
+    claims.put("iat", now / 1000);
+    claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
     claims.put("jti", UUID.randomUUID().toString());
     if (preferredUsername != null) {
       claims.put("preferred_username", preferredUsername);
@@ -258,8 +257,8 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("sub", subject);
     claims.put("typ", "Refresh");
     claims.put("azp", clientId);
-    claims.put("iat", new Date(now));
-    claims.put("exp", new Date(now + refreshExpiry));
+    claims.put("iat", now / 1000);
+    claims.put("exp", (now + refreshExpiry) / 1000);
     claims.put("jti", UUID.randomUUID().toString());
     claims.put("roles", (Serializable) roles);
     if (preferredUsername != null) {

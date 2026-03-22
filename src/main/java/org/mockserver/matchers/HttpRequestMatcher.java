@@ -1,0 +1,35 @@
+package org.mockserver.matchers;
+
+import java.util.List;
+import org.mockserver.mock.Expectation;
+import org.mockserver.mock.listeners.MockServerMatcherNotifier;
+import org.mockserver.model.HttpRequest;
+import org.mockserver.model.RequestDefinition;
+
+public interface HttpRequestMatcher extends Matcher<RequestDefinition> {
+
+    List<HttpRequest> getHttpRequests();
+
+    boolean matches(final RequestDefinition request);
+
+    boolean matches(MatchDifference context, RequestDefinition httpRequest);
+
+    Expectation getExpectation();
+
+    boolean update(Expectation expectation);
+
+    boolean update(RequestDefinition requestDefinition);
+
+    @SuppressWarnings("UnusedReturnValue")
+    HttpRequestMatcher setResponseInProgress(boolean responseInProgress);
+
+    boolean isResponseInProgress();
+
+    MockServerMatcherNotifier.Cause getSource();
+
+    @SuppressWarnings("UnusedReturnValue")
+    HttpRequestMatcher withSource(MockServerMatcherNotifier.Cause source);
+
+    boolean isActive();
+
+}

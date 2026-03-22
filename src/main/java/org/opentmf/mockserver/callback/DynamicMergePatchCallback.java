@@ -4,20 +4,19 @@ import static org.opentmf.mockserver.model.Error.createErrorContextForNotFound;
 import static org.opentmf.mockserver.util.AuditFieldUtil.setUpdateFields;
 import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.fge.jsonpatch.JsonPatchException;
-import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
 import java.util.Objects;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
+import org.opentmf.commons.patch.JsonMergePatch;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  *
@@ -53,38 +52,28 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
 
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
-    // Retrieve the cached data associated with the domain and ID
     JsonNode cachedData = ctx.usePointQuery() ? CACHE.get(ctx) : CACHE.getLatestOf(ctx);
 
-    // If the data does not exist in the cache, indicating that the resource does not exist, return
-    // a not found response
     if (Objects.isNull(cachedData)) {
       return getErrorResponse(HttpStatusCode.NOT_FOUND_404, createErrorContextForNotFound());
     }
 
     ctx.obtainVersionFromPayloadIfNecessary(cachedData);
 
-    // Extract the JSON Merge Patch from the request body
     String body = httpRequest.getBodyAsString();
-    JsonMergePatch patchData = JacksonUtil.readAsJsonMerger(body);
+    JsonMergePatch mergePatch = JsonMergePatch.fromJson(body);
 
-    // Apply the JSON Merge Patch to the cached data
     JsonNode patchedNode;
     try {
-      patchedNode = patchData.apply(cachedData);
-    } catch (JsonPatchException e) {
-      // If there is an error while applying the JSON Merge Patch, return an error response (HTTP
-      // 400 Bad Request)
+      patchedNode = mergePatch.apply(cachedData);
+    } catch (Exception e) {
       return getErrorResponse(HttpStatusCode.BAD_REQUEST_400, e.getMessage());
     }
 
-    // Set audit fields for update operation
     setUpdateFields((ObjectNode) patchedNode);
 
-    // Update the cached data with the patched node
     CACHE.update(ctx, patchedNode);
 
-    // Return a successful update response (HTTP 200 OK) containing the updated data
     return HttpResponse.response()
         .withStatusCode(HttpStatusCode.OK_200.code())
         .withContentType(MediaType.APPLICATION_JSON)

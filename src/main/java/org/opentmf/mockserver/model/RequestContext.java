@@ -3,17 +3,15 @@ package org.opentmf.mockserver.model;
 import static org.opentmf.mockserver.model.TmfConstants.ID;
 import static org.opentmf.mockserver.model.TmfConstants.VERSION;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.UUID;
-
 import org.apache.commons.lang3.StringUtils;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.Parameters;
 import org.opentmf.mockserver.util.PathExtractor;
+import tools.jackson.databind.JsonNode;
 
 /**
  * @author Gokhan Demir

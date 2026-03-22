@@ -9,7 +9,6 @@ import static org.opentmf.mockserver.util.AuditFieldUtil.setCreateFields;
 import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
 import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
@@ -20,6 +19,7 @@ import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  *

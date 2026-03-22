@@ -3,7 +3,6 @@ package org.opentmf.mockserver.callback;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockserver.model.HttpRequest.request;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.opentmf.mockserver.util.JacksonUtil;
+import tools.jackson.databind.JsonNode;
 
 class KeycloakTokenCallbackTests {
 

@@ -1,9 +1,5 @@
 package org.opentmf.mockserver.util;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.MissingNode;
-import com.fasterxml.jackson.databind.node.NullNode;
 import java.math.BigDecimal;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -12,9 +8,14 @@ import java.util.stream.Collectors;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.NottableString;
 import org.mockserver.model.Parameter;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.MissingNode;
+import tools.jackson.databind.node.NullNode;
 
 public final class CacheQuery {
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
   /** One field==value condition. Path may be dot notation, [index], or a JSON Pointer if it starts with '/'. */
   public static final class Criterion {

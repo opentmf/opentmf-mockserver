@@ -2,7 +2,6 @@ package org.opentmf.mockserver.token;
 
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -35,6 +34,7 @@ import org.opentmf.mockserver.model.TokenError;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Validates Bearer JWT tokens on incoming requests.

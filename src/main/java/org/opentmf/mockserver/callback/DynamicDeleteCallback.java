@@ -3,7 +3,6 @@ package org.opentmf.mockserver.callback;
 import static org.opentmf.mockserver.model.Error.createErrorContextForNotFound;
 import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Objects;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
@@ -12,6 +11,7 @@ import org.mockserver.model.HttpStatusCode;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.PayloadCache;
+import tools.jackson.databind.JsonNode;
 
 /**
  *
