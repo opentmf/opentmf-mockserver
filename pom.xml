@@ -72,6 +72,7 @@
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <commons-text.version>1.15.0</commons-text.version>
     <commons-codec.version>1.21.0</commons-codec.version>
+    <commons-compress.version>1.28.0</commons-compress.version>
     <guava.version>33.5.0-jre</guava.version>
     <classgraph.version>4.8.184</classgraph.version>
 
@@ -113,6 +114,11 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>${commons-compress.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
