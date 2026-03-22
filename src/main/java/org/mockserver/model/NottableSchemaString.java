@@ -1,0 +1,248 @@
+package org.mockserver.model;
+
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
+import java.util.List;
+import javax.annotation.Nonnull;
+import org.apache.commons.lang3.StringUtils;
+import org.mockserver.log.model.LogEntry;
+import org.mockserver.logging.MockServerLogger;
+import org.mockserver.matchers.MatchDifference;
+import org.mockserver.serialization.ObjectMapperFactory;
+import org.mockserver.validator.jsonschema.JsonSchemaValidator;
+import org.slf4j.event.Level;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
+
+/**
+ * @author jamesdbloom
+ */
+public class NottableSchemaString extends NottableString {
+
+  private static final String DATE_TIME_FORMAT = "date-time";
+  private static final String STRING_TYPE = "string";
+  private static final String NUMBER_TYPE = "number";
+  private static final String INTEGER_TYPE = "integer";
+
+  private static final MockServerLogger MOCK_SERVER_LOGGER =
+      new MockServerLogger(NottableSchemaString.class);
+  private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.createObjectMapper();
+  //    private final static JsonValidator VALIDATOR = JsonSchemaFactory.byDefault().getValidator();
+  private static final DateTimeFormatter RFC3339 =
+      new DateTimeFormatterBuilder()
+          .appendPattern("yyyy-MM-dd")
+          .appendLiteral('T')
+          .appendPattern("HH:mm:ss")
+          .optionalStart()
+          .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+          .parseDefaulting(ChronoField.NANO_OF_SECOND, 0)
+          .optionalEnd()
+          .appendOffset("+HH:mm", "Z")
+          .toFormatter();
+  private static final String TRUE = "true";
+  private static final String TYPE = "type";
+  private final ObjectNode schemaJsonNode;
+  private final String type;
+  private final String json;
+  private final JsonSchemaValidator jsonSchemaValidator;
+
+  private static JsonNode convertToJsonNode(
+      @Nonnull final String value, final String type, final String format) {
+    if ("null".equalsIgnoreCase(value)) {
+      return OBJECT_MAPPER.readTree("null");
+    }
+    if (DATE_TIME_FORMAT.equalsIgnoreCase(format)) {
+      String result;
+      try {
+        // reformat to RFC3339 version that avoid schema validator errors
+        result =
+            LocalDateTime.parse(value, RFC3339)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+      } catch (final DateTimeParseException e) {
+        // not a valid RFC3339 format schema validator will throw correct error
+        result = value;
+      }
+      return new StringNode(result);
+    }
+    if (STRING_TYPE.equalsIgnoreCase(type)) {
+      return new StringNode(value);
+    }
+    if (NUMBER_TYPE.equalsIgnoreCase(type) || INTEGER_TYPE.equalsIgnoreCase(type)) {
+      try {
+        // validate double format
+        Double.parseDouble(value);
+        return OBJECT_MAPPER.readTree(value);
+      } catch (final NumberFormatException nfe) {
+        return new StringNode(value);
+      }
+    }
+    return OBJECT_MAPPER.readTree(value);
+  }
+
+  private ObjectNode getSchemaJsonNode(String schema) {
+    try {
+      ObjectNode jsonNodes = (ObjectNode) OBJECT_MAPPER.readTree(schema);
+      // remove embedded not field (for nottable schema string support)
+      jsonNodes.remove("not");
+      return jsonNodes;
+    } catch (Throwable throwable) {
+      MOCK_SERVER_LOGGER.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setMessageFormat("exception loading JSON Schema " + throwable.getMessage())
+              .setThrowable(throwable));
+      return null;
+    }
+  }
+
+  public static NottableSchemaString schemaString(String value, Boolean not) {
+    return new NottableSchemaString(value, not);
+  }
+
+  public static NottableSchemaString schemaString(String value) {
+    return new NottableSchemaString(value);
+  }
+
+  public static NottableSchemaString notSchema(String value) {
+    return new NottableSchemaString(value, Boolean.TRUE);
+  }
+
+  private NottableSchemaString(String schema, Boolean not) {
+    super(schema, not);
+    if (isNotBlank(schema)) {
+      schemaJsonNode = getSchemaJsonNode(getValue());
+      type = getNodeValue(schemaJsonNode, TYPE);
+    } else {
+      schemaJsonNode = null;
+      type = null;
+    }
+    json = (Boolean.TRUE.equals(isNot()) ? NOT_CHAR : "") + schema;
+    jsonSchemaValidator =
+        new JsonSchemaValidator(MOCK_SERVER_LOGGER, this.json, this.schemaJsonNode);
+  }
+
+  private NottableSchemaString(String schema) {
+    super(schema);
+    if (isNotBlank(schema)) {
+      schemaJsonNode = getSchemaJsonNode(getValue());
+      type = getNodeValue(schemaJsonNode, TYPE);
+    } else {
+      schemaJsonNode = null;
+      type = null;
+    }
+    json = (Boolean.TRUE.equals(isNot()) ? NOT_CHAR : "") + schema;
+    if (schemaJsonNode != null) {
+      jsonSchemaValidator =
+          new JsonSchemaValidator(MOCK_SERVER_LOGGER, this.json, this.schemaJsonNode);
+    } else {
+      jsonSchemaValidator = null;
+    }
+  }
+
+  public boolean matches(
+      MockServerLogger mockServerLogger, MatchDifference context, List<NottableString> json) {
+    if (isNotBlank(type) && type.equalsIgnoreCase("array")) {
+      try {
+        return matches(mockServerLogger, context, OBJECT_MAPPER.writeValueAsString(json));
+      } catch (Throwable throwable) {
+        MOCK_SERVER_LOGGER.logEvent(
+            new LogEntry()
+                .setLogLevel(Level.ERROR)
+                .setMessageFormat("exception validating JSON")
+                .setThrowable(throwable));
+        if (!isNot() && context != null) {
+          context.addDifference(
+              mockServerLogger,
+              "schema match failed expect:{}found error:{}for:{}",
+              this.json,
+              throwable.getMessage(),
+              json);
+        }
+      }
+    }
+    return false;
+  }
+
+  public boolean matches(String json) {
+    return matches(null, null, json);
+  }
+
+  public boolean matches(MockServerLogger mockServerLogger, MatchDifference context, String json) {
+    if (schemaJsonNode != null) {
+      try {
+        // allow for string values without quotes to be validated as json strings
+        if (isNotBlank(type)
+            && type.equals("string")
+            && isNotBlank(json)
+            && !json.startsWith("\"")
+            && !json.endsWith("\"")) {
+          json = "\"" + json + "\"";
+        }
+        String validationErrors = validate(json);
+        boolean result = isNot() != validationErrors.isEmpty();
+        if (!result && context != null) {
+          context.addDifference(
+              mockServerLogger,
+              "schema match failed expect:{}found:{}errors:{}",
+              this.json,
+              json,
+              validationErrors);
+        }
+        return result;
+      } catch (Throwable throwable) {
+        MOCK_SERVER_LOGGER.logEvent(
+            new LogEntry()
+                .setLogLevel(Level.ERROR)
+                .setMessageFormat("exception validating JSON")
+                .setThrowable(throwable));
+        if (!isNot() && context != null) {
+          context.addDifference(
+              mockServerLogger,
+              "schema match failed expect:{}found error:{}for:{}",
+              this.json,
+              throwable.getMessage(),
+              json);
+        }
+      }
+      return isNot();
+    } else {
+      return !isNot();
+    }
+  }
+
+  private String validate(String json) {
+    if (schemaJsonNode.get("nullable") != null
+        && TRUE.equals(schemaJsonNode.get("nullable").asText())
+        && StringUtils.isBlank(json)) {
+      return "";
+    } else if (StringUtils.isBlank(json)) {
+      return "found blank value and value was not nullable";
+    } else {
+      return jsonSchemaValidator.isValid(json, false);
+    }
+  }
+
+  @SuppressWarnings("SameParameterValue")
+  private static String getNodeValue(ObjectNode node, String field) {
+    if (node != null) {
+      final JsonNode jsonNode = node.get(field);
+      if (jsonNode == null) {
+        return null;
+      }
+      return jsonNode.textValue();
+    }
+    return null;
+  }
+
+  @Override
+  public String toString() {
+    return json;
+  }
+}

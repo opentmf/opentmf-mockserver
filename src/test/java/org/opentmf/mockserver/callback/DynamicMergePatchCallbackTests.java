@@ -3,8 +3,7 @@ package org.opentmf.mockserver.callback;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +12,7 @@ import org.mockserver.model.HttpResponse;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
+import tools.jackson.databind.JsonNode;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
 
 @ExtendWith(SystemStubsExtension.class)
@@ -30,7 +30,7 @@ class DynamicMergePatchCallbackTests {
   @Test
   void shouldReturnUpdatedServiceOrder() {
     // Given
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     String domain = "mockserver";
     String requestBody =
         "{\n"
@@ -52,8 +52,9 @@ class DynamicMergePatchCallbackTests {
             + "    ]\n"
             + "}";
 
-    httpRequest.withPath(domain+ "/" + id).withBody(requestBody);
-    RequestContext ctx = RequestContext.initialize(httpRequest, true, JacksonUtil.readAsTree(requestBody));
+    httpRequest.withPath(domain + "/" + id).withBody(requestBody);
+    RequestContext ctx =
+        RequestContext.initialize(httpRequest, true, JacksonUtil.readAsTree(requestBody));
 
     CACHE.put(ctx, getInitialJson(id));
 
@@ -95,7 +96,7 @@ class DynamicMergePatchCallbackTests {
   @Test
   void testApplyPatch_withNonExistId() {
     // Given
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     String domain = "mockserver";
     String requestBody =
         "{\n"
@@ -126,79 +127,80 @@ class DynamicMergePatchCallbackTests {
   }
 
   private JsonNode getInitialJson(String serviceOrderId) {
-    String payload =  "{\n"
-        + "    \"id\": \""
-        + serviceOrderId
-        + "\",\n"
-        + "    \"name\": \"{{$randomFullName}}\",\n"
-        + "    \"engagedParty\": {\n"
-        + "        \"@referredType\": \"Organization\",\n"
-        + "        \"href\": \"/tmf-api/party/v4/organization/{{organizationId}}\",\n"
-        + "        \"id\": \"{{organizationId}}\",\n"
-        + "        \"name\": \"{{organizationName}}\"\n"
-        + "    },\n"
-        + "    \"characteristic\": [\n"
-        + "        {\n"
-        + "            \"name\": \"NOMINATED_PARTY_ID\",\n"
-        + "            \"value\": \"123\"\n"
-        + "        },\n"
-        + "        {\n"
-        + "            \"name\": \"SUPPORT_SYSTEM_ID\",\n"
-        + "            \"value\": \"456\"\n"
-        + "        }\n"
-        + "    ],\n"
-        + "    \"relatedParty\": [\n"
-        + "        {\n"
-        + "            \"id\": \"VFUK\",\n"
-        + "            \"href\": \"/tmf-api/party/v4/organization/VFUK\",\n"
-        + "            \"role\": \"operator\",\n"
-        + "            \"name\": \"Vodafone UK2\",\n"
-        + "            \"@referredType\": \"Organization\"\n"
-        + "        }\n"
-        + "    ],\n"
-        + "    \"contactMedium\": [\n"
-        + "        {\n"
-        + "            \"mediumType\": \"site\",\n"
-        + "            \"preferred\": false,\n"
-        + "            \"characteristic\": {\n"
-        + "                \"contactType\": \"HQ\",\n"
-        + "                \"country\": \"GB\",\n"
-        + "                \"postCode\": \"RG\",\n"
-        + "                \"street1\": \"23\"\n"
-        + "            }\n"
-        + "        },\n"
-        + "        {\n"
-        + "            \"mediumType\": \"site\",\n"
-        + "            \"preferred\": false,\n"
-        + "            \"characteristic\": {\n"
-        + "                \"contactType\": \"Dublin\",\n"
-        + "                \"country\": \"IE\",\n"
-        + "                \"postCode\": \"RF\",\n"
-        + "                \"street1\": \"12\"\n"
-        + "            }\n"
-        + "        },\n"
-        + "        {\n"
-        + "            \"mediumType\": \"site\",\n"
-        + "            \"preferred\": false,\n"
-        + "            \"characteristic\": {\n"
-        + "                \"contactType\": \"Belfast\",\n"
-        + "                \"country\": \"IE\",\n"
-        + "                \"postCode\": \"DS\",\n"
-        + "                \"street1\": \"43\"\n"
-        + "            }\n"
-        + "        }\n"
-        + "    ],\n"
-        + "    \"account\": [\n"
-        + "        {\n"
-        + "            \"id\": \"{{billingAccountId}}\",\n"
-        + "            \"name\": \"{{billingAccountName}}\",\n"
-        + "            \"href\": \"/tmf-api/accountManagement/v4/billingAccount/{{billingAccountId}}\",\n"
-        + "            \"description\": \"\",\n"
-        + "            \"@referredType\": \"BillingAccount\"\n"
-        + "        }\n"
-        + "    ]\n"
-        + "}";
+    String payload =
+        "{\n"
+            + "    \"id\": \""
+            + serviceOrderId
+            + "\",\n"
+            + "    \"name\": \"{{$randomFullName}}\",\n"
+            + "    \"engagedParty\": {\n"
+            + "        \"@referredType\": \"Organization\",\n"
+            + "        \"href\": \"/tmf-api/party/v4/organization/{{organizationId}}\",\n"
+            + "        \"id\": \"{{organizationId}}\",\n"
+            + "        \"name\": \"{{organizationName}}\"\n"
+            + "    },\n"
+            + "    \"characteristic\": [\n"
+            + "        {\n"
+            + "            \"name\": \"NOMINATED_PARTY_ID\",\n"
+            + "            \"value\": \"123\"\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"name\": \"SUPPORT_SYSTEM_ID\",\n"
+            + "            \"value\": \"456\"\n"
+            + "        }\n"
+            + "    ],\n"
+            + "    \"relatedParty\": [\n"
+            + "        {\n"
+            + "            \"id\": \"VFUK\",\n"
+            + "            \"href\": \"/tmf-api/party/v4/organization/VFUK\",\n"
+            + "            \"role\": \"operator\",\n"
+            + "            \"name\": \"Vodafone UK2\",\n"
+            + "            \"@referredType\": \"Organization\"\n"
+            + "        }\n"
+            + "    ],\n"
+            + "    \"contactMedium\": [\n"
+            + "        {\n"
+            + "            \"mediumType\": \"site\",\n"
+            + "            \"preferred\": false,\n"
+            + "            \"characteristic\": {\n"
+            + "                \"contactType\": \"HQ\",\n"
+            + "                \"country\": \"GB\",\n"
+            + "                \"postCode\": \"RG\",\n"
+            + "                \"street1\": \"23\"\n"
+            + "            }\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"mediumType\": \"site\",\n"
+            + "            \"preferred\": false,\n"
+            + "            \"characteristic\": {\n"
+            + "                \"contactType\": \"Dublin\",\n"
+            + "                \"country\": \"IE\",\n"
+            + "                \"postCode\": \"RF\",\n"
+            + "                \"street1\": \"12\"\n"
+            + "            }\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"mediumType\": \"site\",\n"
+            + "            \"preferred\": false,\n"
+            + "            \"characteristic\": {\n"
+            + "                \"contactType\": \"Belfast\",\n"
+            + "                \"country\": \"IE\",\n"
+            + "                \"postCode\": \"DS\",\n"
+            + "                \"street1\": \"43\"\n"
+            + "            }\n"
+            + "        }\n"
+            + "    ],\n"
+            + "    \"account\": [\n"
+            + "        {\n"
+            + "            \"id\": \"{{billingAccountId}}\",\n"
+            + "            \"name\": \"{{billingAccountName}}\",\n"
+            + "            \"href\": \"/tmf-api/accountManagement/v4/billingAccount/{{billingAccountId}}\",\n"
+            + "            \"description\": \"\",\n"
+            + "            \"@referredType\": \"BillingAccount\"\n"
+            + "        }\n"
+            + "    ]\n"
+            + "}";
 
-    return  JacksonUtil.readAsTree(payload);
+    return JacksonUtil.readAsTree(payload);
   }
 }

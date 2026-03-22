@@ -1,8 +1,8 @@
 package org.opentmf.mockserver.model;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.io.Serializable;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 
 /**
  * Represents an error that occurs during token generation or validation. This class is used for

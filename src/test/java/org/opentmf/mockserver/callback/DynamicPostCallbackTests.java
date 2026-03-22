@@ -11,8 +11,6 @@ import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
 import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.SortedMap;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Assertions;
@@ -26,6 +24,8 @@ import org.opentmf.mockserver.model.Id;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
@@ -40,11 +40,7 @@ class DynamicPostCallbackTests {
 
   @SystemStub
   private static final EnvironmentVariables TEST_ENV_VARIABLES =
-      new EnvironmentVariables(
-          CACHE_DURATION_MILLIS, THREE_SECONDS,
-          ADDITIONAL_FIELDS, "project"
-      );
-
+      new EnvironmentVariables(CACHE_DURATION_MILLIS, THREE_SECONDS, ADDITIONAL_FIELDS, "project");
 
   @BeforeAll
   static void beforeAll() {
@@ -89,7 +85,8 @@ class DynamicPostCallbackTests {
 
     httpRequest.withBody(requestBody);
     httpRequest.withPath("domain");
-    RequestContext ctx = RequestContext.initialize(httpRequest, false, JacksonUtil.readAsTree(requestBody));
+    RequestContext ctx =
+        RequestContext.initialize(httpRequest, false, JacksonUtil.readAsTree(requestBody));
 
     // When
     HttpResponse httpResponse = callback.handle(httpRequest);
@@ -158,7 +155,8 @@ class DynamicPostCallbackTests {
     httpRequest.withBody(requestBody);
     httpRequest.withPath("domain");
 
-    RequestContext ctx = RequestContext.initialize(httpRequest, false, JacksonUtil.readAsTree(requestBody));
+    RequestContext ctx =
+        RequestContext.initialize(httpRequest, false, JacksonUtil.readAsTree(requestBody));
 
     // When
     HttpResponse httpResponse = callback.handle(httpRequest);
@@ -197,8 +195,10 @@ class DynamicPostCallbackTests {
     post(new HttpRequest().withPath("/" + path), null, null);
     post(new HttpRequest().withPath("/" + path), randomNumeric(10), null);
     post(new HttpRequest().withPath("/" + path), randomNumeric(10), "1.0");
-    post(new HttpRequest().withPath("/" + path)
-        .withQueryStringParameter("version", "1.0"), randomNumeric(10), null);
+    post(
+        new HttpRequest().withPath("/" + path).withQueryStringParameter("version", "1.0"),
+        randomNumeric(10),
+        null);
     post(new HttpRequest().withPath("/" + path + "?version=1.0"), randomNumeric(10), null);
     post(new HttpRequest().withPath("/" + path + ":(version=1.0)"), randomNumeric(10), null);
     Assertions.assertEquals(before.size() + 6, CACHE.getAll(path).size());

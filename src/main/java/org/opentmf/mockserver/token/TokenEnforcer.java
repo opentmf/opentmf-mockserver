@@ -2,7 +2,6 @@ package org.opentmf.mockserver.token;
 
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -35,16 +34,20 @@ import org.opentmf.mockserver.model.TokenError;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Validates Bearer JWT tokens on incoming requests.
  *
  * <p>Controlled by three configuration knobs (env var or system property):
+ *
  * <ul>
- *   <li>{@code ENFORCE_TOKEN} / {@code enforce.token} -- {@code true} to enable (default {@code false})</li>
+ *   <li>{@code ENFORCE_TOKEN} / {@code enforce.token} -- {@code true} to enable (default {@code
+ *       false})
  *   <li>{@code TOKEN_ISSUER} / {@code token.issuer} -- expected {@code iss} claim; also used for
- *       OIDC auto-discovery of the JWKS URI when {@code JWKS_URI} is not set</li>
- *   <li>{@code JWKS_URI} / {@code jwks.uri} -- explicit JWKS endpoint (takes precedence over discovery)</li>
+ *       OIDC auto-discovery of the JWKS URI when {@code JWKS_URI} is not set
+ *   <li>{@code JWKS_URI} / {@code jwks.uri} -- explicit JWKS endpoint (takes precedence over
+ *       discovery)
  * </ul>
  *
  * <p>When neither {@code JWKS_URI} nor {@code TOKEN_ISSUER} is set, the built-in mock keys from
@@ -74,7 +77,8 @@ public final class TokenEnforcer {
   }
 
   private TokenEnforcer() {
-    this(Boolean.parseBoolean(resolve("ENFORCE_TOKEN", "enforce.token", "false")),
+    this(
+        Boolean.parseBoolean(resolve("ENFORCE_TOKEN", "enforce.token", "false")),
         resolve("TOKEN_ISSUER", "token.issuer", ""),
         resolve("JWKS_URI", "jwks.uri", ""));
   }
@@ -82,10 +86,11 @@ public final class TokenEnforcer {
   /**
    * Creates a TokenEnforcer with explicit configuration.
    *
-   * @param enabled       whether token enforcement is active
-   * @param issuerConfig  expected {@code iss} claim (empty string to skip check);
-   *                      also used for OIDC discovery when {@code jwksUriConfig} is empty
-   * @param jwksUriConfig explicit JWKS endpoint (empty string to fall back to discovery or built-in keys)
+   * @param enabled whether token enforcement is active
+   * @param issuerConfig expected {@code iss} claim (empty string to skip check); also used for OIDC
+   *     discovery when {@code jwksUriConfig} is empty
+   * @param jwksUriConfig explicit JWKS endpoint (empty string to fall back to discovery or built-in
+   *     keys)
    */
   public TokenEnforcer(boolean enabled, String issuerConfig, String jwksUriConfig) {
     this.enabled = enabled;
@@ -114,7 +119,8 @@ public final class TokenEnforcer {
     this.jwtProcessor = proc;
     this.initError = error;
 
-    LOG.info("Token enforcement is ENABLED (issuer={}, jwks={})",
+    LOG.info(
+        "Token enforcement is ENABLED (issuer={}, jwks={})",
         expectedIssuer != null ? expectedIssuer : "<any>",
         jwksUriConfig.isEmpty()
             ? (issuerConfig.isEmpty() ? "<built-in>" : "<discovered>")
@@ -122,14 +128,13 @@ public final class TokenEnforcer {
   }
 
   /**
-   * Package-private constructor for testing with an explicit key source.
-   * Bypasses OIDC discovery entirely.
+   * Package-private constructor for testing with an explicit key source. Bypasses OIDC discovery
+   * entirely.
    */
-  TokenEnforcer(boolean enabled, String expectedIssuer,
-      JWKSource<SecurityContext> keySource) {
+  TokenEnforcer(boolean enabled, String expectedIssuer, JWKSource<SecurityContext> keySource) {
     this.enabled = enabled;
-    this.expectedIssuer = (expectedIssuer == null || expectedIssuer.isEmpty())
-        ? null : expectedIssuer;
+    this.expectedIssuer =
+        (expectedIssuer == null || expectedIssuer.isEmpty()) ? null : expectedIssuer;
 
     if (!enabled) {
       this.jwtProcessor = null;
@@ -145,18 +150,17 @@ public final class TokenEnforcer {
   private static ConfigurableJWTProcessor<SecurityContext> createProcessor(
       JWKSource<SecurityContext> keySource) {
     DefaultJWTProcessor<SecurityContext> proc = new DefaultJWTProcessor<>();
-    proc.setJWSKeySelector(
-        new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, keySource));
+    proc.setJWSKeySelector(new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, keySource));
     proc.setJWTClaimsSetVerifier(new com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier<>());
     return proc;
   }
 
   /**
-   * Validates the Bearer token on the request (signature, expiration, issuer).
-   * Does not check roles.
+   * Validates the Bearer token on the request (signature, expiration, issuer). Does not check
+   * roles.
    *
-   * @return {@code null} if validation passes (or enforcement is disabled);
-   *         an HTTP 401 response otherwise.
+   * @return {@code null} if validation passes (or enforcement is disabled); an HTTP 401 response
+   *     otherwise.
    */
   public HttpResponse validate(HttpRequest request) {
     return validateWithRoles(request);
@@ -164,12 +168,12 @@ public final class TokenEnforcer {
 
   /**
    * Validates the Bearer token and optionally checks that the token carries at least one of the
-   * specified roles. Roles are extracted from the Keycloak {@code realm_access.roles} claim
-   * first, falling back to a top-level {@code roles} claim.
+   * specified roles. Roles are extracted from the Keycloak {@code realm_access.roles} claim first,
+   * falling back to a top-level {@code roles} claim.
    *
-   * @param request       the incoming HTTP request
-   * @param requiredRoles roles of which the token must contain at least one;
-   *                      if empty, role checking is skipped
+   * @param request the incoming HTTP request
+   * @param requiredRoles roles of which the token must contain at least one; if empty, role
+   *     checking is skipped
    * @return {@code null} if validation passes; an HTTP 401 or 403 response otherwise.
    */
   public HttpResponse validateWithRoles(HttpRequest request, String... requiredRoles) {
@@ -202,8 +206,11 @@ public final class TokenEnforcer {
         String actualIssuer = claims.getIssuer();
         if (!expectedIssuer.equals(actualIssuer)) {
           return unauthorizedResponse(
-              "Issuer mismatch: expected \"" + expectedIssuer
-                  + "\" but got \"" + actualIssuer + "\"");
+              "Issuer mismatch: expected \""
+                  + expectedIssuer
+                  + "\" but got \""
+                  + actualIssuer
+                  + "\"");
         }
       }
 
@@ -301,7 +308,9 @@ public final class TokenEnforcer {
           }
         }
       }
-    } catch (ParseException ignored) { /* claim absent or wrong type */ }
+    } catch (ParseException ignored) {
+      /* claim absent or wrong type */
+    }
 
     if (roles.isEmpty()) {
       try {
@@ -309,7 +318,9 @@ public final class TokenEnforcer {
         if (topLevel != null) {
           roles.addAll(topLevel);
         }
-      } catch (ParseException ignored) { /* claim absent or wrong type */ }
+      } catch (ParseException ignored) {
+        /* claim absent or wrong type */
+      }
     }
 
     return Collections.unmodifiableSet(roles);
@@ -322,9 +333,9 @@ public final class TokenEnforcer {
     return HttpResponse.response()
         .withStatusCode(403)
         .withContentType(MediaType.APPLICATION_JSON)
-        .withHeader("WWW-Authenticate",
-            "Bearer error=\"insufficient_scope\","
-                + " error_description=\"" + description + "\"")
+        .withHeader(
+            "WWW-Authenticate",
+            "Bearer error=\"insufficient_scope\"," + " error_description=\"" + description + "\"")
         .withBody(writeAsString(error));
   }
 
@@ -333,9 +344,9 @@ public final class TokenEnforcer {
     return HttpResponse.response()
         .withStatusCode(401)
         .withContentType(MediaType.APPLICATION_JSON)
-        .withHeader("WWW-Authenticate",
-            "Bearer error=\"invalid_token\","
-                + " error_description=\"" + description + "\"")
+        .withHeader(
+            "WWW-Authenticate",
+            "Bearer error=\"invalid_token\"," + " error_description=\"" + description + "\"")
         .withBody(writeAsString(error));
   }
 

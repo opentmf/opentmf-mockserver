@@ -2,10 +2,10 @@ package org.opentmf.mockserver.util;
 
 import static org.opentmf.mockserver.model.TmfConstants.*;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.apache.commons.lang3.RandomStringUtils;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Utility class for setting audit fields in JSON objects. This class provides methods to set

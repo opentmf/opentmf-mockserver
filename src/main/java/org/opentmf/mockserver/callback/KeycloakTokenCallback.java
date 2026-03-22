@@ -2,17 +2,16 @@ package org.opentmf.mockserver.callback;
 
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 
+import io.hypersistence.tsid.TSID;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
@@ -208,9 +207,9 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("sub", subject);
     claims.put("typ", "Bearer");
     claims.put("azp", clientId);
-    claims.put("iat", new Date(now));
-    claims.put("exp", new Date(now + (long) EXPIRES_IN_SECONDS * 1000));
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("iat", now / 1000);
+    claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
+    claims.put("jti", TSID.Factory.getTsid().toString());
     claims.put("scope", scope);
 
     LinkedHashMap<String, Serializable> realmAccess = new LinkedHashMap<>();
@@ -237,9 +236,9 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("sub", subject);
     claims.put("typ", "ID");
     claims.put("azp", clientId);
-    claims.put("iat", new Date(now));
-    claims.put("exp", new Date(now + (long) EXPIRES_IN_SECONDS * 1000));
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("iat", now / 1000);
+    claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
+    claims.put("jti", TSID.Factory.getTsid().toString());
     if (preferredUsername != null) {
       claims.put("preferred_username", preferredUsername);
     }
@@ -258,9 +257,9 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("sub", subject);
     claims.put("typ", "Refresh");
     claims.put("azp", clientId);
-    claims.put("iat", new Date(now));
-    claims.put("exp", new Date(now + refreshExpiry));
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("iat", now / 1000);
+    claims.put("exp", (now + refreshExpiry) / 1000);
+    claims.put("jti", TSID.Factory.getTsid().toString());
     claims.put("roles", (Serializable) roles);
     if (preferredUsername != null) {
       claims.put("preferred_username", preferredUsername);

@@ -7,9 +7,6 @@ import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
 import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Random;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -22,6 +19,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.opentmf.mockserver.util.JacksonUtil;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
@@ -33,10 +33,7 @@ class DynamicGetListCallbackTests {
 
   @SystemStub
   private static final EnvironmentVariables TEST_ENV_VARIABLES =
-      new EnvironmentVariables(
-          CACHE_DURATION_MILLIS, THREE_SECONDS,
-          ADDITIONAL_FIELDS, "project"
-      );
+      new EnvironmentVariables(CACHE_DURATION_MILLIS, THREE_SECONDS, ADDITIONAL_FIELDS, "project");
 
   @Test
   void testResponseWithValidParameters() {
@@ -292,8 +289,7 @@ class DynamicGetListCallbackTests {
         Arguments.of(10, 5, 5, "items 6-10/10", 200),
         Arguments.of(10, 10, 5, "items */10", 416),
         Arguments.of(10, 0, 15, "items 1-10/10", 200),
-        Arguments.of(0, 0, 5, "items */0", 200)
-    );
+        Arguments.of(0, 0, 5, "items */0", 200));
   }
 
   @ParameterizedTest

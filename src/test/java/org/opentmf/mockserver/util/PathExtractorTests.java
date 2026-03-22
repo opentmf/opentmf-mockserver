@@ -1,6 +1,6 @@
 package org.opentmf.mockserver.util;
 
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -23,52 +23,67 @@ class PathExtractorTests {
 
   @ParameterizedTest
   @MethodSource("providePathsForTestWithoutId")
-  void extractDomain_withOutIdAndValidPath_returnsDomainSuccessfully(String inputPath, String expectedDomain) {
+  void extractDomain_withOutIdAndValidPath_returnsDomainSuccessfully(
+      String inputPath, String expectedDomain) {
     Assertions.assertEquals(expectedDomain, PathExtractor.extractDomainWithoutId(inputPath));
   }
 
   private static Stream<Arguments> providePathsForTestWithoutId() {
     return Stream.of(
-            Arguments.of("/serviceOrder/", "serviceOrder"),
-            Arguments.of("serviceOrder/", "serviceOrder"),
-            Arguments.of("/serviceOrder", "serviceOrder"),
-            Arguments.of("serviceOrder", "serviceOrder"),
-            Arguments.of("serviceOrder?version=1", "serviceOrder"),
-            Arguments.of("serviceOrder?xyz=1", "serviceOrder"),
-            Arguments.of("/serviceOrder/test/", "serviceOrder/test"),
-            Arguments.of("/serviceOrder/test", "serviceOrder/test"),
-            Arguments.of("serviceOrder/test/", "serviceOrder/test"),
-            Arguments.of("serviceOrder/test", "serviceOrder/test"),
-            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder/", "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder", "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder/", "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder", "tmf-api/resourceOrdering/v4/resourceOrder")
-    );
+        Arguments.of("/serviceOrder/", "serviceOrder"),
+        Arguments.of("serviceOrder/", "serviceOrder"),
+        Arguments.of("/serviceOrder", "serviceOrder"),
+        Arguments.of("serviceOrder", "serviceOrder"),
+        Arguments.of("serviceOrder?version=1", "serviceOrder"),
+        Arguments.of("serviceOrder?xyz=1", "serviceOrder"),
+        Arguments.of("/serviceOrder/test/", "serviceOrder/test"),
+        Arguments.of("/serviceOrder/test", "serviceOrder/test"),
+        Arguments.of("serviceOrder/test/", "serviceOrder/test"),
+        Arguments.of("serviceOrder/test", "serviceOrder/test"),
+        Arguments.of(
+            "/tmf-api/resourceOrdering/v4/resourceOrder/",
+            "tmf-api/resourceOrdering/v4/resourceOrder"),
+        Arguments.of(
+            "/tmf-api/resourceOrdering/v4/resourceOrder",
+            "tmf-api/resourceOrdering/v4/resourceOrder"),
+        Arguments.of(
+            "tmf-api/resourceOrdering/v4/resourceOrder/",
+            "tmf-api/resourceOrdering/v4/resourceOrder"),
+        Arguments.of(
+            "tmf-api/resourceOrdering/v4/resourceOrder",
+            "tmf-api/resourceOrdering/v4/resourceOrder"));
   }
-
 
   @ParameterizedTest
   @MethodSource("providePathsForTestWithId")
-  void extractDomain_withIdAndValidPath_returnsDomainSuccessfully(String inputPath, String expectedDomain) {
+  void extractDomain_withIdAndValidPath_returnsDomainSuccessfully(
+      String inputPath, String expectedDomain) {
     Assertions.assertEquals(expectedDomain, PathExtractor.extractDomainWithId(inputPath));
   }
 
   private static Stream<Arguments> providePathsForTestWithId() {
     return Stream.of(
-            Arguments.of("/serviceOrder/123/", "serviceOrder"),
-            Arguments.of("/serviceOrder/123", "serviceOrder"),
-            Arguments.of("serviceOrder/123/", "serviceOrder"),
-            Arguments.of("serviceOrder/123", "serviceOrder"),
-            Arguments.of("serviceOrder/123:(version=1)", "serviceOrder"),
-            Arguments.of("serviceOrder/123?version=1", "serviceOrder"),
-            Arguments.of("/serviceOrder/test/", "serviceOrder"),
-            Arguments.of("/serviceOrder/test", "serviceOrder"),
-            Arguments.of("serviceOrder/test/", "serviceOrder"),
-            Arguments.of("serviceOrder/test", "serviceOrder"),
-            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID() + "/", "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID() + "/", "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("/tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID(), "tmf-api/resourceOrdering/v4/resourceOrder"),
-            Arguments.of("tmf-api/resourceOrdering/v4/resourceOrder/" + UUID.randomUUID(), "tmf-api/resourceOrdering/v4/resourceOrder")
-    );
+        Arguments.of("/serviceOrder/123/", "serviceOrder"),
+        Arguments.of("/serviceOrder/123", "serviceOrder"),
+        Arguments.of("serviceOrder/123/", "serviceOrder"),
+        Arguments.of("serviceOrder/123", "serviceOrder"),
+        Arguments.of("serviceOrder/123:(version=1)", "serviceOrder"),
+        Arguments.of("serviceOrder/123?version=1", "serviceOrder"),
+        Arguments.of("/serviceOrder/test/", "serviceOrder"),
+        Arguments.of("/serviceOrder/test", "serviceOrder"),
+        Arguments.of("serviceOrder/test/", "serviceOrder"),
+        Arguments.of("serviceOrder/test", "serviceOrder"),
+        Arguments.of(
+            "/tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid() + "/",
+            "tmf-api/resourceOrdering/v4/resourceOrder"),
+        Arguments.of(
+            "tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid() + "/",
+            "tmf-api/resourceOrdering/v4/resourceOrder"),
+        Arguments.of(
+            "/tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid(),
+            "tmf-api/resourceOrdering/v4/resourceOrder"),
+        Arguments.of(
+            "tmf-api/resourceOrdering/v4/resourceOrder/" + TSID.Factory.getTsid(),
+            "tmf-api/resourceOrdering/v4/resourceOrder"));
   }
 }

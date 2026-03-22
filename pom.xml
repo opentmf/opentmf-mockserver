@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.opentmf.mockserver</groupId>
   <artifactId>opentmf-mockserver</artifactId>
   <name>opentmf-mockserver</name>
-  <version>2.0.1-SNAPSHOT</version>
+  <version>2.1.0-SNAPSHOT</version>
 
   <description>
     Easy to use dynamic expectations for get, list, post, patch, delete and token retrieval.
@@ -20,7 +21,7 @@
   <licenses>
     <license>
       <name>Apache License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
       <distribution>repo</distribution>
       <comments>A permissive open-source license</comments>
     </license>
@@ -52,11 +53,38 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>17</java.version>
-    <mockserver.version>5.15.0</mockserver.version>
+
+    <!-- Core runtime -->
+    <jackson.version>3.1.0</jackson.version>
+    <netty.version>4.2.10.Final</netty.version>
+    <netty-tcnative.version>2.0.75.Final</netty-tcnative.version>
+    <bouncycastle.version>1.83</bouncycastle.version>
+    <nimbus-jose-jwt.version>10.8</nimbus-jose-jwt.version>
+    <json-schema-validator.version>3.0.1</json-schema-validator.version>
+    <json-path.version>3.0.0</json-path.version>
+    <opentmf-json-patch.version>1.1.0</opentmf-json-patch.version>
+    <disruptor.version>4.0.0</disruptor.version>
+    <jzlib.version>1.1.3</jzlib.version>
+    <jsr305.version>3.0.2</jsr305.version>
+    <hypersistence-tsid.version>2.1.4</hypersistence-tsid.version>
+
+    <!-- Utilities -->
+    <commons-lang3.version>3.20.0</commons-lang3.version>
+    <commons-text.version>1.15.0</commons-text.version>
+    <commons-codec.version>1.21.0</commons-codec.version>
+    <commons-compress.version>1.28.0</commons-compress.version>
+    <guava.version>33.5.0-jre</guava.version>
+    <classgraph.version>4.8.184</classgraph.version>
+
+    <!-- Logging -->
+    <slf4j.version>2.0.17</slf4j.version>
+
+    <!-- Test -->
     <junit-jupiter.version>6.0.3</junit-jupiter.version>
-    <awaitility.version>4.3.0</awaitility.version>
     <system-stubs-jupiter.version>2.1.8</system-stubs-jupiter.version>
     <testcontainers.version>1.21.4</testcontainers.version>
+
+    <!-- Maven plugins -->
     <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
     <maven-failsafe-plugin.version>3.5.5</maven-failsafe-plugin.version>
     <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
@@ -73,24 +101,185 @@
     <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>${commons-compress.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
+    <!-- Jackson 3 -->
     <dependency>
-      <groupId>org.mock-server</groupId>
-      <artifactId>mockserver-netty</artifactId>
-      <classifier>jar-with-dependencies</classifier>
-      <scope>provided</scope>
-      <version>${mockserver.version}</version>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
     </dependency>
+
+    <!-- Netty -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-buffer</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http2</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-handler</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-tcnative-boringssl-static</artifactId>
+      <version>${netty-tcnative.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- TLS / Crypto -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+      <version>${bouncycastle.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk18on</artifactId>
+      <version>${bouncycastle.version}</version>
+    </dependency>
+
+    <!-- JWT -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>${nimbus-jose-jwt.version}</version>
+    </dependency>
+
+    <!-- JSON validation and matching -->
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>${json-schema-validator.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.jayway.jsonpath</groupId>
+      <artifactId>json-path</artifactId>
+      <version>${json-path.version}</version>
+    </dependency>
+
+    <!-- JSON Patch + Merge Patch (Jackson 3) -->
+    <dependency>
+      <groupId>org.opentmf.commons</groupId>
+      <artifactId>opentmf-json-patch</artifactId>
+      <version>${opentmf-json-patch.version}</version>
+    </dependency>
+
+    <!-- Async event log -->
+    <dependency>
+      <groupId>com.lmax</groupId>
+      <artifactId>disruptor</artifactId>
+      <version>${disruptor.version}</version>
+    </dependency>
+
+    <!-- Gzip (used by Netty at runtime for HTTP content compression) -->
+    <dependency>
+      <groupId>com.jcraft</groupId>
+      <artifactId>jzlib</artifactId>
+      <version>${jzlib.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- JSR 305 annotations (@Nullable, @Nonnull) -->
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>${jsr305.version}</version>
+    </dependency>
+
+    <!-- TSID (Time-Sorted IDs) -->
+    <dependency>
+      <groupId>io.hypersistence</groupId>
+      <artifactId>hypersistence-tsid</artifactId>
+      <version>${hypersistence-tsid.version}</version>
+    </dependency>
+
+    <!-- Utilities -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>${commons-text.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>${commons-codec.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.classgraph</groupId>
+      <artifactId>classgraph</artifactId>
+      <version>${classgraph.version}</version>
+    </dependency>
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Test -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <scope>test</scope>
       <version>${junit-jupiter.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.awaitility</groupId>
-      <artifactId>awaitility</artifactId>
-      <version>${awaitility.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -114,6 +303,29 @@
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>mockserver-version.properties</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>mockserver-version.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>${project.basedir}</directory>
+        <includes>
+          <include>opentmf-mockserver-openapi.yaml</include>
+        </includes>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -283,6 +495,11 @@
     </profile>
     <profile>
       <id>docker</id>
+      <properties>
+        <maven.source.skip>true</maven.source.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <maven.test.skip>true</maven.test.skip>
+      </properties>
       <build>
         <plugins>
           <plugin>

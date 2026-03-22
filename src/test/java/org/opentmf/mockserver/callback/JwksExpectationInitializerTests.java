@@ -2,7 +2,6 @@ package org.opentmf.mockserver.callback;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.SignedJWT;
@@ -12,6 +11,7 @@ import org.mockserver.mock.Expectation;
 import org.opentmf.mockserver.keycloak.KeycloakConfig;
 import org.opentmf.mockserver.token.JwtKeyProvider;
 import org.opentmf.mockserver.util.JacksonUtil;
+import tools.jackson.databind.JsonNode;
 
 class JwksExpectationInitializerTests {
 
@@ -21,8 +21,8 @@ class JwksExpectationInitializerTests {
     Expectation[] expectations = initializer.initializeExpectations();
 
     int realmCount = KeycloakConfig.getInstance().getRealms().size();
-    // 1 global JWKS + 3 per realm (certs, discovery, token)
-    assertEquals(1 + realmCount * 3, expectations.length);
+    // 1 global JWKS + 3 per realm (certs, discovery, token) + 1 OpenAPI spec
+    assertEquals(1 + realmCount * 3 + 1, expectations.length);
 
     // First expectation is the global JWKS
     Expectation globalJwks = expectations[0];
@@ -40,8 +40,7 @@ class JwksExpectationInitializerTests {
 
   @Test
   void realmCertsEndpointContainsValidJwks() throws ParseException {
-    Expectation[] expectations =
-        new JwksExpectationInitializer().initializeExpectations();
+    Expectation[] expectations = new JwksExpectationInitializer().initializeExpectations();
 
     // Second expectation is the realm JWKS (certs)
     Expectation realmCerts = expectations[1];
@@ -53,8 +52,7 @@ class JwksExpectationInitializerTests {
 
   @Test
   void realmDiscoveryContainsRequiredFields() {
-    Expectation[] expectations =
-        new JwksExpectationInitializer().initializeExpectations();
+    Expectation[] expectations = new JwksExpectationInitializer().initializeExpectations();
 
     // Third expectation is the discovery document
     Expectation discovery = expectations[2];

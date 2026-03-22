@@ -9,9 +9,18 @@
   "requiredActions": [],
   "roles": {
     "realm": [
-      { "name": "admin", "composite": false },
-      { "name": "writer", "composite": false },
-      { "name": "reader", "composite": false }
+      {
+        "name": "admin",
+        "composite": false
+      },
+      {
+        "name": "writer",
+        "composite": false
+      },
+      {
+        "name": "reader",
+        "composite": false
+      }
     ]
   },
   "clients": [
@@ -52,30 +61,61 @@
       "enabled": true,
       "emailVerified": true,
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "admin_pwd", "temporary": false }],
-      "realmRoles": ["admin", "writer", "reader"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin_pwd",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "writer",
+        "reader"
+      ]
     },
     {
       "username": "writer_usr",
       "enabled": true,
       "emailVerified": true,
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "writer_pwd", "temporary": false }],
-      "realmRoles": ["writer", "reader"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "writer_pwd",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "writer",
+        "reader"
+      ]
     },
     {
       "username": "reader_usr",
       "enabled": true,
       "emailVerified": true,
       "requiredActions": [],
-      "credentials": [{ "type": "password", "value": "reader_pwd", "temporary": false }],
-      "realmRoles": ["reader"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "reader_pwd",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "reader"
+      ]
     },
     {
       "username": "service-account-client1",
       "enabled": true,
       "serviceAccountClientId": "client1",
-      "realmRoles": ["admin", "writer", "reader"]
+      "realmRoles": [
+        "admin",
+        "writer",
+        "reader"
+      ]
     }
   ]
 }

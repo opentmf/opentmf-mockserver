@@ -13,7 +13,7 @@
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
-IMAGE="local/opentmf-mockserver:1.1.2-SNAPSHOT"
+IMAGE="local/opentmf-mockserver:2.1.0-SNAPSHOT"
 CONTAINER_NAME="opentmf-test-with-token"
 PORT=11081
 BASE="http://localhost:${PORT}"
@@ -106,9 +106,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cyan "Building project and Docker image via 'mvn -P docker clean package'..."
-mvn -B -P docker -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true \
-  -Dgpg.skip=true clean package -q
+if docker image inspect "$IMAGE" &>/dev/null; then
+  cyan "Docker image $IMAGE already exists, skipping build."
+else
+  cyan "Building project and Docker image via 'mvn -P docker clean package'..."
+  mvn -B -P docker -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true \
+    -Dgpg.skip=true clean package -q
+fi
 
 cyan "Starting MockServer (ENFORCE_TOKEN=true) on port $PORT..."
 docker rm -f "$CONTAINER_NAME" &>/dev/null || true
@@ -329,8 +333,13 @@ cyan "\n══ Bad Tokens ══════════════════
 resp=$(AUTH="not.a.valid.jwt" http GET "${BASE}${ORDER_PATH}")
 assert_status "Garbage token" 401 "$(parse_status "$resp")"
 
-# Tamper with a valid token (flip last character of signature)
-TAMPERED="${ADMIN_TOKEN%?}X"
+# Tamper with a valid token (flip a character in the middle of the signature,
+# not the last char — base64url padding bits at the end can mask single-char changes)
+IFS='.' read -r JWT_HDR JWT_PAY JWT_SIG <<< "$ADMIN_TOKEN"
+MID=$(( ${#JWT_SIG} / 2 ))
+ORIG_CHAR="${JWT_SIG:$MID:1}"
+if [[ "$ORIG_CHAR" == "A" ]]; then NEW_CHAR="B"; else NEW_CHAR="A"; fi
+TAMPERED="${JWT_HDR}.${JWT_PAY}.${JWT_SIG:0:$MID}${NEW_CHAR}${JWT_SIG:$((MID+1))}"
 resp=$(AUTH="$TAMPERED" http GET "${BASE}${ORDER_PATH}")
 assert_status "Tampered token" 401 "$(parse_status "$resp")"
 

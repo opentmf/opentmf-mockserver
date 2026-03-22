@@ -32,7 +32,8 @@ public class ErrorResponseUtil {
     return getErrorResponse(statusCode, message, Collections.emptyList());
   }
 
-  public static HttpResponse getErrorResponse(HttpStatusCode statusCode, String message, List<Header> headers) {
+  public static HttpResponse getErrorResponse(
+      HttpStatusCode statusCode, String message, List<Header> headers) {
     Error error = new Error(message, statusCode.code(), statusCode.name());
     return HttpResponse.response()
         .withStatusCode(statusCode.code())

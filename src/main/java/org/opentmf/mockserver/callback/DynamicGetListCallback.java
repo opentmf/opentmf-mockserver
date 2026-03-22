@@ -9,9 +9,6 @@ import static org.opentmf.mockserver.util.HttpRequestUtil.extractLimit;
 import static org.opentmf.mockserver.util.HttpRequestUtil.extractOffset;
 import static org.opentmf.mockserver.util.HttpRequestUtil.extractSort;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jayway.jsonpath.JsonPath;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -33,6 +30,9 @@ import org.opentmf.mockserver.util.CacheQuery;
 import org.opentmf.mockserver.util.ErrorResponseUtil;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  *
@@ -61,8 +61,8 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
-        httpRequest, "reader", "writer", "admin");
+    HttpResponse authError =
+        TokenEnforcer.getInstance().validateWithRoles(httpRequest, "reader", "writer", "admin");
     if (authError != null) {
       return authError;
     }

@@ -1,14 +1,4 @@
 # syntax=docker/dockerfile:1.7
-ARG MOCKSERVER_VERSION=5.15.0
-
-# --- Fetch the MockServer jar-with-dependencies JAR (standalone) -----------------------------
-FROM alpine:3.20 AS fetch
-ARG MOCKSERVER_VERSION
-RUN apk add --no-cache curl jq
-RUN curl -fsSL -o /mockserver-netty-jar-with-dependencies.jar \
-  "https://repo1.maven.org/maven2/org/mock-server/mockserver-netty/${MOCKSERVER_VERSION}/mockserver-netty-${MOCKSERVER_VERSION}-jar-with-dependencies.jar"
-
-# --- Final runtime: tiny distro + JRE + curl + tini ---------------------------
 FROM eclipse-temurin:17-jre-noble
 RUN apt-get update && \
     apt-get install -y tini curl jq && \
@@ -17,16 +7,14 @@ RUN apt-get update && \
     useradd -r -g mockserver -M -N -s /usr/sbin/nologin mockserver
 
 WORKDIR /opt/mockserver
-RUN mkdir -p /opt/mockserver /libs /config \
- && chown -R mockserver:mockserver /opt/mockserver /libs /config
+RUN mkdir -p /opt/mockserver /config \
+ && chown -R mockserver:mockserver /opt/mockserver /config
 
 USER mockserver
 
-# MockServer server jar + your callback extensions
-COPY --chown=mockserver:mockserver --from=fetch  /mockserver-netty-jar-with-dependencies.jar /opt/mockserver/mockserver-netty.jar
-COPY --chown=mockserver:mockserver target/*.jar /libs/opentmf-extensions.jar
+COPY --chown=mockserver:mockserver target/opentmf-mockserver-*.jar /opt/mockserver/opentmf-mockserver.jar
+COPY --chown=mockserver:mockserver target/libs/ /opt/mockserver/libs/
 
-# Copy entrypoint and make it executable
 COPY --chown=mockserver:mockserver docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
@@ -35,14 +23,10 @@ ENV SERVER_PORT=1080 \
 EXPOSE 1080 \
        5005
 
-# Healthcheck uses the same port via sh -c for env expansion
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
   CMD ["sh","-c","curl -fsS -X PUT http://127.0.0.1:${SERVER_PORT}/mockserver/status >/dev/null || exit 1"]
 
-# Sensible defaults; users can still override via -e JAVA_TOOL_OPTIONS / JAVA_OPTS
 ENV JVM_OPTS="-Dfile.encoding=UTF-8 -Dmockserver.logLevel=WARN"
 ENV DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${DEBUG_PORT}"
 
-# tini as PID1; script does the rest
 ENTRYPOINT ["/usr/bin/tini","-g","--","/usr/local/bin/docker-entrypoint.sh"]
-# no CMD needed; entrypoint decides everything

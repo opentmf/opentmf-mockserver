@@ -13,7 +13,6 @@ import org.apache.commons.lang3.StringUtils;
  * state path from a given string representation of the path.
  */
 public enum TmfStatePath {
-
   ORDER("order", STATE, ACKNOWLEDGED, COMPLETED, false),
   INVENTORY("inventory", STATUS, CREATED, ACTIVE, false),
 
@@ -40,7 +39,8 @@ public enum TmfStatePath {
    * @param initialState The initial state associated with the path.
    * @param finalState The final state associated with the path.
    */
-  TmfStatePath(String path, String variableName, String initialState, String finalState, boolean versioned) {
+  TmfStatePath(
+      String path, String variableName, String initialState, String finalState, boolean versioned) {
     this.path = path;
     this.variableName = variableName;
     this.initialState = initialState;

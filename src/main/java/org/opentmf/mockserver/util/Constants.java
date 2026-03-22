@@ -5,8 +5,7 @@ package org.opentmf.mockserver.util;
  */
 public class Constants {
 
-  private Constants() {
-  }
+  private Constants() {}
 
   public static final String CACHE_DURATION_MILLIS = "CACHE_DURATION_MILLIS";
   public static final String TWO_HOURS = String.valueOf(1000L * 60 * 60 * 2);

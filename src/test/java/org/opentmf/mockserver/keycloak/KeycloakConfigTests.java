@@ -2,12 +2,12 @@ package org.opentmf.mockserver.keycloak;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
 
 class KeycloakConfigTests {
 
@@ -88,27 +88,30 @@ class KeycloakConfigTests {
 
   @Test
   void jacksonDeserializesAllConfigFields() throws Exception {
-    String json = "{"
-        + "\"baseUrl\":\"http://custom:9090\","
-        + "\"realms\":[{"
-        + "  \"name\":\"testRealm\","
-        + "  \"roles\":[\"role1\",\"role2\"],"
-        + "  \"clients\":[{"
-        + "    \"clientId\":\"c1\","
-        + "    \"clientSecret\":\"s1\","
-        + "    \"publicClient\":true,"
-        + "    \"allowedGrantTypes\":[\"client_credentials\",\"password\"],"
-        + "    \"serviceAccountRoles\":[\"role1\"]"
-        + "  }],"
-        + "  \"users\":[{"
-        + "    \"username\":\"u1\","
-        + "    \"password\":\"p1\","
-        + "    \"roles\":[\"role1\",\"role2\"]"
-        + "  }]"
-        + "}]}";
+    String json =
+        "{"
+            + "\"baseUrl\":\"http://custom:9090\","
+            + "\"realms\":[{"
+            + "  \"name\":\"testRealm\","
+            + "  \"roles\":[\"role1\",\"role2\"],"
+            + "  \"clients\":[{"
+            + "    \"clientId\":\"c1\","
+            + "    \"clientSecret\":\"s1\","
+            + "    \"publicClient\":true,"
+            + "    \"allowedGrantTypes\":[\"client_credentials\",\"password\"],"
+            + "    \"serviceAccountRoles\":[\"role1\"]"
+            + "  }],"
+            + "  \"users\":[{"
+            + "    \"username\":\"u1\","
+            + "    \"password\":\"p1\","
+            + "    \"roles\":[\"role1\",\"role2\"]"
+            + "  }]"
+            + "}]}";
 
-    ObjectMapper mapper = new ObjectMapper()
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    ObjectMapper mapper =
+        tools.jackson.databind.json.JsonMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
     KeycloakConfig config = mapper.readValue(json, KeycloakConfig.class);
 
     assertEquals("http://custom:9090", config.getBaseUrl());

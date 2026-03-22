@@ -8,13 +8,13 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.SignedJWT;
+import io.hypersistence.tsid.TSID;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockserver.model.HttpRequest;
@@ -50,7 +50,7 @@ class TokenEnforcerTests {
     claims.put("sub", subject);
     claims.put("iat", nowSeconds);
     claims.put("exp", nowSeconds + expiresInMs / 1000);
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("jti", TSID.Factory.getTsid().toString());
     return JwtKeyProvider.getInstance().signJwt(claims);
   }
 
@@ -62,7 +62,7 @@ class TokenEnforcerTests {
     claims.put("sub", subject);
     claims.put("iat", nowSeconds);
     claims.put("exp", nowSeconds + expiresInMs / 1000);
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("jti", TSID.Factory.getTsid().toString());
 
     LinkedHashMap<String, Serializable> realmAccess = new LinkedHashMap<>();
     realmAccess.put("roles", (Serializable) roles);
@@ -241,7 +241,7 @@ class TokenEnforcerTests {
     claims.put("azp", "client2");
     claims.put("iat", nowSec);
     claims.put("exp", nowSec + 3600);
-    claims.put("jti", UUID.randomUUID().toString());
+    claims.put("jti", TSID.Factory.getTsid().toString());
     String token = JwtKeyProvider.getInstance().signJwt(claims);
 
     HttpRequest req = request().withPath("/tmf-api/serviceOrder/v4/serviceOrder")

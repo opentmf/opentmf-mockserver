@@ -44,14 +44,10 @@ public class RealmConfig {
   }
 
   public Optional<ClientConfig> findClient(String clientId) {
-    return clients.stream()
-        .filter(c -> c.getClientId().equals(clientId))
-        .findFirst();
+    return clients.stream().filter(c -> c.getClientId().equals(clientId)).findFirst();
   }
 
   public Optional<UserConfig> findUser(String username) {
-    return users.stream()
-        .filter(u -> u.getUsername().equals(username))
-        .findFirst();
+    return users.stream().filter(u -> u.getUsername().equals(username)).findFirst();
   }
 }

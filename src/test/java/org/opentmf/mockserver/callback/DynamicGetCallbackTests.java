@@ -6,15 +6,15 @@ import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
 import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.UUID;
+import io.hypersistence.tsid.TSID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.opentmf.mockserver.util.JacksonUtil;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
@@ -26,10 +26,7 @@ class DynamicGetCallbackTests {
 
   @SystemStub
   private static final EnvironmentVariables TEST_ENV_VARIABLES =
-      new EnvironmentVariables(
-          CACHE_DURATION_MILLIS, THREE_SECONDS,
-          ADDITIONAL_FIELDS, "project"
-      );
+      new EnvironmentVariables(CACHE_DURATION_MILLIS, THREE_SECONDS, ADDITIONAL_FIELDS, "project");
 
   @BeforeEach
   void setup() {
@@ -40,7 +37,7 @@ class DynamicGetCallbackTests {
   void shouldReturnCompletedWhenStatusIsAcknowledged() {
     // Given
     String domain = "serviceInventory";
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     addDataToCache(domain, id, "created");
 
     HttpRequest httpRequest = new HttpRequest().withPath("/" + domain + "/" + id);
@@ -58,7 +55,7 @@ class DynamicGetCallbackTests {
   void shouldReturnCompletedWhenStatusIsAcknowledged1() {
     // Given
     String domain = "serviceInventory";
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     addDataToCache(domain, id, "created");
 
     HttpRequest httpRequest =
@@ -80,7 +77,7 @@ class DynamicGetCallbackTests {
   void shouldReturnNotFoundWhenDataDoesNotExist() {
     // Given
     String domain = "testDomain";
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
 
     HttpRequest httpRequest = new HttpRequest().withPath("/" + domain + "/" + id);
 
@@ -95,7 +92,7 @@ class DynamicGetCallbackTests {
   void shouldReturnDataWhenExists() {
     // Given
     String domain = "testDomain";
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     addDataToCache(domain, id, "completed");
 
     HttpRequest httpRequest = new HttpRequest().withPath("/" + domain + "/" + id);
@@ -113,7 +110,7 @@ class DynamicGetCallbackTests {
   void shouldNotChangeStatusWhenNotAcknowledged() {
     // Given
     String domain = "testDomain";
-    String id = UUID.randomUUID().toString();
+    String id = TSID.Factory.getTsid().toString();
     addDataToCache(domain, id, "completed");
 
     HttpRequest httpRequest = new HttpRequest().withPath("/" + domain + "/" + id);

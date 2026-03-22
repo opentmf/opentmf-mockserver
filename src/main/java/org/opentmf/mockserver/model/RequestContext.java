@@ -3,17 +3,15 @@ package org.opentmf.mockserver.model;
 import static org.opentmf.mockserver.model.TmfConstants.ID;
 import static org.opentmf.mockserver.model.TmfConstants.VERSION;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
+import io.hypersistence.tsid.TSID;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
-import java.util.UUID;
-
 import org.apache.commons.lang3.StringUtils;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.Parameters;
 import org.opentmf.mockserver.util.PathExtractor;
+import tools.jackson.databind.JsonNode;
 
 /**
  * @author Gokhan Demir
@@ -85,7 +83,7 @@ public class RequestContext {
   public void generateNewIdIfNecessary() {
     if (id == null) {
       id = new Id();
-      id.setId(UUID.randomUUID().toString());
+      id.setId(TSID.Factory.getTsid().toString());
       if (isVersioned()) {
         id.setVersion("0");
       }
