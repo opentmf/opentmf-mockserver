@@ -2,11 +2,29 @@ package org.mockserver.version;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
 public class Version {
 
-  private static final String VERSION = "2.0.1-SNAPSHOT";
-  private static final String ARTIFACT_ID = "opentmf-mockserver";
-  private static final String GROUP_ID = "org.opentmf.mockserver";
+  private static final String VERSION;
+  private static final String ARTIFACT_ID;
+  private static final String GROUP_ID;
+
+  static {
+    Properties props = new Properties();
+    try (InputStream is = Version.class.getClassLoader()
+        .getResourceAsStream("mockserver-version.properties")) {
+      if (is != null) {
+        props.load(is);
+      }
+    } catch (IOException ignored) {
+    }
+    VERSION = props.getProperty("version", "unknown");
+    ARTIFACT_ID = props.getProperty("artifact-id", "opentmf-mockserver");
+    GROUP_ID = props.getProperty("group-id", "org.opentmf");
+  }
 
   public static String getVersion() {
     return VERSION;
