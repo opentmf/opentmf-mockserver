@@ -5,5 +5,5 @@ package org.mockserver.serialization.model;
  */
 public interface DTO<T> {
 
-    T buildObject();
+  T buildObject();
 }

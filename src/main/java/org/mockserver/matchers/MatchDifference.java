@@ -14,105 +14,109 @@ import org.mockserver.model.RequestDefinition;
 
 public class MatchDifference {
 
-    public enum Field {
-        METHOD("method"),
-        PATH("path"),
-        PATH_PARAMETERS("pathParameters"),
-        QUERY_PARAMETERS("queryParameters"),
-        COOKIES("cookies"),
-        HEADERS("headers"),
-        BODY("body"),
-        SECURE("secure"),
-        PROTOCOL("protocol"),
-        KEEP_ALIVE("keep-alive"),
-        OPERATION("operation"),
-        OPENAPI("openapi");
+  public enum Field {
+    METHOD("method"),
+    PATH("path"),
+    PATH_PARAMETERS("pathParameters"),
+    QUERY_PARAMETERS("queryParameters"),
+    COOKIES("cookies"),
+    HEADERS("headers"),
+    BODY("body"),
+    SECURE("secure"),
+    PROTOCOL("protocol"),
+    KEEP_ALIVE("keep-alive"),
+    OPERATION("operation"),
+    OPENAPI("openapi");
 
-        private final String name;
+    private final String name;
 
-        Field(String name) {
-            this.name = name;
-        }
-
-        public String getName() {
-            return name;
-        }
+    Field(String name) {
+      this.name = name;
     }
 
-    private final boolean detailedMatchFailures;
-    private final RequestDefinition httpRequest;
-    private final Map<Field, List<String>> differences = new ConcurrentHashMap<>();
-    private Field fieldName;
-
-    public MatchDifference(boolean detailedMatchFailures, RequestDefinition httpRequest) {
-        this.detailedMatchFailures = detailedMatchFailures;
-        this.httpRequest = httpRequest;
+    public String getName() {
+      return name;
     }
+  }
 
-    @SuppressWarnings("UnusedReturnValue")
-    public MatchDifference addDifference(MockServerLogger mockServerLogger, Throwable throwable, String messageFormat, Object... arguments) {
-        if (mockServerLogger != null && MockServerLogger.isEnabled(TRACE)) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(TRACE)
-                    .setHttpRequest(httpRequest)
-                    .setCorrelationId(httpRequest.getLogCorrelationId())
-                    .setMessageFormat(messageFormat)
-                    .setArguments(arguments)
-                    .setThrowable(throwable)
-            );
-        }
-        return addDifference(messageFormat, arguments);
-    }
+  private final boolean detailedMatchFailures;
+  private final RequestDefinition httpRequest;
+  private final Map<Field, List<String>> differences = new ConcurrentHashMap<>();
+  private Field fieldName;
 
-    @SuppressWarnings("UnusedReturnValue")
-    public MatchDifference addDifference(MockServerLogger mockServerLogger, String messageFormat, Object... arguments) {
-        return addDifference(mockServerLogger, null, messageFormat, arguments);
-    }
+  public MatchDifference(boolean detailedMatchFailures, RequestDefinition httpRequest) {
+    this.detailedMatchFailures = detailedMatchFailures;
+    this.httpRequest = httpRequest;
+  }
 
-    public MatchDifference addDifference(Field fieldName, String messageFormat, Object... arguments) {
-        if (detailedMatchFailures) {
-            if (isNotBlank(messageFormat) && arguments != null && fieldName != null) {
-                this.differences
-                    .computeIfAbsent(fieldName, key -> new ArrayList<>())
-                    .add(formatLogMessage(1, messageFormat, arguments));
-            }
-        }
-        return this;
+  @SuppressWarnings("UnusedReturnValue")
+  public MatchDifference addDifference(
+      MockServerLogger mockServerLogger,
+      Throwable throwable,
+      String messageFormat,
+      Object... arguments) {
+    if (mockServerLogger != null && MockServerLogger.isEnabled(TRACE)) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(TRACE)
+              .setHttpRequest(httpRequest)
+              .setCorrelationId(httpRequest.getLogCorrelationId())
+              .setMessageFormat(messageFormat)
+              .setArguments(arguments)
+              .setThrowable(throwable));
     }
+    return addDifference(messageFormat, arguments);
+  }
 
-    @SuppressWarnings("UnusedReturnValue")
-    public MatchDifference addDifference(String messageFormat, Object... arguments) {
-        return addDifference(fieldName, messageFormat, arguments);
-    }
+  @SuppressWarnings("UnusedReturnValue")
+  public MatchDifference addDifference(
+      MockServerLogger mockServerLogger, String messageFormat, Object... arguments) {
+    return addDifference(mockServerLogger, null, messageFormat, arguments);
+  }
 
-    public RequestDefinition getHttpRequest() {
-        return httpRequest;
+  public MatchDifference addDifference(Field fieldName, String messageFormat, Object... arguments) {
+    if (detailedMatchFailures) {
+      if (isNotBlank(messageFormat) && arguments != null && fieldName != null) {
+        this.differences
+            .computeIfAbsent(fieldName, key -> new ArrayList<>())
+            .add(formatLogMessage(1, messageFormat, arguments));
+      }
     }
+    return this;
+  }
 
-    public String getLogCorrelationId() {
-        return httpRequest.getLogCorrelationId();
-    }
+  @SuppressWarnings("UnusedReturnValue")
+  public MatchDifference addDifference(String messageFormat, Object... arguments) {
+    return addDifference(fieldName, messageFormat, arguments);
+  }
 
-    @SuppressWarnings("UnusedReturnValue")
-    protected MatchDifference currentField(Field fieldName) {
-        this.fieldName = fieldName;
-        return this;
-    }
+  public RequestDefinition getHttpRequest() {
+    return httpRequest;
+  }
 
-    public List<String> getDifferences(Field fieldName) {
-        return this.differences.get(fieldName);
-    }
+  public String getLogCorrelationId() {
+    return httpRequest.getLogCorrelationId();
+  }
 
-    public Map<Field, List<String>> getAllDifferences() {
-        return this.differences;
-    }
+  @SuppressWarnings("UnusedReturnValue")
+  protected MatchDifference currentField(Field fieldName) {
+    this.fieldName = fieldName;
+    return this;
+  }
 
-    public void addDifferences(Map<Field, List<String>> differences) {
-        for (Field field : differences.keySet()) {
-            this.differences
-                .computeIfAbsent(field, key -> new ArrayList<>())
-                .addAll(differences.get(field));
-        }
+  public List<String> getDifferences(Field fieldName) {
+    return this.differences.get(fieldName);
+  }
+
+  public Map<Field, List<String>> getAllDifferences() {
+    return this.differences;
+  }
+
+  public void addDifferences(Map<Field, List<String>> differences) {
+    for (Field field : differences.keySet()) {
+      this.differences
+          .computeIfAbsent(field, key -> new ArrayList<>())
+          .addAll(differences.get(field));
     }
+  }
 }

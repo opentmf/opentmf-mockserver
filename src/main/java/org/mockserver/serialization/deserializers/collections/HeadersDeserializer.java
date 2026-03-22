@@ -7,12 +7,12 @@ import org.mockserver.model.Headers;
  */
 public class HeadersDeserializer extends KeysToMultiValuesDeserializer<Headers> {
 
-    public HeadersDeserializer() {
-        super(Headers.class);
-    }
+  public HeadersDeserializer() {
+    super(Headers.class);
+  }
 
-    @Override
-    public Headers build() {
-        return new Headers();
-    }
+  @Override
+  public Headers build() {
+    return new Headers();
+  }
 }

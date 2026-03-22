@@ -5,6 +5,5 @@ package org.mockserver.validator;
  */
 public interface Validator<T> {
 
-    String isValid(T t);
-
+  String isValid(T t);
 }

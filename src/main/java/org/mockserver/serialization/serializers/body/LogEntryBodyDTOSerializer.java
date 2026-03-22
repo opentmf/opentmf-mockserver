@@ -10,12 +10,13 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class LogEntryBodyDTOSerializer extends StdSerializer<LogEntryBodyDTO> {
 
-    public LogEntryBodyDTOSerializer() {
-        super(LogEntryBodyDTO.class);
-    }
+  public LogEntryBodyDTOSerializer() {
+    super(LogEntryBodyDTO.class);
+  }
 
-    @Override
-    public void serialize(LogEntryBodyDTO logEventBody, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writePOJO(logEventBody.getValue());
-    }
+  @Override
+  public void serialize(
+      LogEntryBodyDTO logEventBody, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writePOJO(logEventBody.getValue());
+  }
 }

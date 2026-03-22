@@ -20,16 +20,19 @@ import tools.jackson.databind.node.ObjectNode;
 
 /**
  *
+ *
  * <h2>DynamicJsonPatchCallback</h2>
  *
  * <ul>
  *   <li>Considers the last path parameter as the id.
- *   <li>Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned entities
+ *   <li>Allows either `:(version=XYZ)` or `?version=XYZ` for specifying the version for versioned
+ *       entities
  *   <li>Checks if a payload is found in the cache with that id (and version if versioned entity).
  *   <li>Returns 404 if no payload is cached with that id.
  *   <li>Applies the jsonPatch body to the cached payload.
  *   <li>Updates the cached payload with the patch result and restarts the cache evict timer.
- *   <li>Adds/overrides updatedDate, updatedBy fields, plus, increases the revision field's value by one.
+ *   <li>Adds/overrides updatedDate, updatedBy fields, plus, increases the revision field's value by
+ *       one.
  *   <li>Returns 200 and the updated payload.
  * </ul>
  *
@@ -41,17 +44,15 @@ public class DynamicJsonPatchCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
-        httpRequest, "writer", "admin");
+    HttpResponse authError =
+        TokenEnforcer.getInstance().validateWithRoles(httpRequest, "writer", "admin");
     if (authError != null) {
       return authError;
     }
 
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
-    JsonNode cachedData = ctx.usePointQuery()
-        ? CACHE.get(ctx)
-        : CACHE.getLatestOf(ctx);
+    JsonNode cachedData = ctx.usePointQuery() ? CACHE.get(ctx) : CACHE.getLatestOf(ctx);
 
     if (Objects.isNull(cachedData)) {
       return getErrorResponse(HttpStatusCode.NOT_FOUND_404, createErrorContextForNotFound());

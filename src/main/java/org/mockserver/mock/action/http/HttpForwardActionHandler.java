@@ -11,13 +11,13 @@ import org.mockserver.model.HttpRequest;
  */
 public class HttpForwardActionHandler extends HttpForwardAction {
 
-    public HttpForwardActionHandler(MockServerLogger logFormatter, NettyHttpClient httpClient) {
-        super(logFormatter, httpClient);
-    }
+  public HttpForwardActionHandler(MockServerLogger logFormatter, NettyHttpClient httpClient) {
+    super(logFormatter, httpClient);
+  }
 
-    public HttpForwardActionResult handle(HttpForward httpForward, HttpRequest httpRequest) {
-        httpRequest.withSecure(HttpForward.Scheme.HTTPS.equals(httpForward.getScheme()));
-        return sendRequest(httpRequest, new InetSocketAddress(httpForward.getHost(), httpForward.getPort()), null);
-    }
-
+  public HttpForwardActionResult handle(HttpForward httpForward, HttpRequest httpRequest) {
+    httpRequest.withSecure(HttpForward.Scheme.HTTPS.equals(httpForward.getScheme()));
+    return sendRequest(
+        httpRequest, new InetSocketAddress(httpForward.getHost(), httpForward.getPort()), null);
+  }
 }

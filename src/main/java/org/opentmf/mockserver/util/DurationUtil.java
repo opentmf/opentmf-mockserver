@@ -31,8 +31,7 @@ public class DurationUtil {
     if (minutes > 0) pieces.add(minutes + (minutes == 1 ? " minute" : " minutes"));
     if (seconds > 0 || pieces.isEmpty())
       pieces.add(seconds + (seconds == 1 ? " second" : " seconds"));
-    if (millis > 0)
-      pieces.add(millis + (millis == 1 ? " millisecond" : " milliseconds"));
+    if (millis > 0) pieces.add(millis + (millis == 1 ? " millisecond" : " milliseconds"));
 
     // Oxford-comma style:  “2 hours, 12 minutes and 56 seconds”
     if (pieces.size() == 1) {

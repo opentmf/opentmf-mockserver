@@ -8,23 +8,23 @@ import org.mockserver.model.JsonPathBody;
  */
 public class JsonPathBodyDTO extends BodyDTO {
 
-    private final String jsonPath;
+  private final String jsonPath;
 
-    public JsonPathBodyDTO(JsonPathBody jsonPathBody) {
-        this(jsonPathBody, null);
-    }
+  public JsonPathBodyDTO(JsonPathBody jsonPathBody) {
+    this(jsonPathBody, null);
+  }
 
-    public JsonPathBodyDTO(JsonPathBody jsonPathBody, Boolean not) {
-        super(Body.Type.JSON_PATH, not);
-        this.jsonPath = jsonPathBody.getValue();
-        withOptional(jsonPathBody.getOptional());
-    }
+  public JsonPathBodyDTO(JsonPathBody jsonPathBody, Boolean not) {
+    super(Body.Type.JSON_PATH, not);
+    this.jsonPath = jsonPathBody.getValue();
+    withOptional(jsonPathBody.getOptional());
+  }
 
-    public String getJsonPath() {
-        return jsonPath;
-    }
+  public String getJsonPath() {
+    return jsonPath;
+  }
 
-    public JsonPathBody buildObject() {
-        return (JsonPathBody) new JsonPathBody(getJsonPath()).withOptional(getOptional());
-    }
+  public JsonPathBody buildObject() {
+    return (JsonPathBody) new JsonPathBody(getJsonPath()).withOptional(getOptional());
+  }
 }

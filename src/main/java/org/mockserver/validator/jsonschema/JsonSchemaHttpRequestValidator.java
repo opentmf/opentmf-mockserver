@@ -8,28 +8,28 @@ import org.mockserver.model.HttpRequest;
  */
 public class JsonSchemaHttpRequestValidator extends JsonSchemaValidator {
 
-    private JsonSchemaHttpRequestValidator(MockServerLogger mockServerLogger) {
-        super(
-            mockServerLogger,
-            HttpRequest.class,
-            "org/mockserver/model/schema/",
-            "httpRequest",
-            "stringOrJsonSchema",
-            "body",
-            "keyToMultiValue",
-            "keyToValue",
-            "socketAddress",
-            "protocol",
-            "draft-07"
-        );
-    }
+  private JsonSchemaHttpRequestValidator(MockServerLogger mockServerLogger) {
+    super(
+        mockServerLogger,
+        HttpRequest.class,
+        "org/mockserver/model/schema/",
+        "httpRequest",
+        "stringOrJsonSchema",
+        "body",
+        "keyToMultiValue",
+        "keyToValue",
+        "socketAddress",
+        "protocol",
+        "draft-07");
+  }
 
-    private static JsonSchemaHttpRequestValidator jsonSchemaHttpRequestValidator;
+  private static JsonSchemaHttpRequestValidator jsonSchemaHttpRequestValidator;
 
-    public static JsonSchemaHttpRequestValidator jsonSchemaHttpRequestValidator(MockServerLogger mockServerLogger) {
-        if (jsonSchemaHttpRequestValidator == null) {
-            jsonSchemaHttpRequestValidator = new JsonSchemaHttpRequestValidator(mockServerLogger);
-        }
-        return jsonSchemaHttpRequestValidator;
+  public static JsonSchemaHttpRequestValidator jsonSchemaHttpRequestValidator(
+      MockServerLogger mockServerLogger) {
+    if (jsonSchemaHttpRequestValidator == null) {
+      jsonSchemaHttpRequestValidator = new JsonSchemaHttpRequestValidator(mockServerLogger);
     }
+    return jsonSchemaHttpRequestValidator;
+  }
 }

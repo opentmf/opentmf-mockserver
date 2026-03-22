@@ -29,10 +29,7 @@ class DynamicDeleteCallbackTests {
 
   @SystemStub
   private static final EnvironmentVariables TEST_ENV_VARIABLES =
-      new EnvironmentVariables(
-          CACHE_DURATION_MILLIS, THREE_SECONDS,
-          ADDITIONAL_FIELDS, "project"
-      );
+      new EnvironmentVariables(CACHE_DURATION_MILLIS, THREE_SECONDS, ADDITIONAL_FIELDS, "project");
 
   @BeforeEach
   void setUp() {

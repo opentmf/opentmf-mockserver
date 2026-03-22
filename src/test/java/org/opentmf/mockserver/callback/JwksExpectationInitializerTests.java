@@ -40,8 +40,7 @@ class JwksExpectationInitializerTests {
 
   @Test
   void realmCertsEndpointContainsValidJwks() throws ParseException {
-    Expectation[] expectations =
-        new JwksExpectationInitializer().initializeExpectations();
+    Expectation[] expectations = new JwksExpectationInitializer().initializeExpectations();
 
     // Second expectation is the realm JWKS (certs)
     Expectation realmCerts = expectations[1];
@@ -53,8 +52,7 @@ class JwksExpectationInitializerTests {
 
   @Test
   void realmDiscoveryContainsRequiredFields() {
-    Expectation[] expectations =
-        new JwksExpectationInitializer().initializeExpectations();
+    Expectation[] expectations = new JwksExpectationInitializer().initializeExpectations();
 
     // Third expectation is the discovery document
     Expectation discovery = expectations[2];

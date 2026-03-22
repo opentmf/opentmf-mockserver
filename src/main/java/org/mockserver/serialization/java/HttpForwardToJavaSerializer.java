@@ -11,28 +11,40 @@ import org.mockserver.model.HttpForward;
  */
 public class HttpForwardToJavaSerializer implements ToJavaSerializer<HttpForward> {
 
-    @Override
-    public String serialize(int numberOfSpacesToIndent, HttpForward httpForward) {
-        StringBuffer output = new StringBuffer();
-        if (httpForward != null) {
-            appendNewLineAndIndent(numberOfSpacesToIndent * INDENT_SIZE, output).append("forward()");
-            if (httpForward.getHost() != null) {
-                appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output).append(".withHost(\"").append(httpForward.getHost()).append("\")");
-            }
-            if (httpForward.getPort() != null) {
-                appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output).append(".withPort(").append(httpForward.getPort()).append(")");
-            }
-            if (httpForward.getScheme() != null) {
-                appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output).append(".withScheme(HttpForward.Scheme.").append(httpForward.getScheme()).append(")");
-            }
-            if (httpForward.getDelay() != null) {
-                appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output).append(".withDelay(").append(new DelayToJavaSerializer().serialize(0, httpForward.getDelay())).append(")");
-            }
-        }
-        return output.toString();
+  @Override
+  public String serialize(int numberOfSpacesToIndent, HttpForward httpForward) {
+    StringBuffer output = new StringBuffer();
+    if (httpForward != null) {
+      appendNewLineAndIndent(numberOfSpacesToIndent * INDENT_SIZE, output).append("forward()");
+      if (httpForward.getHost() != null) {
+        appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output)
+            .append(".withHost(\"")
+            .append(httpForward.getHost())
+            .append("\")");
+      }
+      if (httpForward.getPort() != null) {
+        appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output)
+            .append(".withPort(")
+            .append(httpForward.getPort())
+            .append(")");
+      }
+      if (httpForward.getScheme() != null) {
+        appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output)
+            .append(".withScheme(HttpForward.Scheme.")
+            .append(httpForward.getScheme())
+            .append(")");
+      }
+      if (httpForward.getDelay() != null) {
+        appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output)
+            .append(".withDelay(")
+            .append(new DelayToJavaSerializer().serialize(0, httpForward.getDelay()))
+            .append(")");
+      }
     }
+    return output.toString();
+  }
 
-    private StringBuffer appendNewLineAndIndent(int numberOfSpacesToIndent, StringBuffer output) {
-        return output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent, ' '));
-    }
+  private StringBuffer appendNewLineAndIndent(int numberOfSpacesToIndent, StringBuffer output) {
+    return output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent, ' '));
+  }
 }

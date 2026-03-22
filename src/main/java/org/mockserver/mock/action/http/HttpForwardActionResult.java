@@ -8,49 +8,58 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 
 public class HttpForwardActionResult {
-    private final HttpRequest httpRequest;
-    private final InetSocketAddress remoteAddress;
-    private CompletableFuture<HttpResponse> httpResponse;
-    private final Function<HttpResponse, HttpResponse> overrideHttpResponse;
-    private final AtomicBoolean overrideHttpResponseApplied = new AtomicBoolean(false);
+  private final HttpRequest httpRequest;
+  private final InetSocketAddress remoteAddress;
+  private CompletableFuture<HttpResponse> httpResponse;
+  private final Function<HttpResponse, HttpResponse> overrideHttpResponse;
+  private final AtomicBoolean overrideHttpResponseApplied = new AtomicBoolean(false);
 
-    public HttpForwardActionResult(HttpRequest httpRequest, CompletableFuture<HttpResponse> httpResponse, Function<HttpResponse, HttpResponse> overrideHttpResponse) {
-        this(httpRequest, httpResponse, overrideHttpResponse, null);
+  public HttpForwardActionResult(
+      HttpRequest httpRequest,
+      CompletableFuture<HttpResponse> httpResponse,
+      Function<HttpResponse, HttpResponse> overrideHttpResponse) {
+    this(httpRequest, httpResponse, overrideHttpResponse, null);
+  }
+
+  HttpForwardActionResult(
+      HttpRequest httpRequest,
+      CompletableFuture<HttpResponse> httpResponse,
+      Function<HttpResponse, HttpResponse> overrideHttpResponse,
+      InetSocketAddress remoteAddress) {
+    this.httpRequest = httpRequest;
+    this.httpResponse = httpResponse;
+    this.overrideHttpResponse = overrideHttpResponse;
+    this.remoteAddress = remoteAddress;
+  }
+
+  public HttpRequest getHttpRequest() {
+    return httpRequest;
+  }
+
+  public CompletableFuture<HttpResponse> getHttpResponse() {
+    if (overrideHttpResponse == null) {
+      return httpResponse;
     }
-
-    HttpForwardActionResult(HttpRequest httpRequest, CompletableFuture<HttpResponse> httpResponse, Function<HttpResponse, HttpResponse> overrideHttpResponse, InetSocketAddress remoteAddress) {
-        this.httpRequest = httpRequest;
-        this.httpResponse = httpResponse;
-        this.overrideHttpResponse = overrideHttpResponse;
-        this.remoteAddress = remoteAddress;
-    }
-
-    public HttpRequest getHttpRequest() {
-        return httpRequest;
-    }
-
-    public CompletableFuture<HttpResponse> getHttpResponse() {
-        if (overrideHttpResponse == null) {
-            return httpResponse;
-        }
-        if (overrideHttpResponseApplied.compareAndSet(false, true)) {
-            httpResponse = httpResponse.thenApply(response -> {
+    if (overrideHttpResponseApplied.compareAndSet(false, true)) {
+      httpResponse =
+          httpResponse.thenApply(
+              response -> {
                 if (response != null) {
-                    return overrideHttpResponse.apply(response);
+                  return overrideHttpResponse.apply(response);
                 } else {
-                    return null;
+                  return null;
                 }
-            });
-        }
-        return httpResponse;
+              });
     }
+    return httpResponse;
+  }
 
-    public HttpForwardActionResult setHttpResponse(CompletableFuture<HttpResponse> httpResponse) {
-        this.httpResponse = httpResponse;
-        return this;
-    }
+  public HttpForwardActionResult setHttpResponse(CompletableFuture<HttpResponse> httpResponse) {
+    this.httpResponse = httpResponse;
+    return this;
+  }
 
-    public InetSocketAddress getRemoteAddress() {
-        return remoteAddress;
-    }
+  public InetSocketAddress getRemoteAddress() {
+    return remoteAddress;
+  }
 }

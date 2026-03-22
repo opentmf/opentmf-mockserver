@@ -7,6 +7,5 @@ import org.mockserver.log.MockServerEventLog;
  */
 public interface MockServerLogListener {
 
-    void updated(MockServerEventLog mockServerLog);
-
+  void updated(MockServerEventLog mockServerLog);
 }

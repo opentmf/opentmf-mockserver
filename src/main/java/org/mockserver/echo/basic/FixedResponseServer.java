@@ -13,25 +13,26 @@ import java.util.concurrent.TimeUnit;
  */
 public class FixedResponseServer {
 
-    public static void main(String[] args) throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
-        server.createContext("/simple", new HttpHandler() {
-            @Override
-            public void handle(HttpExchange t) throws IOException {
-                try {
-                    TimeUnit.MILLISECONDS.sleep(100);
-                } catch (InterruptedException e) {
-                    // ignore
-                }
-                String response = "This is the response";
-                t.sendResponseHeaders(200, response.length());
-                OutputStream os = t.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
+  public static void main(String[] args) throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+    server.createContext(
+        "/simple",
+        new HttpHandler() {
+          @Override
+          public void handle(HttpExchange t) throws IOException {
+            try {
+              TimeUnit.MILLISECONDS.sleep(100);
+            } catch (InterruptedException e) {
+              // ignore
             }
+            String response = "This is the response";
+            t.sendResponseHeaders(200, response.length());
+            OutputStream os = t.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
+          }
         });
-        server.setExecutor(null); // creates a default executor
-        server.start();
-    }
-
+    server.setExecutor(null); // creates a default executor
+    server.start();
+  }
 }

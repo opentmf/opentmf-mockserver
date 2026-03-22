@@ -9,34 +9,36 @@ import org.mockserver.model.JsonBody;
  */
 public class JsonBodyDTO extends BodyWithContentTypeDTO {
 
-    private final String json;
-    private final MatchType matchType;
-    private final byte[] rawBytes;
+  private final String json;
+  private final MatchType matchType;
+  private final byte[] rawBytes;
 
-    public JsonBodyDTO(JsonBody jsonBody) {
-        this(jsonBody, null);
-    }
+  public JsonBodyDTO(JsonBody jsonBody) {
+    this(jsonBody, null);
+  }
 
-    public JsonBodyDTO(JsonBody jsonBody, Boolean not) {
-        super(Body.Type.JSON, not, jsonBody);
-        json = jsonBody.getValue();
-        matchType = jsonBody.getMatchType();
-        rawBytes = jsonBody.getRawBytes();
-    }
+  public JsonBodyDTO(JsonBody jsonBody, Boolean not) {
+    super(Body.Type.JSON, not, jsonBody);
+    json = jsonBody.getValue();
+    matchType = jsonBody.getMatchType();
+    rawBytes = jsonBody.getRawBytes();
+  }
 
-    public String getJson() {
-        return json;
-    }
+  public String getJson() {
+    return json;
+  }
 
-    public MatchType getMatchType() {
-        return matchType;
-    }
+  public MatchType getMatchType() {
+    return matchType;
+  }
 
-    public byte[] getRawBytes() {
-        return rawBytes;
-    }
+  public byte[] getRawBytes() {
+    return rawBytes;
+  }
 
-    public JsonBody buildObject() {
-        return (JsonBody) new JsonBody(getJson(), getRawBytes(), getMediaType(), getMatchType()).withOptional(getOptional());
-    }
+  public JsonBody buildObject() {
+    return (JsonBody)
+        new JsonBody(getJson(), getRawBytes(), getMediaType(), getMatchType())
+            .withOptional(getOptional());
+  }
 }

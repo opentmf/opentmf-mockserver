@@ -1,4 +1,3 @@
 package org.mockserver.model;
 
-public interface Message {
-}
+public interface Message {}

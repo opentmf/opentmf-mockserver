@@ -7,24 +7,24 @@ import org.mockserver.model.ObjectWithReflectiveEqualsHashCodeToString;
  */
 public class WebSocketErrorDTO extends ObjectWithReflectiveEqualsHashCodeToString {
 
-    private String message;
-    private String webSocketCorrelationId;
+  private String message;
+  private String webSocketCorrelationId;
 
-    public String getMessage() {
-        return message;
-    }
+  public String getMessage() {
+    return message;
+  }
 
-    public WebSocketErrorDTO setMessage(String message) {
-        this.message = message;
-        return this;
-    }
+  public WebSocketErrorDTO setMessage(String message) {
+    this.message = message;
+    return this;
+  }
 
-    public String getWebSocketCorrelationId() {
-        return webSocketCorrelationId;
-    }
+  public String getWebSocketCorrelationId() {
+    return webSocketCorrelationId;
+  }
 
-    public WebSocketErrorDTO setWebSocketCorrelationId(String webSocketCorrelationId) {
-        this.webSocketCorrelationId = webSocketCorrelationId;
-        return this;
-    }
+  public WebSocketErrorDTO setWebSocketCorrelationId(String webSocketCorrelationId) {
+    this.webSocketCorrelationId = webSocketCorrelationId;
+    return this;
+  }
 }

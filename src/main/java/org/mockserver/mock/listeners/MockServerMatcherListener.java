@@ -7,6 +7,5 @@ import org.mockserver.mock.RequestMatchers;
  */
 public interface MockServerMatcherListener {
 
-    void updated(RequestMatchers requestMatchers, MockServerMatcherNotifier.Cause cause);
-
+  void updated(RequestMatchers requestMatchers, MockServerMatcherNotifier.Cause cause);
 }

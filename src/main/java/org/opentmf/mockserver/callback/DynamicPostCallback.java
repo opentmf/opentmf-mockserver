@@ -27,13 +27,14 @@ import tools.jackson.databind.node.ObjectNode;
  * <h2>DynamicPostCallback</h2>
  *
  * <ul>
- *   <li>Tries to retrieve <code>id</code> and <code>version</code> (if versioned entity) from the payload.
- *   <li>If versioned entity but no <code>version</code> in the payload, tries to retrieve the version from the
- *       path using <code>:(version=XYZ)</code>
- *   <li>If versioned entity but no <code>version</code> found yet, tries to get the version from the query
- *       parameters like <code>?version=XYZ</code>
- *   <li>If <code>id</code> and `<code>version</code> (if versioned entity) is provided, checks if that exists in the
- *       payload cache. Returns 400 if so.
+ *   <li>Tries to retrieve <code>id</code> and <code>version</code> (if versioned entity) from the
+ *       payload.
+ *   <li>If versioned entity but no <code>version</code> in the payload, tries to retrieve the
+ *       version from the path using <code>:(version=XYZ)</code>
+ *   <li>If versioned entity but no <code>version</code> found yet, tries to get the version from
+ *       the query parameters like <code>?version=XYZ</code>
+ *   <li>If <code>id</code> and `<code>version</code> (if versioned entity) is provided, checks if
+ *       that exists in the payload cache. Returns 400 if so.
  *   <li>Uses either the provided id, or generates a new id for the posted payload.
  *   <li>If a versioned entity and version is not provided, sets <code>"version": "0"</code>.
  *   <li>Adds createdBy, createdDate and revision fields. Overrides if they are already provided.
@@ -101,8 +102,8 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(
-        httpRequest, "writer", "admin");
+    HttpResponse authError =
+        TokenEnforcer.getInstance().validateWithRoles(httpRequest, "writer", "admin");
     if (authError != null) {
       return authError;
     }

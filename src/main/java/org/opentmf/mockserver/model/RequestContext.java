@@ -3,9 +3,9 @@ package org.opentmf.mockserver.model;
 import static org.opentmf.mockserver.model.TmfConstants.ID;
 import static org.opentmf.mockserver.model.TmfConstants.VERSION;
 
+import io.hypersistence.tsid.TSID;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import io.hypersistence.tsid.TSID;
 import java.util.Locale;
 import org.apache.commons.lang3.StringUtils;
 import org.mockserver.model.HttpRequest;

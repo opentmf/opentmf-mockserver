@@ -13,17 +13,16 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class CookiesSerializer extends StdSerializer<Cookies> {
 
-    public CookiesSerializer() {
-        super(Cookies.class);
-    }
+  public CookiesSerializer() {
+    super(Cookies.class);
+  }
 
-    @Override
-    public void serialize(Cookies collection, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        for (Cookie cookie : collection.getEntries()) {
-            jgen.writePOJOProperty(serialiseNottableString(cookie.getName()), cookie.getValue());
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(Cookies collection, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    for (Cookie cookie : collection.getEntries()) {
+      jgen.writePOJOProperty(serialiseNottableString(cookie.getName()), cookie.getValue());
     }
-
+    jgen.writeEndObject();
+  }
 }

@@ -10,17 +10,21 @@ import org.mockserver.mappers.FullHttpResponseToMockServerHttpResponse;
 /**
  * @author jamesdbloom
  */
-public class NettyHttpToMockServerHttpResponseDecoder extends MessageToMessageDecoder<FullHttpResponse> {
+public class NettyHttpToMockServerHttpResponseDecoder
+    extends MessageToMessageDecoder<FullHttpResponse> {
 
-    private final FullHttpResponseToMockServerHttpResponse fullHttpResponseToMockServerResponse;
+  private final FullHttpResponseToMockServerHttpResponse fullHttpResponseToMockServerResponse;
 
-    NettyHttpToMockServerHttpResponseDecoder(MockServerLogger mockServerLogger) {
-        fullHttpResponseToMockServerResponse = new FullHttpResponseToMockServerHttpResponse(mockServerLogger);
-    }
+  NettyHttpToMockServerHttpResponseDecoder(MockServerLogger mockServerLogger) {
+    fullHttpResponseToMockServerResponse =
+        new FullHttpResponseToMockServerHttpResponse(mockServerLogger);
+  }
 
-    @Override
-    protected void decode(ChannelHandlerContext ctx, FullHttpResponse fullHttpResponse, List<Object> out) {
-        out.add(fullHttpResponseToMockServerResponse.mapFullHttpResponseToMockServerResponse(fullHttpResponse));
-    }
-
+  @Override
+  protected void decode(
+      ChannelHandlerContext ctx, FullHttpResponse fullHttpResponse, List<Object> out) {
+    out.add(
+        fullHttpResponseToMockServerResponse.mapFullHttpResponseToMockServerResponse(
+            fullHttpResponse));
+  }
 }

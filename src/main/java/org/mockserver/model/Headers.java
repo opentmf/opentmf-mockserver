@@ -9,37 +9,35 @@ import java.util.List;
  */
 public class Headers extends KeysToMultiValues<Header, Headers> {
 
-    public Headers(List<Header> headers) {
-        withEntries(headers);
-    }
+  public Headers(List<Header> headers) {
+    withEntries(headers);
+  }
 
-    public Headers(Header... headers) {
-        withEntries(headers);
-    }
+  public Headers(Header... headers) {
+    withEntries(headers);
+  }
 
-    public Headers(Multimap<NottableString, NottableString> headers) {
-        super(headers);
-    }
+  public Headers(Multimap<NottableString, NottableString> headers) {
+    super(headers);
+  }
 
-    public static Headers headers(Header... headers) {
-        return new Headers(headers);
-    }
+  public static Headers headers(Header... headers) {
+    return new Headers(headers);
+  }
 
-    @Override
-    public Header build(NottableString name, Collection<NottableString> values) {
-        return new Header(name, values);
-    }
+  @Override
+  public Header build(NottableString name, Collection<NottableString> values) {
+    return new Header(name, values);
+  }
 
-    protected void isModified() {
-    }
+  protected void isModified() {}
 
-    public Headers withKeyMatchStyle(KeyMatchStyle keyMatchStyle) {
-        super.withKeyMatchStyle(keyMatchStyle);
-        return this;
-    }
+  public Headers withKeyMatchStyle(KeyMatchStyle keyMatchStyle) {
+    super.withKeyMatchStyle(keyMatchStyle);
+    return this;
+  }
 
-    public Headers clone() {
-        return new Headers(getMultimap());
-    }
-
+  public Headers clone() {
+    return new Headers(getMultimap());
+  }
 }

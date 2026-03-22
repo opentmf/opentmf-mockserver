@@ -9,22 +9,21 @@ import org.mockserver.model.ObjectWithReflectiveEqualsHashCodeToString;
  * @author jamesdbloom
  */
 public class KeyToMultiValueDTO extends ObjectWithReflectiveEqualsHashCodeToString {
-    private NottableString name;
-    private List<NottableString> values;
+  private NottableString name;
+  private List<NottableString> values;
 
-    protected KeyToMultiValueDTO(KeyToMultiValue keyToMultiValue) {
-        name = keyToMultiValue.getName();
-        values = keyToMultiValue.getValues();
-    }
+  protected KeyToMultiValueDTO(KeyToMultiValue keyToMultiValue) {
+    name = keyToMultiValue.getName();
+    values = keyToMultiValue.getValues();
+  }
 
-    protected KeyToMultiValueDTO() {
-    }
+  protected KeyToMultiValueDTO() {}
 
-    public NottableString getName() {
-        return name;
-    }
+  public NottableString getName() {
+    return name;
+  }
 
-    public List<NottableString> getValues() {
-        return values;
-    }
+  public List<NottableString> getValues() {
+    return values;
+  }
 }

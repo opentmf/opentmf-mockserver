@@ -30,7 +30,8 @@ import tools.jackson.databind.JsonNode;
 public class PayloadCache {
 
   private static final Logger LOG = LoggerFactory.getLogger(PayloadCache.class);
-  private static final String NO_CACHE_ENTRY_FOUND_FOR_DOMAIN = "No cache entry found for domain = \"{}\"";
+  private static final String NO_CACHE_ENTRY_FOUND_FOR_DOMAIN =
+      "No cache entry found for domain = \"{}\"";
   private static final String START_EVICTING_OLD_CACHE_ITEMS = "Start evicting old cache items.";
   private static final String DOMAIN_WITH = "domain = \"{}\" with [{}]";
 
@@ -80,7 +81,8 @@ public class PayloadCache {
     timeCache.putIfAbsent(ctx.getDomain(), new TreeMap<>());
 
     if (dataCache.get(ctx.getDomain()).containsKey(ctx.getId())) {
-      throw new IllegalArgumentException("Key: [" + ctx.getId() + "] already exists in cache for domain ");
+      throw new IllegalArgumentException(
+          "Key: [" + ctx.getId() + "] already exists in cache for domain ");
     }
 
     dataCache.get(ctx.getDomain()).put(ctx.getId(), value);
@@ -102,7 +104,9 @@ public class PayloadCache {
     // null sorts before everything in Id.compareTo, so use null as the lower bound
     // to capture both non-versioned (version=null) and all versioned entries
     lowerBound.setVersion(null);
-    timeCache.get(ctx.getDomain()).subMap(lowerBound, true, allOf(lowerBound), true)
+    timeCache
+        .get(ctx.getDomain())
+        .subMap(lowerBound, true, allOf(lowerBound), true)
         .replaceAll((k, v) -> System.currentTimeMillis());
   }
 
@@ -123,8 +127,7 @@ public class PayloadCache {
       return null;
     }
     TreeMap<Id, JsonNode> map = dataCache.get(domain);
-    Map.Entry<Id, JsonNode> lastEntry =
-        map.subMap(key, true, allOf(key), true).lastEntry();
+    Map.Entry<Id, JsonNode> lastEntry = map.subMap(key, true, allOf(key), true).lastEntry();
     if (lastEntry == null || lastEntry.getValue() == null || !lastEntry.getValue().has(VERSION)) {
       return null;
     }
@@ -142,7 +145,10 @@ public class PayloadCache {
   }
 
   public synchronized SortedMap<Id, JsonNode> getAll(String domain) {
-    LOG.info("Getting cache entries for domain = \"{}\". Existing domain list: {}", domain, dataCache.keySet());
+    LOG.info(
+        "Getting cache entries for domain = \"{}\". Existing domain list: {}",
+        domain,
+        dataCache.keySet());
 
     if (dataCache.get(domain) == null) {
       LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
@@ -154,8 +160,7 @@ public class PayloadCache {
   public synchronized void clear(RequestContext ctx) {
     dataCache.get(ctx.getDomain()).remove(ctx.getId());
     timeCache.get(ctx.getDomain()).remove(ctx.getId());
-    LOG.info("Old cache entry for " + DOMAIN_WITH + " is removed", ctx.getDomain(),
-        ctx.getId());
+    LOG.info("Old cache entry for " + DOMAIN_WITH + " is removed", ctx.getDomain(), ctx.getId());
   }
 
   private synchronized void evictOldItems() {

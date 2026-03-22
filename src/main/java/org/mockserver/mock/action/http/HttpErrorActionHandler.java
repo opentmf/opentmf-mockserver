@@ -10,18 +10,19 @@ import org.mockserver.model.HttpError;
  */
 public class HttpErrorActionHandler {
 
-    public void handle(HttpError httpError, ChannelHandlerContext ctx) {
-        if (httpError.getResponseBytes() != null) {
-            // write byte directly by skipping over HTTP codec
-            ChannelHandlerContext httpCodecContext = ctx.pipeline().context(HttpServerCodec.class);
-            if (httpCodecContext != null) {
-                httpCodecContext.writeAndFlush(Unpooled.wrappedBuffer(httpError.getResponseBytes())).awaitUninterruptibly();
-            }
-        }
-        if (httpError.getDropConnection() != null && httpError.getDropConnection()) {
-            ctx.disconnect();
-            ctx.close();
-        }
+  public void handle(HttpError httpError, ChannelHandlerContext ctx) {
+    if (httpError.getResponseBytes() != null) {
+      // write byte directly by skipping over HTTP codec
+      ChannelHandlerContext httpCodecContext = ctx.pipeline().context(HttpServerCodec.class);
+      if (httpCodecContext != null) {
+        httpCodecContext
+            .writeAndFlush(Unpooled.wrappedBuffer(httpError.getResponseBytes()))
+            .awaitUninterruptibly();
+      }
     }
-
+    if (httpError.getDropConnection() != null && httpError.getDropConnection()) {
+      ctx.disconnect();
+      ctx.close();
+    }
+  }
 }

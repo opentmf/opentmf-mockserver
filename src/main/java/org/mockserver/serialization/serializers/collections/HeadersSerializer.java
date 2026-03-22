@@ -7,8 +7,7 @@ import org.mockserver.model.Headers;
  */
 public class HeadersSerializer extends KeysToMultiValuesSerializer<Headers> {
 
-    public HeadersSerializer() {
-        super(Headers.class);
-    }
-
+  public HeadersSerializer() {
+    super(Headers.class);
+  }
 }

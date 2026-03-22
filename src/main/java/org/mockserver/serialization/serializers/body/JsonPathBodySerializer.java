@@ -10,21 +10,22 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class JsonPathBodySerializer extends StdSerializer<JsonPathBody> {
 
-    public JsonPathBodySerializer() {
-        super(JsonPathBody.class);
-    }
+  public JsonPathBodySerializer() {
+    super(JsonPathBody.class);
+  }
 
-    @Override
-    public void serialize(JsonPathBody jsonPathBody, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (jsonPathBody.getNot() != null && jsonPathBody.getNot()) {
-            jgen.writeBooleanProperty("not", jsonPathBody.getNot());
-        }
-        if (jsonPathBody.getOptional() != null && jsonPathBody.getOptional()) {
-            jgen.writeBooleanProperty("optional", jsonPathBody.getOptional());
-        }
-        jgen.writeStringProperty("type", jsonPathBody.getType().name());
-        jgen.writeStringProperty("jsonPath", jsonPathBody.getValue());
-        jgen.writeEndObject();
+  @Override
+  public void serialize(
+      JsonPathBody jsonPathBody, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (jsonPathBody.getNot() != null && jsonPathBody.getNot()) {
+      jgen.writeBooleanProperty("not", jsonPathBody.getNot());
     }
+    if (jsonPathBody.getOptional() != null && jsonPathBody.getOptional()) {
+      jgen.writeBooleanProperty("optional", jsonPathBody.getOptional());
+    }
+    jgen.writeStringProperty("type", jsonPathBody.getType().name());
+    jgen.writeStringProperty("jsonPath", jsonPathBody.getValue());
+    jgen.writeEndObject();
+  }
 }

@@ -19,15 +19,16 @@ import tools.jackson.databind.node.ObjectNode;
  */
 public final class JacksonUtil {
 
-  private static final JsonMapper OBJECT_MAPPER = JsonMapper.builder()
-      .changeDefaultPropertyInclusion(v -> v.withValueInclusion(JsonInclude.Include.NON_NULL))
-      .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-      .addModule(new SimpleModule("OffsetDateTimeModule")
-          .addDeserializer(OffsetDateTime.class, new DelegatingDateTimeDeserializer()))
-      .build();
+  private static final JsonMapper OBJECT_MAPPER =
+      JsonMapper.builder()
+          .changeDefaultPropertyInclusion(v -> v.withValueInclusion(JsonInclude.Include.NON_NULL))
+          .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+          .addModule(
+              new SimpleModule("OffsetDateTimeModule")
+                  .addDeserializer(OffsetDateTime.class, new DelegatingDateTimeDeserializer()))
+          .build();
 
-  private JacksonUtil() {
-  }
+  private JacksonUtil() {}
 
   public static JsonNode readAsTree(String json) {
     try {
@@ -50,8 +51,7 @@ public final class JacksonUtil {
   }
 
   public static List<JsonNode> convertToJsonNodeList(List<Object> list) {
-    return OBJECT_MAPPER.convertValue(list, new TypeReference<List<JsonNode>>() {
-    });
+    return OBJECT_MAPPER.convertValue(list, new TypeReference<List<JsonNode>>() {});
   }
 
   public static ArrayNode createArrayNode() {
@@ -67,8 +67,7 @@ public final class JacksonUtil {
 
     @Override
     public OffsetDateTime deserialize(
-        tools.jackson.core.JsonParser p,
-        tools.jackson.databind.DeserializationContext context) {
+        tools.jackson.core.JsonParser p, tools.jackson.databind.DeserializationContext context) {
       String text = p.getText();
       try {
         return OffsetDateTime.parse(text);

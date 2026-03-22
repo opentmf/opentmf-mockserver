@@ -7,8 +7,7 @@ import org.mockserver.model.Parameters;
  */
 public class ParametersSerializer extends KeysToMultiValuesSerializer<Parameters> {
 
-    public ParametersSerializer() {
-        super(Parameters.class);
-    }
-
+  public ParametersSerializer() {
+    super(Parameters.class);
+  }
 }

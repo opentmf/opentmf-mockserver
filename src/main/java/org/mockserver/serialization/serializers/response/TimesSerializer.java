@@ -10,18 +10,18 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class TimesSerializer extends StdSerializer<Times> {
 
-    public TimesSerializer() {
-        super(Times.class);
-    }
+  public TimesSerializer() {
+    super(Times.class);
+  }
 
-    @Override
-    public void serialize(Times times, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (!times.isUnlimited()) {
-            jgen.writeNumberProperty("remainingTimes", times.getRemainingTimes());
-        } else {
-            jgen.writeBooleanProperty("unlimited", times.isUnlimited());
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(Times times, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (!times.isUnlimited()) {
+      jgen.writeNumberProperty("remainingTimes", times.getRemainingTimes());
+    } else {
+      jgen.writeBooleanProperty("unlimited", times.isUnlimited());
     }
+    jgen.writeEndObject();
+  }
 }

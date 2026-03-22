@@ -9,21 +9,25 @@ import tools.jackson.databind.ser.std.StdSerializer;
 /**
  * @author jamesdbloom
  */
-public class HttpRequestsPropertiesMatcherSerializer extends StdSerializer<HttpRequestsPropertiesMatcher> {
+public class HttpRequestsPropertiesMatcherSerializer
+    extends StdSerializer<HttpRequestsPropertiesMatcher> {
 
-    public HttpRequestsPropertiesMatcherSerializer() {
-        super(HttpRequestsPropertiesMatcher.class);
+  public HttpRequestsPropertiesMatcherSerializer() {
+    super(HttpRequestsPropertiesMatcher.class);
+  }
+
+  @Override
+  public void serialize(
+      HttpRequestsPropertiesMatcher httpRequestsPropertiesMatcher,
+      JsonGenerator jgen,
+      SerializationContext provider) {
+    jgen.writeStartArray();
+    if (httpRequestsPropertiesMatcher.getHttpRequestPropertiesMatchers() != null) {
+      for (HttpRequestPropertiesMatcher httpRequestPropertiesMatcher :
+          httpRequestsPropertiesMatcher.getHttpRequestPropertiesMatchers()) {
+        jgen.writePOJO(httpRequestPropertiesMatcher);
+      }
     }
-
-    @Override
-    public void serialize(HttpRequestsPropertiesMatcher httpRequestsPropertiesMatcher, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartArray();
-        if (httpRequestsPropertiesMatcher.getHttpRequestPropertiesMatchers() != null) {
-            for (HttpRequestPropertiesMatcher httpRequestPropertiesMatcher : httpRequestsPropertiesMatcher.getHttpRequestPropertiesMatchers()) {
-                jgen.writePOJO(httpRequestPropertiesMatcher);
-            }
-        }
-        jgen.writeEndArray();
-    }
-
+    jgen.writeEndArray();
+  }
 }

@@ -7,6 +7,5 @@ import java.io.Closeable;
  */
 public interface Stoppable extends Closeable {
 
-    void stop();
-
+  void stop();
 }

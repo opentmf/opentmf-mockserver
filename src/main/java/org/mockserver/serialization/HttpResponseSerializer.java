@@ -26,143 +26,167 @@ import tools.jackson.databind.ObjectWriter;
  */
 @SuppressWarnings("FieldMayBeFinal")
 public class HttpResponseSerializer implements Serializer<HttpResponse> {
-    private final MockServerLogger mockServerLogger;
-    private ObjectWriter objectWriter = ObjectMapperFactory.createObjectMapper(true, false);
-    private ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
-    private JsonArraySerializer jsonArraySerializer = new JsonArraySerializer();
-    private JsonSchemaHttpResponseValidator httpResponseValidator;
+  private final MockServerLogger mockServerLogger;
+  private ObjectWriter objectWriter = ObjectMapperFactory.createObjectMapper(true, false);
+  private ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
+  private JsonArraySerializer jsonArraySerializer = new JsonArraySerializer();
+  private JsonSchemaHttpResponseValidator httpResponseValidator;
 
-    public HttpResponseSerializer(MockServerLogger mockServerLogger) {
-        this.mockServerLogger = mockServerLogger;
+  public HttpResponseSerializer(MockServerLogger mockServerLogger) {
+    this.mockServerLogger = mockServerLogger;
+  }
+
+  private JsonSchemaHttpResponseValidator getValidator() {
+    if (httpResponseValidator == null) {
+      httpResponseValidator = jsonSchemaHttpResponseValidator(mockServerLogger);
     }
+    return httpResponseValidator;
+  }
 
-    private JsonSchemaHttpResponseValidator getValidator() {
-        if (httpResponseValidator == null) {
-            httpResponseValidator = jsonSchemaHttpResponseValidator(mockServerLogger);
+  public String serialize(HttpResponse httpResponse) {
+    try {
+      return objectWriter.writeValueAsString(new HttpResponseDTO(httpResponse));
+    } catch (Exception e) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setMessageFormat(
+                  "exception while serializing httpResponse to JSON with value " + httpResponse)
+              .setThrowable(e));
+      throw new RuntimeException(
+          "Exception while serializing httpResponse to JSON with value " + httpResponse, e);
+    }
+  }
+
+  public String serialize(List<HttpResponse> httpResponses) {
+    return serialize(httpResponses.toArray(new HttpResponse[0]));
+  }
+
+  public String serialize(HttpResponse... httpResponses) {
+    try {
+      if (httpResponses != null && httpResponses.length > 0) {
+        HttpResponseDTO[] httpResponseDTOs = new HttpResponseDTO[httpResponses.length];
+        for (int i = 0; i < httpResponses.length; i++) {
+          httpResponseDTOs[i] = new HttpResponseDTO(httpResponses[i]);
         }
-        return httpResponseValidator;
+        return objectWriter.writeValueAsString(httpResponseDTOs);
+      } else {
+        return "[]";
+      }
+    } catch (Exception e) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setMessageFormat(
+                  "exception while serializing HttpResponse to JSON with value "
+                      + Arrays.asList(httpResponses))
+              .setThrowable(e));
+      throw new RuntimeException(
+          "Exception while serializing HttpResponse to JSON with value "
+              + Arrays.asList(httpResponses),
+          e);
     }
+  }
 
-    public String serialize(HttpResponse httpResponse) {
+  public HttpResponse deserialize(String jsonHttpResponse) {
+    if (isBlank(jsonHttpResponse)) {
+      throw new IllegalArgumentException(
+          "1 error:"
+              + NEW_LINE
+              + " - a response is required but value was \""
+              + jsonHttpResponse
+              + "\""
+              + NEW_LINE
+              + NEW_LINE
+              + OPEN_API_SPECIFICATION_URL);
+    } else {
+      if (jsonHttpResponse.contains("\"httpResponse\"")) {
         try {
-            return objectWriter.writeValueAsString(new HttpResponseDTO(httpResponse));
-        } catch (Exception e) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(Level.ERROR)
-                    .setMessageFormat("exception while serializing httpResponse to JSON with value " + httpResponse)
-                    .setThrowable(e)
-            );
-            throw new RuntimeException("Exception while serializing httpResponse to JSON with value " + httpResponse, e);
+          JsonNode jsonNode = objectMapper.readTree(jsonHttpResponse);
+          if (jsonNode.has("httpResponse")) {
+            jsonHttpResponse = jsonNode.get("httpResponse").toString();
+          }
+        } catch (Throwable throwable) {
+          mockServerLogger.logEvent(
+              new LogEntry()
+                  .setLogLevel(Level.ERROR)
+                  .setMessageFormat(
+                      "exception while parsing{}for HttpResponse" + throwable.getMessage())
+                  .setArguments(jsonHttpResponse)
+                  .setThrowable(throwable));
+          throw new IllegalArgumentException(
+              "exception while parsing [" + jsonHttpResponse + "] for HttpResponse", throwable);
         }
-    }
-
-    public String serialize(List<HttpResponse> httpResponses) {
-        return serialize(httpResponses.toArray(new HttpResponse[0]));
-    }
-
-    public String serialize(HttpResponse... httpResponses) {
+      }
+      String validationErrors = getValidator().isValid(jsonHttpResponse);
+      if (validationErrors.isEmpty()) {
+        HttpResponse httpResponse = null;
         try {
-            if (httpResponses != null && httpResponses.length > 0) {
-                HttpResponseDTO[] httpResponseDTOs = new HttpResponseDTO[httpResponses.length];
-                for (int i = 0; i < httpResponses.length; i++) {
-                    httpResponseDTOs[i] = new HttpResponseDTO(httpResponses[i]);
-                }
-                return objectWriter.writeValueAsString(httpResponseDTOs);
-            } else {
-                return "[]";
-            }
-        } catch (Exception e) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(Level.ERROR)
-                    .setMessageFormat("exception while serializing HttpResponse to JSON with value " + Arrays.asList(httpResponses))
-                    .setThrowable(e)
-            );
-            throw new RuntimeException("Exception while serializing HttpResponse to JSON with value " + Arrays.asList(httpResponses), e);
+          HttpResponseDTO httpResponseDTO =
+              objectMapper.readValue(jsonHttpResponse, HttpResponseDTO.class);
+          if (httpResponseDTO != null) {
+            httpResponse = httpResponseDTO.buildObject();
+          }
+        } catch (Throwable throwable) {
+          mockServerLogger.logEvent(
+              new LogEntry()
+                  .setLogLevel(Level.ERROR)
+                  .setMessageFormat(
+                      "exception while parsing{}for HttpResponse " + throwable.getMessage())
+                  .setArguments(jsonHttpResponse)
+                  .setThrowable(throwable));
+          throw new IllegalArgumentException(
+              "exception while parsing [" + jsonHttpResponse + "] for HttpResponse", throwable);
         }
+        return httpResponse;
+      } else {
+        throw new IllegalArgumentException(
+            StringUtils.removeEndIgnoreCase(
+                formatLogMessage(
+                    "incorrect response json format for:{}schema validation errors:{}",
+                    jsonHttpResponse,
+                    validationErrors),
+                "\n"));
+      }
     }
+  }
 
-    public HttpResponse deserialize(String jsonHttpResponse) {
-        if (isBlank(jsonHttpResponse)) {
-            throw new IllegalArgumentException(
-                "1 error:" + NEW_LINE +
-                    " - a response is required but value was \"" + jsonHttpResponse + "\"" + NEW_LINE +
-                    NEW_LINE +
-                    OPEN_API_SPECIFICATION_URL
-            );
-        } else {
-            if (jsonHttpResponse.contains("\"httpResponse\"")) {
-                try {
-                    JsonNode jsonNode = objectMapper.readTree(jsonHttpResponse);
-                    if (jsonNode.has("httpResponse")) {
-                        jsonHttpResponse = jsonNode.get("httpResponse").toString();
-                    }
-                } catch (Throwable throwable) {
-                    mockServerLogger.logEvent(
-                        new LogEntry()
-                            .setLogLevel(Level.ERROR)
-                            .setMessageFormat("exception while parsing{}for HttpResponse" + throwable.getMessage())
-                            .setArguments(jsonHttpResponse)
-                            .setThrowable(throwable)
-                    );
-                    throw new IllegalArgumentException("exception while parsing [" + jsonHttpResponse + "] for HttpResponse", throwable);
-                }
-            }
-            String validationErrors = getValidator().isValid(jsonHttpResponse);
-            if (validationErrors.isEmpty()) {
-                HttpResponse httpResponse = null;
-                try {
-                    HttpResponseDTO httpResponseDTO = objectMapper.readValue(jsonHttpResponse, HttpResponseDTO.class);
-                    if (httpResponseDTO != null) {
-                        httpResponse = httpResponseDTO.buildObject();
-                    }
-                } catch (Throwable throwable) {
-                    mockServerLogger.logEvent(
-                        new LogEntry()
-                            .setLogLevel(Level.ERROR)
-                            .setMessageFormat("exception while parsing{}for HttpResponse " + throwable.getMessage())
-                            .setArguments(jsonHttpResponse)
-                            .setThrowable(throwable)
-                    );
-                    throw new IllegalArgumentException("exception while parsing [" + jsonHttpResponse + "] for HttpResponse", throwable);
-                }
-                return httpResponse;
-            } else {
-                throw new IllegalArgumentException(StringUtils.removeEndIgnoreCase(formatLogMessage("incorrect response json format for:{}schema validation errors:{}", jsonHttpResponse, validationErrors), "\n"));
-            }
+  @Override
+  public Class<HttpResponse> supportsType() {
+    return HttpResponse.class;
+  }
+
+  public HttpResponse[] deserializeArray(String jsonHttpResponses) {
+    List<HttpResponse> httpResponses = new ArrayList<>();
+    if (isBlank(jsonHttpResponses)) {
+      throw new IllegalArgumentException(
+          "1 error:"
+              + NEW_LINE
+              + " - a response or response array is required but value was \""
+              + jsonHttpResponses
+              + "\"");
+    } else {
+      List<String> jsonResponseList = jsonArraySerializer.splitJSONArray(jsonHttpResponses);
+      if (jsonResponseList.isEmpty()) {
+        throw new IllegalArgumentException(
+            "1 error:" + NEW_LINE + " - a response or array of response is required");
+      } else {
+        List<String> validationErrorsList = new ArrayList<>();
+        for (String jsonExpectation : jsonResponseList) {
+          try {
+            httpResponses.add(deserialize(jsonExpectation));
+          } catch (IllegalArgumentException iae) {
+            validationErrorsList.add(iae.getMessage());
+          }
         }
-    }
-
-    @Override
-    public Class<HttpResponse> supportsType() {
-        return HttpResponse.class;
-    }
-
-    public HttpResponse[] deserializeArray(String jsonHttpResponses) {
-        List<HttpResponse> httpResponses = new ArrayList<>();
-        if (isBlank(jsonHttpResponses)) {
-            throw new IllegalArgumentException("1 error:" + NEW_LINE + " - a response or response array is required but value was \"" + jsonHttpResponses + "\"");
-        } else {
-            List<String> jsonResponseList = jsonArraySerializer.splitJSONArray(jsonHttpResponses);
-            if (jsonResponseList.isEmpty()) {
-                throw new IllegalArgumentException("1 error:" + NEW_LINE + " - a response or array of response is required");
-            } else {
-                List<String> validationErrorsList = new ArrayList<>();
-                for (String jsonExpectation : jsonResponseList) {
-                    try {
-                        httpResponses.add(deserialize(jsonExpectation));
-                    } catch (IllegalArgumentException iae) {
-                        validationErrorsList.add(iae.getMessage());
-                    }
-
-                }
-                if (!validationErrorsList.isEmpty()) {
-                    throw new IllegalArgumentException((validationErrorsList.size() > 1 ? "[" : "") + Joiner.on("," + NEW_LINE).join(validationErrorsList) + (validationErrorsList.size() > 1 ? "]" : ""));
-                }
-            }
+        if (!validationErrorsList.isEmpty()) {
+          throw new IllegalArgumentException(
+              (validationErrorsList.size() > 1 ? "[" : "")
+                  + Joiner.on("," + NEW_LINE).join(validationErrorsList)
+                  + (validationErrorsList.size() > 1 ? "]" : ""));
         }
-        return httpResponses.toArray(new HttpResponse[0]);
+      }
     }
-
+    return httpResponses.toArray(new HttpResponse[0]);
+  }
 }

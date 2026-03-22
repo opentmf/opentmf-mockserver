@@ -13,23 +13,32 @@ import org.mockserver.model.HttpTemplate;
  */
 public class HttpTemplateToJavaSerializer implements ToJavaSerializer<HttpTemplate> {
 
-    @Override
-    public String serialize(int numberOfSpacesToIndent, HttpTemplate httpTemplate) {
-        StringBuffer output = new StringBuffer();
-        if (httpTemplate != null) {
-            appendNewLineAndIndent(numberOfSpacesToIndent * INDENT_SIZE, output).append("template(HttpTemplate.TemplateType.").append(httpTemplate.getTemplateType().name()).append(")");
-            if (isNotBlank(httpTemplate.getTemplate())) {
-                appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output).append(".withTemplate(\"").append(StringEscapeUtils.escapeJava(httpTemplate.getTemplate())).append("\")");
-            }
-            if (httpTemplate.getDelay() != null) {
-                appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output).append(".withDelay(").append(new DelayToJavaSerializer().serialize(0, httpTemplate.getDelay())).append(")");
-            }
-        }
-
-        return output.toString();
+  @Override
+  public String serialize(int numberOfSpacesToIndent, HttpTemplate httpTemplate) {
+    StringBuffer output = new StringBuffer();
+    if (httpTemplate != null) {
+      appendNewLineAndIndent(numberOfSpacesToIndent * INDENT_SIZE, output)
+          .append("template(HttpTemplate.TemplateType.")
+          .append(httpTemplate.getTemplateType().name())
+          .append(")");
+      if (isNotBlank(httpTemplate.getTemplate())) {
+        appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output)
+            .append(".withTemplate(\"")
+            .append(StringEscapeUtils.escapeJava(httpTemplate.getTemplate()))
+            .append("\")");
+      }
+      if (httpTemplate.getDelay() != null) {
+        appendNewLineAndIndent((numberOfSpacesToIndent + 1) * INDENT_SIZE, output)
+            .append(".withDelay(")
+            .append(new DelayToJavaSerializer().serialize(0, httpTemplate.getDelay()))
+            .append(")");
+      }
     }
 
-    private StringBuffer appendNewLineAndIndent(int numberOfSpacesToIndent, StringBuffer output) {
-        return output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent, ' '));
-    }
+    return output.toString();
+  }
+
+  private StringBuffer appendNewLineAndIndent(int numberOfSpacesToIndent, StringBuffer output) {
+    return output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent, ' '));
+  }
 }

@@ -21,73 +21,84 @@ import tools.jackson.databind.ObjectWriter;
  */
 @SuppressWarnings("FieldMayBeFinal")
 public class VerificationSerializer implements Serializer<Verification> {
-    private final MockServerLogger mockServerLogger;
-    private ObjectWriter objectWriter = ObjectMapperFactory.createObjectMapper(true, false);
-    private ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
-    private JsonSchemaVerificationValidator verificationValidator;
+  private final MockServerLogger mockServerLogger;
+  private ObjectWriter objectWriter = ObjectMapperFactory.createObjectMapper(true, false);
+  private ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
+  private JsonSchemaVerificationValidator verificationValidator;
 
-    public VerificationSerializer(MockServerLogger mockServerLogger) {
-        this.mockServerLogger = mockServerLogger;
+  public VerificationSerializer(MockServerLogger mockServerLogger) {
+    this.mockServerLogger = mockServerLogger;
+  }
+
+  private JsonSchemaVerificationValidator getValidator() {
+    if (verificationValidator == null) {
+      verificationValidator = jsonSchemaVerificationValidator(mockServerLogger);
     }
+    return verificationValidator;
+  }
 
-    private JsonSchemaVerificationValidator getValidator() {
-        if (verificationValidator == null) {
-            verificationValidator = jsonSchemaVerificationValidator(mockServerLogger);
-        }
-        return verificationValidator;
+  public String serialize(Verification verification) {
+    try {
+      return objectWriter.writeValueAsString(new VerificationDTO(verification));
+    } catch (Exception e) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setMessageFormat(
+                  "exception while serializing verification to JSON with value " + verification)
+              .setThrowable(e));
+      throw new RuntimeException(
+          "Exception while serializing verification to JSON with value " + verification, e);
     }
+  }
 
-    public String serialize(Verification verification) {
+  public Verification deserialize(String jsonVerification) {
+    if (isBlank(jsonVerification)) {
+      throw new IllegalArgumentException(
+          "1 error:"
+              + NEW_LINE
+              + " - a verification is required but value was \""
+              + jsonVerification
+              + "\""
+              + NEW_LINE
+              + NEW_LINE
+              + OPEN_API_SPECIFICATION_URL);
+    } else {
+      String validationErrors = getValidator().isValid(jsonVerification);
+      if (validationErrors.isEmpty()) {
+        Verification verification = null;
         try {
-            return objectWriter.writeValueAsString(new VerificationDTO(verification));
-        } catch (Exception e) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(Level.ERROR)
-                    .setMessageFormat("exception while serializing verification to JSON with value " + verification)
-                    .setThrowable(e)
-            );
-            throw new RuntimeException("Exception while serializing verification to JSON with value " + verification, e);
+          VerificationDTO verificationDTO =
+              objectMapper.readValue(jsonVerification, VerificationDTO.class);
+          if (verificationDTO != null) {
+            verification = verificationDTO.buildObject();
+          }
+        } catch (Throwable throwable) {
+          mockServerLogger.logEvent(
+              new LogEntry()
+                  .setLogLevel(Level.ERROR)
+                  .setMessageFormat(
+                      "exception while parsing{}for Verification " + throwable.getMessage())
+                  .setArguments(jsonVerification)
+                  .setThrowable(throwable));
+          throw new IllegalArgumentException(
+              "exception while parsing [" + jsonVerification + "] for Verification", throwable);
         }
+        return verification;
+      } else {
+        throw new IllegalArgumentException(
+            StringUtils.removeEndIgnoreCase(
+                formatLogMessage(
+                    "incorrect verification json format for:{}schema validation errors:{}",
+                    jsonVerification,
+                    validationErrors),
+                "\n"));
+      }
     }
+  }
 
-    public Verification deserialize(String jsonVerification) {
-        if (isBlank(jsonVerification)) {
-            throw new IllegalArgumentException(
-                "1 error:" + NEW_LINE +
-                    " - a verification is required but value was \"" + jsonVerification + "\"" + NEW_LINE +
-                    NEW_LINE +
-                    OPEN_API_SPECIFICATION_URL
-            );
-        } else {
-            String validationErrors = getValidator().isValid(jsonVerification);
-            if (validationErrors.isEmpty()) {
-                Verification verification = null;
-                try {
-                    VerificationDTO verificationDTO = objectMapper.readValue(jsonVerification, VerificationDTO.class);
-                    if (verificationDTO != null) {
-                        verification = verificationDTO.buildObject();
-                    }
-                } catch (Throwable throwable) {
-                    mockServerLogger.logEvent(
-                        new LogEntry()
-                            .setLogLevel(Level.ERROR)
-                            .setMessageFormat("exception while parsing{}for Verification " + throwable.getMessage())
-                            .setArguments(jsonVerification)
-                            .setThrowable(throwable)
-                    );
-                    throw new IllegalArgumentException("exception while parsing [" + jsonVerification + "] for Verification", throwable);
-                }
-                return verification;
-            } else {
-                throw new IllegalArgumentException(StringUtils.removeEndIgnoreCase(formatLogMessage("incorrect verification json format for:{}schema validation errors:{}", jsonVerification, validationErrors), "\n"));
-            }
-        }
-    }
-
-    @Override
-    public Class<Verification> supportsType() {
-        return Verification.class;
-    }
-
+  @Override
+  public Class<Verification> supportsType() {
+    return Verification.class;
+  }
 }

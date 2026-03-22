@@ -10,12 +10,13 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class LogEntryBodySerializer extends StdSerializer<LogEntryBody> {
 
-    public LogEntryBodySerializer() {
-        super(LogEntryBody.class);
-    }
+  public LogEntryBodySerializer() {
+    super(LogEntryBody.class);
+  }
 
-    @Override
-    public void serialize(LogEntryBody logEventBody, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writePOJO(logEventBody.getValue());
-    }
+  @Override
+  public void serialize(
+      LogEntryBody logEventBody, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writePOJO(logEventBody.getValue());
+  }
 }

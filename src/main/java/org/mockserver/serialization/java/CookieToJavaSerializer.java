@@ -12,27 +12,31 @@ import org.mockserver.model.Cookie;
  * @author jamesdbloom
  */
 public class CookieToJavaSerializer implements MultiValueToJavaSerializer<Cookie> {
-    @Override
-    public String serialize(int numberOfSpacesToIndent, Cookie cookie) {
-        return NEW_LINE + Strings.padStart("", numberOfSpacesToIndent * INDENT_SIZE, ' ') + "new Cookie(" +
-            NottableStringToJavaSerializer.serialize(cookie.getName(), false) + ", " +
-            NottableStringToJavaSerializer.serialize(cookie.getValue(), false) + ")";
-    }
+  @Override
+  public String serialize(int numberOfSpacesToIndent, Cookie cookie) {
+    return NEW_LINE
+        + Strings.padStart("", numberOfSpacesToIndent * INDENT_SIZE, ' ')
+        + "new Cookie("
+        + NottableStringToJavaSerializer.serialize(cookie.getName(), false)
+        + ", "
+        + NottableStringToJavaSerializer.serialize(cookie.getValue(), false)
+        + ")";
+  }
 
-    @Override
-    public String serializeAsJava(int numberOfSpacesToIndent, List<Cookie> cookies) {
-        StringBuilder output = new StringBuilder();
-        for (int i = 0; i < cookies.size(); i++) {
-            output.append(serialize(numberOfSpacesToIndent, cookies.get(i)));
-            if (i < (cookies.size() - 1)) {
-                output.append(",");
-            }
-        }
-        return output.toString();
+  @Override
+  public String serializeAsJava(int numberOfSpacesToIndent, List<Cookie> cookies) {
+    StringBuilder output = new StringBuilder();
+    for (int i = 0; i < cookies.size(); i++) {
+      output.append(serialize(numberOfSpacesToIndent, cookies.get(i)));
+      if (i < (cookies.size() - 1)) {
+        output.append(",");
+      }
     }
+    return output.toString();
+  }
 
-    @Override
-    public String serializeAsJava(int numberOfSpacesToIndent, Cookie... object) {
-        return serializeAsJava(numberOfSpacesToIndent, Arrays.asList(object));
-    }
+  @Override
+  public String serializeAsJava(int numberOfSpacesToIndent, Cookie... object) {
+    return serializeAsJava(numberOfSpacesToIndent, Arrays.asList(object));
+  }
 }

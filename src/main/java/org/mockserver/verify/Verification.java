@@ -8,48 +8,50 @@ import org.mockserver.model.RequestDefinition;
  * @author jamesdbloom
  */
 public class Verification extends ObjectWithJsonToString {
-    private RequestDefinition httpRequest;
-    private ExpectationId expectationId;
-    private VerificationTimes times = VerificationTimes.atLeast(1);
-    private Integer maximumNumberOfRequestToReturnInVerificationFailure;
+  private RequestDefinition httpRequest;
+  private ExpectationId expectationId;
+  private VerificationTimes times = VerificationTimes.atLeast(1);
+  private Integer maximumNumberOfRequestToReturnInVerificationFailure;
 
-    public static Verification verification() {
-        return new Verification();
-    }
+  public static Verification verification() {
+    return new Verification();
+  }
 
-    public Verification withRequest(RequestDefinition requestDefinition) {
-        this.httpRequest = requestDefinition;
-        return this;
-    }
+  public Verification withRequest(RequestDefinition requestDefinition) {
+    this.httpRequest = requestDefinition;
+    return this;
+  }
 
-    public RequestDefinition getHttpRequest() {
-        return httpRequest;
-    }
+  public RequestDefinition getHttpRequest() {
+    return httpRequest;
+  }
 
-    public Verification withExpectationId(ExpectationId expectationId) {
-        this.expectationId = expectationId;
-        return this;
-    }
+  public Verification withExpectationId(ExpectationId expectationId) {
+    this.expectationId = expectationId;
+    return this;
+  }
 
-    public ExpectationId getExpectationId() {
-        return expectationId;
-    }
+  public ExpectationId getExpectationId() {
+    return expectationId;
+  }
 
-    public Verification withTimes(VerificationTimes times) {
-        this.times = times;
-        return this;
-    }
+  public Verification withTimes(VerificationTimes times) {
+    this.times = times;
+    return this;
+  }
 
-    public VerificationTimes getTimes() {
-        return times;
-    }
+  public VerificationTimes getTimes() {
+    return times;
+  }
 
-    public Integer getMaximumNumberOfRequestToReturnInVerificationFailure() {
-        return maximumNumberOfRequestToReturnInVerificationFailure;
-    }
+  public Integer getMaximumNumberOfRequestToReturnInVerificationFailure() {
+    return maximumNumberOfRequestToReturnInVerificationFailure;
+  }
 
-    public Verification withMaximumNumberOfRequestToReturnInVerificationFailure(Integer maximumNumberOfRequestToReturnInVerificationFailure) {
-        this.maximumNumberOfRequestToReturnInVerificationFailure = maximumNumberOfRequestToReturnInVerificationFailure;
-        return this;
-    }
+  public Verification withMaximumNumberOfRequestToReturnInVerificationFailure(
+      Integer maximumNumberOfRequestToReturnInVerificationFailure) {
+    this.maximumNumberOfRequestToReturnInVerificationFailure =
+        maximumNumberOfRequestToReturnInVerificationFailure;
+    return this;
+  }
 }

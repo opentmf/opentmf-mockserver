@@ -44,8 +44,8 @@ public class ClientConfig {
   }
 
   /**
-   * Roles assigned to the service account for {@code client_credentials} grant.
-   * If {@code null}, all realm roles are used as a default.
+   * Roles assigned to the service account for {@code client_credentials} grant. If {@code null},
+   * all realm roles are used as a default.
    */
   public List<String> getServiceAccountRoles() {
     return serviceAccountRoles;

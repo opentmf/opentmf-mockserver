@@ -8,56 +8,55 @@ import org.mockserver.model.ObjectWithReflectiveEqualsHashCodeToString;
 /**
  * @author jamesdbloom
  */
-public class TimeToLiveDTO extends ObjectWithReflectiveEqualsHashCodeToString implements DTO<TimeToLive> {
+public class TimeToLiveDTO extends ObjectWithReflectiveEqualsHashCodeToString
+    implements DTO<TimeToLive> {
 
-    private static final String[] EXCLUDED_FIELDS = {"endDate"};
-    private TimeUnit timeUnit;
-    private Long timeToLive;
-    private Long endDate;
-    private boolean unlimited;
+  private static final String[] EXCLUDED_FIELDS = {"endDate"};
+  private TimeUnit timeUnit;
+  private Long timeToLive;
+  private Long endDate;
+  private boolean unlimited;
 
-    public TimeToLiveDTO(TimeToLive timeToLive) {
-        this.timeUnit = timeToLive.getTimeUnit();
-        this.timeToLive = timeToLive.getTimeToLive();
-        this.endDate = timeToLive.getEndDate();
-        this.unlimited = timeToLive.isUnlimited();
+  public TimeToLiveDTO(TimeToLive timeToLive) {
+    this.timeUnit = timeToLive.getTimeUnit();
+    this.timeToLive = timeToLive.getTimeToLive();
+    this.endDate = timeToLive.getEndDate();
+    this.unlimited = timeToLive.isUnlimited();
+  }
+
+  public TimeToLiveDTO() {}
+
+  public TimeToLive buildObject() {
+    if (unlimited) {
+      return TimeToLive.unlimited();
+    } else {
+      TimeToLive exactly = TimeToLive.exactly(timeUnit, timeToLive);
+      if (this.endDate != null) {
+        exactly.setEndDate(this.endDate);
+      }
+      return exactly;
     }
+  }
 
-    public TimeToLiveDTO() {
-    }
+  public TimeUnit getTimeUnit() {
+    return timeUnit;
+  }
 
+  public Long getTimeToLive() {
+    return timeToLive;
+  }
 
-    public TimeToLive buildObject() {
-        if (unlimited) {
-            return TimeToLive.unlimited();
-        } else {
-            TimeToLive exactly = TimeToLive.exactly(timeUnit, timeToLive);
-            if (this.endDate != null) {
-                exactly.setEndDate(this.endDate);
-            }
-            return exactly;
-        }
-    }
+  public Long getEndDate() {
+    return endDate;
+  }
 
-    public TimeUnit getTimeUnit() {
-        return timeUnit;
-    }
+  public boolean isUnlimited() {
+    return unlimited;
+  }
 
-    public Long getTimeToLive() {
-        return timeToLive;
-    }
-
-    public Long getEndDate() {
-        return endDate;
-    }
-
-    public boolean isUnlimited() {
-        return unlimited;
-    }
-
-    @Override
-    @JsonIgnore
-    protected String[] fieldsExcludedFromEqualsAndHashCode() {
-        return EXCLUDED_FIELDS;
-    }
+  @Override
+  @JsonIgnore
+  protected String[] fieldsExcludedFromEqualsAndHashCode() {
+    return EXCLUDED_FIELDS;
+  }
 }

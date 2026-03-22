@@ -8,21 +8,21 @@ import org.mockserver.mock.OpenAPIExpectation;
  */
 public class JsonSchemaOpenAPIExpectationValidator extends JsonSchemaValidator {
 
-    private JsonSchemaOpenAPIExpectationValidator(MockServerLogger mockServerLogger) {
-        super(
-            mockServerLogger,
-            OpenAPIExpectation.class,
-            "org/mockserver/model/schema/",
-            "openAPIExpectation"
-        );
-    }
+  private JsonSchemaOpenAPIExpectationValidator(MockServerLogger mockServerLogger) {
+    super(
+        mockServerLogger,
+        OpenAPIExpectation.class,
+        "org/mockserver/model/schema/",
+        "openAPIExpectation");
+  }
 
-    private static JsonSchemaOpenAPIExpectationValidator jsonSchemaExpectationValidator;
+  private static JsonSchemaOpenAPIExpectationValidator jsonSchemaExpectationValidator;
 
-    public static JsonSchemaOpenAPIExpectationValidator jsonSchemaOpenAPIExpectationValidator(MockServerLogger mockServerLogger) {
-        if (jsonSchemaExpectationValidator == null) {
-            jsonSchemaExpectationValidator = new JsonSchemaOpenAPIExpectationValidator(mockServerLogger);
-        }
-        return jsonSchemaExpectationValidator;
+  public static JsonSchemaOpenAPIExpectationValidator jsonSchemaOpenAPIExpectationValidator(
+      MockServerLogger mockServerLogger) {
+    if (jsonSchemaExpectationValidator == null) {
+      jsonSchemaExpectationValidator = new JsonSchemaOpenAPIExpectationValidator(mockServerLogger);
     }
+    return jsonSchemaExpectationValidator;
+  }
 }

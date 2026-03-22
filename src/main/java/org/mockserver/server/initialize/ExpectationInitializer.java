@@ -7,6 +7,5 @@ import org.mockserver.mock.Expectation;
  */
 public interface ExpectationInitializer {
 
-    Expectation[] initializeExpectations();
-
+  Expectation[] initializeExpectations();
 }

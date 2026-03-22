@@ -8,22 +8,21 @@ import org.mockserver.model.ObjectWithReflectiveEqualsHashCodeToString;
  * @author jamesdbloom
  */
 public class KeyAndValueDTO extends ObjectWithReflectiveEqualsHashCodeToString {
-    private NottableString name;
-    private NottableString value;
+  private NottableString name;
+  private NottableString value;
 
-    protected KeyAndValueDTO(KeyAndValue keyAndValue) {
-        name = keyAndValue.getName();
-        value = keyAndValue.getValue();
-    }
+  protected KeyAndValueDTO(KeyAndValue keyAndValue) {
+    name = keyAndValue.getName();
+    value = keyAndValue.getValue();
+  }
 
-    protected KeyAndValueDTO() {
-    }
+  protected KeyAndValueDTO() {}
 
-    public NottableString getName() {
-        return name;
-    }
+  public NottableString getName() {
+    return name;
+  }
 
-    public NottableString getValue() {
-        return value;
-    }
+  public NottableString getValue() {
+    return value;
+  }
 }

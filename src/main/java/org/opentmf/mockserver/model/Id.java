@@ -56,17 +56,16 @@ public class Id implements Comparable<Id> {
       return 0;
     }
     if (this.version == null) {
-      return -1;  // Null version comes first
+      return -1; // Null version comes first
     }
     if (other.version == null) {
-      return 1;   // Null version comes first
+      return 1; // Null version comes first
     }
     return this.version.compareTo(other.version);
   }
 
   @Override
   public String toString() {
-    return "id='" + id + "', version=" +
-        (version == null ? "null" : "'" + version + "'");
+    return "id='" + id + "', version=" + (version == null ? "null" : "'" + version + "'");
   }
 }

@@ -14,28 +14,30 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class OpenAPIDefinitionSerializer extends StdSerializer<OpenAPIDefinition> {
 
-    private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.createObjectMapper();
+  private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.createObjectMapper();
 
-    public OpenAPIDefinitionSerializer() {
-        super(OpenAPIDefinition.class);
-    }
+  public OpenAPIDefinitionSerializer() {
+    super(OpenAPIDefinition.class);
+  }
 
-    @Override
-    public void serialize(OpenAPIDefinition openAPIDefinition, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (openAPIDefinition.getNot() != null && openAPIDefinition.getNot()) {
-            jgen.writeBooleanProperty("not", openAPIDefinition.getNot());
-        }
-        if (isNotBlank(openAPIDefinition.getOperationId())) {
-            jgen.writePOJOProperty("operationId", openAPIDefinition.getOperationId());
-        }
-        if (isNotBlank(openAPIDefinition.getSpecUrlOrPayload())) {
-            if (openAPIDefinition.getSpecUrlOrPayload().trim().startsWith("{")) {
-                jgen.writePOJOProperty("specUrlOrPayload", OBJECT_MAPPER.readTree(openAPIDefinition.getSpecUrlOrPayload()));
-            } else {
-                jgen.writePOJOProperty("specUrlOrPayload", openAPIDefinition.getSpecUrlOrPayload());
-            }
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(
+      OpenAPIDefinition openAPIDefinition, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (openAPIDefinition.getNot() != null && openAPIDefinition.getNot()) {
+      jgen.writeBooleanProperty("not", openAPIDefinition.getNot());
     }
+    if (isNotBlank(openAPIDefinition.getOperationId())) {
+      jgen.writePOJOProperty("operationId", openAPIDefinition.getOperationId());
+    }
+    if (isNotBlank(openAPIDefinition.getSpecUrlOrPayload())) {
+      if (openAPIDefinition.getSpecUrlOrPayload().trim().startsWith("{")) {
+        jgen.writePOJOProperty(
+            "specUrlOrPayload", OBJECT_MAPPER.readTree(openAPIDefinition.getSpecUrlOrPayload()));
+      } else {
+        jgen.writePOJOProperty("specUrlOrPayload", openAPIDefinition.getSpecUrlOrPayload());
+      }
+    }
+    jgen.writeEndObject();
+  }
 }

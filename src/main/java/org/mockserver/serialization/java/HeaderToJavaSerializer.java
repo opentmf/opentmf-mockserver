@@ -13,33 +13,35 @@ import org.mockserver.model.NottableString;
  * @author jamesdbloom
  */
 public class HeaderToJavaSerializer implements MultiValueToJavaSerializer<Header> {
-    @Override
-    public String serialize(int numberOfSpacesToIndent, Header header) {
-        StringBuilder output = new StringBuilder();
-        output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent * INDENT_SIZE, ' '));
-        String serializedKey = NottableStringToJavaSerializer.serialize(header.getName(), false);
-        output.append("new Header(").append(serializedKey);
-        for (NottableString value : header.getValues()) {
-            output.append(", ").append(NottableStringToJavaSerializer.serialize(value, serializedKey.endsWith(")")));
-        }
-        output.append(")");
-        return output.toString();
+  @Override
+  public String serialize(int numberOfSpacesToIndent, Header header) {
+    StringBuilder output = new StringBuilder();
+    output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent * INDENT_SIZE, ' '));
+    String serializedKey = NottableStringToJavaSerializer.serialize(header.getName(), false);
+    output.append("new Header(").append(serializedKey);
+    for (NottableString value : header.getValues()) {
+      output
+          .append(", ")
+          .append(NottableStringToJavaSerializer.serialize(value, serializedKey.endsWith(")")));
     }
+    output.append(")");
+    return output.toString();
+  }
 
-    @Override
-    public String serializeAsJava(int numberOfSpacesToIndent, List<Header> headers) {
-        StringBuilder output = new StringBuilder();
-        for (int i = 0; i < headers.size(); i++) {
-            output.append(serialize(numberOfSpacesToIndent, headers.get(i)));
-            if (i < (headers.size() - 1)) {
-                output.append(",");
-            }
-        }
-        return output.toString();
+  @Override
+  public String serializeAsJava(int numberOfSpacesToIndent, List<Header> headers) {
+    StringBuilder output = new StringBuilder();
+    for (int i = 0; i < headers.size(); i++) {
+      output.append(serialize(numberOfSpacesToIndent, headers.get(i)));
+      if (i < (headers.size() - 1)) {
+        output.append(",");
+      }
     }
+    return output.toString();
+  }
 
-    @Override
-    public String serializeAsJava(int numberOfSpacesToIndent, Header... object) {
-        return serializeAsJava(numberOfSpacesToIndent, Arrays.asList(object));
-    }
+  @Override
+  public String serializeAsJava(int numberOfSpacesToIndent, Header... object) {
+    return serializeAsJava(numberOfSpacesToIndent, Arrays.asList(object));
+  }
 }

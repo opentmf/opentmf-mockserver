@@ -6,11 +6,11 @@ package org.mockserver.httpclient;
  * @author jamesdbloom
  */
 public class SocketConnectionException extends RuntimeException {
-    SocketConnectionException(String message, Throwable cause) {
-        super(message, cause);
-    }
+  SocketConnectionException(String message, Throwable cause) {
+    super(message, cause);
+  }
 
-    SocketConnectionException(String message) {
-        super(message);
-    }
+  SocketConnectionException(String message) {
+    super(message);
+  }
 }

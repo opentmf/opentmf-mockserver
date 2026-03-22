@@ -6,11 +6,11 @@ import org.mockserver.model.ObjectWithReflectiveEqualsHashCodeToString;
 /**
  * @author jamesdbloom
  */
-public interface MultiValueToJavaSerializer<T extends ObjectWithReflectiveEqualsHashCodeToString> extends ToJavaSerializer<T> {
+public interface MultiValueToJavaSerializer<T extends ObjectWithReflectiveEqualsHashCodeToString>
+    extends ToJavaSerializer<T> {
 
-    String serializeAsJava(int numberOfSpacesToIndent, List<T> object);
+  String serializeAsJava(int numberOfSpacesToIndent, List<T> object);
 
-    @SuppressWarnings("unchecked")
-    String serializeAsJava(int numberOfSpacesToIndent, T... object);
-
+  @SuppressWarnings("unchecked")
+  String serializeAsJava(int numberOfSpacesToIndent, T... object);
 }

@@ -12,15 +12,15 @@ import org.mockserver.model.HttpRequest;
  */
 public class MockServerHttpToNettyHttpRequestEncoder extends MessageToMessageEncoder<HttpRequest> {
 
-    private final MockServerHttpRequestToFullHttpRequest mockServerHttpRequestToFullHttpRequest;
+  private final MockServerHttpRequestToFullHttpRequest mockServerHttpRequestToFullHttpRequest;
 
-    MockServerHttpToNettyHttpRequestEncoder(MockServerLogger mockServerLogger) {
-        mockServerHttpRequestToFullHttpRequest = new MockServerHttpRequestToFullHttpRequest(mockServerLogger);
-    }
+  MockServerHttpToNettyHttpRequestEncoder(MockServerLogger mockServerLogger) {
+    mockServerHttpRequestToFullHttpRequest =
+        new MockServerHttpRequestToFullHttpRequest(mockServerLogger);
+  }
 
-    @Override
-    protected void encode(ChannelHandlerContext ctx, HttpRequest httpRequest, List<Object> out) {
-        out.add(mockServerHttpRequestToFullHttpRequest.mapMockServerRequestToNettyRequest(httpRequest));
-    }
-
+  @Override
+  protected void encode(ChannelHandlerContext ctx, HttpRequest httpRequest, List<Object> out) {
+    out.add(mockServerHttpRequestToFullHttpRequest.mapMockServerRequestToNettyRequest(httpRequest));
+  }
 }

@@ -11,22 +11,27 @@ import org.mockserver.matchers.TimeToLive;
  */
 public class TimeToLiveToJavaSerializer implements ToJavaSerializer<TimeToLive> {
 
-    @Override
-    public String serialize(int numberOfSpacesToIndent, TimeToLive timeToLive) {
-        StringBuffer output = new StringBuffer();
-        if (timeToLive != null) {
-            appendNewLineAndIndent(numberOfSpacesToIndent * INDENT_SIZE, output);
-            if (timeToLive.isUnlimited()) {
-                output.append("TimeToLive.unlimited()");
-            } else {
-                output.append("TimeToLive.exactly(TimeUnit.").append(timeToLive.getTimeUnit().name()).append(", ").append(timeToLive.getTimeToLive()).append("L)");
-            }
-        }
-
-        return output.toString();
+  @Override
+  public String serialize(int numberOfSpacesToIndent, TimeToLive timeToLive) {
+    StringBuffer output = new StringBuffer();
+    if (timeToLive != null) {
+      appendNewLineAndIndent(numberOfSpacesToIndent * INDENT_SIZE, output);
+      if (timeToLive.isUnlimited()) {
+        output.append("TimeToLive.unlimited()");
+      } else {
+        output
+            .append("TimeToLive.exactly(TimeUnit.")
+            .append(timeToLive.getTimeUnit().name())
+            .append(", ")
+            .append(timeToLive.getTimeToLive())
+            .append("L)");
+      }
     }
 
-    private StringBuffer appendNewLineAndIndent(int numberOfSpacesToIndent, StringBuffer output) {
-        return output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent, ' '));
-    }
+    return output.toString();
+  }
+
+  private StringBuffer appendNewLineAndIndent(int numberOfSpacesToIndent, StringBuffer output) {
+    return output.append(NEW_LINE).append(Strings.padStart("", numberOfSpacesToIndent, ' '));
+  }
 }

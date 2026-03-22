@@ -5,8 +5,7 @@ package org.mockserver.matchers;
  */
 public interface Matcher<T> {
 
-    boolean matches(MatchDifference context, T t);
+  boolean matches(MatchDifference context, T t);
 
-    boolean isBlank();
-
+  boolean isBlank();
 }

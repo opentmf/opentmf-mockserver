@@ -14,39 +14,38 @@ import org.mockserver.model.RequestDefinition;
  */
 public class MatcherBuilder {
 
-    private final Configuration configuration;
-    private final MockServerLogger mockServerLogger;
-    private final LRUCache<RequestDefinition, HttpRequestMatcher> requestMatcherLRUCache;
+  private final Configuration configuration;
+  private final MockServerLogger mockServerLogger;
+  private final LRUCache<RequestDefinition, HttpRequestMatcher> requestMatcherLRUCache;
 
-    public MatcherBuilder(Configuration configuration, MockServerLogger mockServerLogger) {
-        this.configuration = configuration;
-        this.mockServerLogger = mockServerLogger;
-        this.requestMatcherLRUCache = new LRUCache<>(mockServerLogger, 250, MINUTES.toMillis(10));
+  public MatcherBuilder(Configuration configuration, MockServerLogger mockServerLogger) {
+    this.configuration = configuration;
+    this.mockServerLogger = mockServerLogger;
+    this.requestMatcherLRUCache = new LRUCache<>(mockServerLogger, 250, MINUTES.toMillis(10));
+  }
+
+  public HttpRequestMatcher transformsToMatcher(RequestDefinition requestDefinition) {
+    HttpRequestMatcher httpRequestMatcher = requestMatcherLRUCache.get(requestDefinition);
+    if (httpRequestMatcher == null) {
+      if (requestDefinition instanceof OpenAPIDefinition) {
+        httpRequestMatcher = new HttpRequestsPropertiesMatcher(configuration, mockServerLogger);
+      } else {
+        httpRequestMatcher = new HttpRequestPropertiesMatcher(configuration, mockServerLogger);
+      }
+      httpRequestMatcher.update(requestDefinition);
+      requestMatcherLRUCache.put(requestDefinition, httpRequestMatcher);
     }
+    return httpRequestMatcher;
+  }
 
-    public HttpRequestMatcher transformsToMatcher(RequestDefinition requestDefinition) {
-        HttpRequestMatcher httpRequestMatcher = requestMatcherLRUCache.get(requestDefinition);
-        if (httpRequestMatcher == null) {
-            if (requestDefinition instanceof OpenAPIDefinition) {
-                httpRequestMatcher = new HttpRequestsPropertiesMatcher(configuration, mockServerLogger);
-            } else {
-                httpRequestMatcher = new HttpRequestPropertiesMatcher(configuration, mockServerLogger);
-            }
-            httpRequestMatcher.update(requestDefinition);
-            requestMatcherLRUCache.put(requestDefinition, httpRequestMatcher);
-        }
-        return httpRequestMatcher;
+  public HttpRequestMatcher transformsToMatcher(Expectation expectation) {
+    HttpRequestMatcher httpRequestMatcher;
+    if (expectation.getHttpRequest() instanceof OpenAPIDefinition) {
+      httpRequestMatcher = new HttpRequestsPropertiesMatcher(configuration, mockServerLogger);
+    } else {
+      httpRequestMatcher = new HttpRequestPropertiesMatcher(configuration, mockServerLogger);
     }
-
-    public HttpRequestMatcher transformsToMatcher(Expectation expectation) {
-        HttpRequestMatcher httpRequestMatcher;
-        if (expectation.getHttpRequest() instanceof OpenAPIDefinition) {
-            httpRequestMatcher = new HttpRequestsPropertiesMatcher(configuration, mockServerLogger);
-        } else {
-            httpRequestMatcher = new HttpRequestPropertiesMatcher(configuration, mockServerLogger);
-        }
-        httpRequestMatcher.update(expectation);
-        return httpRequestMatcher;
-    }
-
+    httpRequestMatcher.update(expectation);
+    return httpRequestMatcher;
+  }
 }

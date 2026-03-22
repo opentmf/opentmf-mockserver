@@ -25,122 +25,133 @@ import org.slf4j.event.Level;
  */
 public class MockServerHttpResponseToFullHttpResponse {
 
-    private final MockServerLogger mockServerLogger;
-    private final BodyDecoderEncoder bodyDecoderEncoder;
+  private final MockServerLogger mockServerLogger;
+  private final BodyDecoderEncoder bodyDecoderEncoder;
 
-    public MockServerHttpResponseToFullHttpResponse(MockServerLogger mockServerLogger) {
-        this.mockServerLogger = mockServerLogger;
-        this.bodyDecoderEncoder = new BodyDecoderEncoder();
+  public MockServerHttpResponseToFullHttpResponse(MockServerLogger mockServerLogger) {
+    this.mockServerLogger = mockServerLogger;
+    this.bodyDecoderEncoder = new BodyDecoderEncoder();
+  }
+
+  public List<DefaultHttpObject> mapMockServerResponseToNettyResponse(HttpResponse httpResponse) {
+    try {
+      ConnectionOptions connectionOptions = httpResponse.getConnectionOptions();
+      if (connectionOptions != null
+          && connectionOptions.getChunkSize() != null
+          && connectionOptions.getChunkSize() > 0) {
+        List<DefaultHttpObject> httpMessages = new ArrayList<>();
+        ByteBuf body = getBody(httpResponse);
+        DefaultHttpResponse defaultHttpResponse =
+            new DefaultHttpResponse(HttpVersion.HTTP_1_1, getStatus(httpResponse));
+        setHeaders(httpResponse, defaultHttpResponse, body);
+        HttpUtil.setTransferEncodingChunked(defaultHttpResponse, true);
+        setCookies(httpResponse, defaultHttpResponse);
+        httpMessages.add(defaultHttpResponse);
+
+        ByteBuf[] chunks =
+            bodyDecoderEncoder.bodyToByteBuf(
+                httpResponse.getBody(),
+                httpResponse.getFirstHeader(CONTENT_TYPE.toString()),
+                connectionOptions.getChunkSize());
+        for (int i = 0; i < chunks.length - 1; i++) {
+          DefaultHttpContent defaultHttpContent = new DefaultHttpContent(chunks[i]);
+          httpMessages.add(defaultHttpContent);
+        }
+        httpMessages.add(new DefaultLastHttpContent(chunks[chunks.length - 1]));
+        return httpMessages;
+      } else {
+        ByteBuf body = getBody(httpResponse);
+        DefaultFullHttpResponse defaultFullHttpResponse =
+            new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, getStatus(httpResponse), body);
+        setHeaders(httpResponse, defaultFullHttpResponse, body);
+        setCookies(httpResponse, defaultFullHttpResponse);
+        return Collections.singletonList(defaultFullHttpResponse);
+      }
+    } catch (Throwable throwable) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setMessageFormat("exception encoding response{}")
+              .setArguments(httpResponse)
+              .setThrowable(throwable));
+      return Collections.singletonList(
+          new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, getStatus(httpResponse)));
+    }
+  }
+
+  private HttpResponseStatus getStatus(HttpResponse httpResponse) {
+    int statusCode = httpResponse.getStatusCode() != null ? httpResponse.getStatusCode() : 200;
+    if (!isEmpty(httpResponse.getReasonPhrase())) {
+      return new HttpResponseStatus(statusCode, httpResponse.getReasonPhrase());
+    } else {
+      return HttpResponseStatus.valueOf(statusCode);
+    }
+  }
+
+  private ByteBuf getBody(HttpResponse httpResponse) {
+    return bodyDecoderEncoder.bodyToByteBuf(
+        httpResponse.getBody(), httpResponse.getFirstHeader(CONTENT_TYPE.toString()));
+  }
+
+  private void setHeaders(HttpResponse httpResponse, DefaultHttpResponse response, ByteBuf body) {
+    if (httpResponse.getHeaderMultimap() != null) {
+      httpResponse
+          .getHeaderMultimap()
+          .entries()
+          .forEach(
+              entry ->
+                  response.headers().add(entry.getKey().getValue(), entry.getValue().getValue()));
     }
 
-    public List<DefaultHttpObject> mapMockServerResponseToNettyResponse(HttpResponse httpResponse) {
-        try {
-            ConnectionOptions connectionOptions = httpResponse.getConnectionOptions();
-            if (connectionOptions != null && connectionOptions.getChunkSize() != null && connectionOptions.getChunkSize() > 0) {
-                List<DefaultHttpObject> httpMessages = new ArrayList<>();
-                ByteBuf body = getBody(httpResponse);
-                DefaultHttpResponse defaultHttpResponse = new DefaultHttpResponse(
-                    HttpVersion.HTTP_1_1,
-                    getStatus(httpResponse)
-                );
-                setHeaders(httpResponse, defaultHttpResponse, body);
-                HttpUtil.setTransferEncodingChunked(defaultHttpResponse, true);
-                setCookies(httpResponse, defaultHttpResponse);
-                httpMessages.add(defaultHttpResponse);
-
-                ByteBuf[] chunks = bodyDecoderEncoder.bodyToByteBuf(httpResponse.getBody(), httpResponse.getFirstHeader(CONTENT_TYPE.toString()), connectionOptions.getChunkSize());
-                for (int i = 0; i < chunks.length - 1; i++) {
-                    DefaultHttpContent defaultHttpContent = new DefaultHttpContent(chunks[i]);
-                    httpMessages.add(defaultHttpContent);
-                }
-                httpMessages.add(new DefaultLastHttpContent(chunks[chunks.length - 1]));
-                return httpMessages;
-            } else {
-                ByteBuf body = getBody(httpResponse);
-                DefaultFullHttpResponse defaultFullHttpResponse = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1,
-                    getStatus(httpResponse),
-                    body
-                );
-                setHeaders(httpResponse, defaultFullHttpResponse, body);
-                setCookies(httpResponse, defaultFullHttpResponse);
-                return Collections.singletonList(defaultFullHttpResponse);
-            }
-        } catch (Throwable throwable) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(Level.ERROR)
-                    .setMessageFormat("exception encoding response{}")
-                    .setArguments(httpResponse)
-                    .setThrowable(throwable)
-            );
-            return Collections.singletonList(new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, getStatus(httpResponse)));
-        }
+    // Content-Type
+    if (isBlank(httpResponse.getFirstHeader(CONTENT_TYPE.toString()))) {
+      if (httpResponse.getBody() != null && httpResponse.getBody().getContentType() != null) {
+        response.headers().set(CONTENT_TYPE, httpResponse.getBody().getContentType());
+      }
     }
 
-    private HttpResponseStatus getStatus(HttpResponse httpResponse) {
-        int statusCode = httpResponse.getStatusCode() != null ? httpResponse.getStatusCode() : 200;
-        if (!isEmpty(httpResponse.getReasonPhrase())) {
-            return new HttpResponseStatus(statusCode, httpResponse.getReasonPhrase());
-        } else {
-            return HttpResponseStatus.valueOf(statusCode);
-        }
+    // Content-Length
+    ConnectionOptions connectionOptions = httpResponse.getConnectionOptions();
+    if (isBlank(httpResponse.getFirstHeader(CONTENT_LENGTH.toString()))) {
+      boolean overrideContentLength =
+          connectionOptions != null && connectionOptions.getContentLengthHeaderOverride() != null;
+      boolean addContentLength =
+          connectionOptions == null
+              || !Boolean.TRUE.equals(connectionOptions.getSuppressContentLengthHeader());
+      boolean chunkedEncoding =
+          (connectionOptions != null && connectionOptions.getChunkSize() != null)
+              || response.headers().contains(HttpHeaderNames.TRANSFER_ENCODING);
+      if (overrideContentLength) {
+        response.headers().set(CONTENT_LENGTH, connectionOptions.getContentLengthHeaderOverride());
+      } else if (addContentLength && !chunkedEncoding) {
+        response.headers().set(CONTENT_LENGTH, body.readableBytes());
+      }
+      if (chunkedEncoding) {
+        response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+      }
     }
 
-    private ByteBuf getBody(HttpResponse httpResponse) {
-        return bodyDecoderEncoder.bodyToByteBuf(httpResponse.getBody(), httpResponse.getFirstHeader(CONTENT_TYPE.toString()));
+    // HTTP2 extension headers
+    Integer streamId = httpResponse.getStreamId();
+    if (streamId != null) {
+      response.headers().add(HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text(), streamId);
     }
+  }
 
-    private void setHeaders(HttpResponse httpResponse, DefaultHttpResponse response, ByteBuf body) {
-        if (httpResponse.getHeaderMultimap() != null) {
-            httpResponse
-                .getHeaderMultimap()
-                .entries()
-                .forEach(entry ->
-                    response
-                        .headers()
-                        .add(entry.getKey().getValue(), entry.getValue().getValue())
-                );
+  private void setCookies(HttpResponse httpResponse, DefaultHttpResponse response) {
+    if (httpResponse.getCookieMap() != null) {
+      for (Map.Entry<NottableString, NottableString> cookie :
+          httpResponse.getCookieMap().entrySet()) {
+        if (httpResponse.cookieHeaderDoesNotAlreadyExists(
+            cookie.getKey().getValue(), cookie.getValue().getValue())) {
+          response
+              .headers()
+              .add(
+                  SET_COOKIE,
+                  io.netty.handler.codec.http.cookie.ServerCookieEncoder.LAX.encode(
+                      new DefaultCookie(cookie.getKey().getValue(), cookie.getValue().getValue())));
         }
-
-        // Content-Type
-        if (isBlank(httpResponse.getFirstHeader(CONTENT_TYPE.toString()))) {
-            if (httpResponse.getBody() != null
-                && httpResponse.getBody().getContentType() != null) {
-                response.headers().set(CONTENT_TYPE, httpResponse.getBody().getContentType());
-            }
-        }
-
-        // Content-Length
-        ConnectionOptions connectionOptions = httpResponse.getConnectionOptions();
-        if (isBlank(httpResponse.getFirstHeader(CONTENT_LENGTH.toString()))) {
-            boolean overrideContentLength = connectionOptions != null && connectionOptions.getContentLengthHeaderOverride() != null;
-            boolean addContentLength = connectionOptions == null || !Boolean.TRUE.equals(connectionOptions.getSuppressContentLengthHeader());
-            boolean chunkedEncoding = (connectionOptions != null && connectionOptions.getChunkSize() != null) || response.headers().contains(HttpHeaderNames.TRANSFER_ENCODING);
-            if (overrideContentLength) {
-                response.headers().set(CONTENT_LENGTH, connectionOptions.getContentLengthHeaderOverride());
-            } else if (addContentLength && !chunkedEncoding) {
-                response.headers().set(CONTENT_LENGTH, body.readableBytes());
-            }
-            if (chunkedEncoding) {
-                response.headers().set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
-            }
-        }
-
-        // HTTP2 extension headers
-        Integer streamId = httpResponse.getStreamId();
-        if (streamId != null) {
-            response.headers().add(HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text(), streamId);
-        }
+      }
     }
-
-    private void setCookies(HttpResponse httpResponse, DefaultHttpResponse response) {
-        if (httpResponse.getCookieMap() != null) {
-            for (Map.Entry<NottableString, NottableString> cookie : httpResponse.getCookieMap().entrySet()) {
-                if (httpResponse.cookieHeaderDoesNotAlreadyExists(cookie.getKey().getValue(), cookie.getValue().getValue())) {
-                    response.headers().add(SET_COOKIE, io.netty.handler.codec.http.cookie.ServerCookieEncoder.LAX.encode(new DefaultCookie(cookie.getKey().getValue(), cookie.getValue().getValue())));
-                }
-            }
-        }
-    }
+  }
 }

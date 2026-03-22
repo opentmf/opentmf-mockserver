@@ -8,24 +8,23 @@ import org.mockserver.model.Parameters;
  */
 public class ParameterBodyDTO extends BodyDTO {
 
-    private final Parameters parameters;
+  private final Parameters parameters;
 
-    public ParameterBodyDTO(ParameterBody parameterBody) {
-        this(parameterBody, null);
-    }
+  public ParameterBodyDTO(ParameterBody parameterBody) {
+    this(parameterBody, null);
+  }
 
-    public ParameterBodyDTO(ParameterBody parameterBody, Boolean not) {
-        super(parameterBody.getType(), not);
-        parameters = parameterBody.getValue();
-        withOptional(parameterBody.getOptional());
-    }
+  public ParameterBodyDTO(ParameterBody parameterBody, Boolean not) {
+    super(parameterBody.getType(), not);
+    parameters = parameterBody.getValue();
+    withOptional(parameterBody.getOptional());
+  }
 
-    public Parameters getParameters() {
-        return parameters;
-    }
+  public Parameters getParameters() {
+    return parameters;
+  }
 
-    public ParameterBody buildObject() {
-        return (ParameterBody) new ParameterBody(parameters).withOptional(getOptional());
-    }
-
+  public ParameterBody buildObject() {
+    return (ParameterBody) new ParameterBody(parameters).withOptional(getOptional());
+  }
 }

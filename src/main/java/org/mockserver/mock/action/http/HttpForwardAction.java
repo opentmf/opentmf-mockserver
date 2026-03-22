@@ -20,34 +20,41 @@ import org.slf4j.event.Level;
 @SuppressWarnings("FieldMayBeFinal")
 public abstract class HttpForwardAction {
 
-    protected final MockServerLogger mockServerLogger;
-    private final NettyHttpClient httpClient;
-    private HopByHopHeaderFilter hopByHopHeaderFilter = new HopByHopHeaderFilter();
+  protected final MockServerLogger mockServerLogger;
+  private final NettyHttpClient httpClient;
+  private HopByHopHeaderFilter hopByHopHeaderFilter = new HopByHopHeaderFilter();
 
-    HttpForwardAction(MockServerLogger mockServerLogger, NettyHttpClient httpClient) {
-        this.mockServerLogger = mockServerLogger;
-        this.httpClient = httpClient;
-    }
+  HttpForwardAction(MockServerLogger mockServerLogger, NettyHttpClient httpClient) {
+    this.mockServerLogger = mockServerLogger;
+    this.httpClient = httpClient;
+  }
 
-    protected HttpForwardActionResult sendRequest(HttpRequest request, @Nullable InetSocketAddress remoteAddress, Function<HttpResponse, HttpResponse> overrideHttpResponse) {
-        try {
-            // TODO(jamesdbloom) support proxying via HTTP2, for now always force into HTTP1
-            return new HttpForwardActionResult(request, httpClient.sendRequest(hopByHopHeaderFilter.onRequest(request).withProtocol(null), remoteAddress), overrideHttpResponse, remoteAddress);
-        } catch (Exception e) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(Level.ERROR)
-                    .setHttpRequest(request)
-                    .setMessageFormat("exception forwarding request " + request)
-                    .setThrowable(e)
-            );
-        }
-        return notFoundFuture(request);
+  protected HttpForwardActionResult sendRequest(
+      HttpRequest request,
+      @Nullable InetSocketAddress remoteAddress,
+      Function<HttpResponse, HttpResponse> overrideHttpResponse) {
+    try {
+      // TODO(jamesdbloom) support proxying via HTTP2, for now always force into HTTP1
+      return new HttpForwardActionResult(
+          request,
+          httpClient.sendRequest(
+              hopByHopHeaderFilter.onRequest(request).withProtocol(null), remoteAddress),
+          overrideHttpResponse,
+          remoteAddress);
+    } catch (Exception e) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setHttpRequest(request)
+              .setMessageFormat("exception forwarding request " + request)
+              .setThrowable(e));
     }
+    return notFoundFuture(request);
+  }
 
-    HttpForwardActionResult notFoundFuture(HttpRequest httpRequest) {
-        CompletableFuture<HttpResponse> notFoundFuture = new CompletableFuture<>();
-        notFoundFuture.complete(notFoundResponse());
-        return new HttpForwardActionResult(httpRequest, notFoundFuture, null);
-    }
+  HttpForwardActionResult notFoundFuture(HttpRequest httpRequest) {
+    CompletableFuture<HttpResponse> notFoundFuture = new CompletableFuture<>();
+    notFoundFuture.complete(notFoundResponse());
+    return new HttpForwardActionResult(httpRequest, notFoundFuture, null);
+  }
 }

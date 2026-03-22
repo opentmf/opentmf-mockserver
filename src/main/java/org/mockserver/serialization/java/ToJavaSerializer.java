@@ -7,6 +7,5 @@ import org.mockserver.model.ObjectWithReflectiveEqualsHashCodeToString;
  */
 public interface ToJavaSerializer<T extends ObjectWithReflectiveEqualsHashCodeToString> {
 
-    String serialize(int numberOfSpacesToIndent, T object);
-
+  String serialize(int numberOfSpacesToIndent, T object);
 }

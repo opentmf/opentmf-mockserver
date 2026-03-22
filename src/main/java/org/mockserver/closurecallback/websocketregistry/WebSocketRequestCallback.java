@@ -8,8 +8,7 @@ import org.mockserver.model.HttpResponse;
  */
 public interface WebSocketRequestCallback {
 
-    void handle(HttpRequest httpRequest);
+  void handle(HttpRequest httpRequest);
 
-    void handleError(HttpResponse httpResponse);
-
+  void handleError(HttpResponse httpResponse);
 }

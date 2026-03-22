@@ -16,27 +16,41 @@ import org.mockserver.model.Header;
 /**
  * @author jamesdbloom
  */
-public class NettyHttpToMockServerHttpRequestDecoder extends MessageToMessageDecoder<FullHttpRequest> {
+public class NettyHttpToMockServerHttpRequestDecoder
+    extends MessageToMessageDecoder<FullHttpRequest> {
 
-    private final FullHttpRequestToMockServerHttpRequest fullHttpRequestToMockServerRequest;
-    private final MockServerLogger mockServerLogger;
+  private final FullHttpRequestToMockServerHttpRequest fullHttpRequestToMockServerRequest;
+  private final MockServerLogger mockServerLogger;
 
-    public NettyHttpToMockServerHttpRequestDecoder(Configuration configuration, MockServerLogger mockServerLogger, boolean isSecure, Certificate[] clientCertificates, Integer port) {
-        this.mockServerLogger = mockServerLogger;
-        this.fullHttpRequestToMockServerRequest = new FullHttpRequestToMockServerHttpRequest(configuration, mockServerLogger, isSecure, clientCertificates, port);
+  public NettyHttpToMockServerHttpRequestDecoder(
+      Configuration configuration,
+      MockServerLogger mockServerLogger,
+      boolean isSecure,
+      Certificate[] clientCertificates,
+      Integer port) {
+    this.mockServerLogger = mockServerLogger;
+    this.fullHttpRequestToMockServerRequest =
+        new FullHttpRequestToMockServerHttpRequest(
+            configuration, mockServerLogger, isSecure, clientCertificates, port);
+  }
+
+  @Override
+  protected void decode(
+      ChannelHandlerContext ctx, FullHttpRequest fullHttpRequest, List<Object> out) {
+    List<Header> preservedHeaders = null;
+    SocketAddress localAddress = null;
+    SocketAddress remoteAddress = null;
+    if (ctx != null && ctx.channel() != null) {
+      preservedHeaders = PreserveHeadersNettyRemoves.preservedHeaders(ctx.channel());
+      localAddress = ctx.channel().localAddress();
+      remoteAddress = ctx.channel().remoteAddress();
     }
-
-    @Override
-    protected void decode(ChannelHandlerContext ctx, FullHttpRequest fullHttpRequest, List<Object> out) {
-        List<Header> preservedHeaders = null;
-        SocketAddress localAddress = null;
-        SocketAddress remoteAddress = null;
-        if (ctx != null && ctx.channel() != null) {
-            preservedHeaders = PreserveHeadersNettyRemoves.preservedHeaders(ctx.channel());
-            localAddress = ctx.channel().localAddress();
-            remoteAddress = ctx.channel().remoteAddress();
-        }
-        out.add(fullHttpRequestToMockServerRequest.mapFullHttpRequestToMockServerRequest(fullHttpRequest, preservedHeaders, localAddress, remoteAddress, getALPNProtocol(mockServerLogger, ctx)));
-    }
-
+    out.add(
+        fullHttpRequestToMockServerRequest.mapFullHttpRequestToMockServerRequest(
+            fullHttpRequest,
+            preservedHeaders,
+            localAddress,
+            remoteAddress,
+            getALPNProtocol(mockServerLogger, ctx)));
+  }
 }

@@ -7,6 +7,5 @@ import org.mockserver.model.HttpResponse;
  */
 public interface WebSocketResponseCallback {
 
-    void handle(HttpResponse httpResponse);
-
+  void handle(HttpResponse httpResponse);
 }

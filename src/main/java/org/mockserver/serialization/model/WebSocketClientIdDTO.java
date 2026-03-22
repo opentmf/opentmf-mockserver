@@ -7,14 +7,14 @@ import org.mockserver.model.ObjectWithReflectiveEqualsHashCodeToString;
  */
 public class WebSocketClientIdDTO extends ObjectWithReflectiveEqualsHashCodeToString {
 
-    private String clientId;
+  private String clientId;
 
-    public String getClientId() {
-        return clientId;
-    }
+  public String getClientId() {
+    return clientId;
+  }
 
-    public WebSocketClientIdDTO setClientId(String clientId) {
-        this.clientId = clientId;
-        return this;
-    }
+  public WebSocketClientIdDTO setClientId(String clientId) {
+    this.clientId = clientId;
+    return this;
+  }
 }

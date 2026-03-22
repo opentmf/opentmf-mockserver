@@ -8,6 +8,5 @@ import org.mockserver.mock.Expectation;
  */
 public interface ExpectationsListener {
 
-    void updated(List<Expectation> expectations);
-
+  void updated(List<Expectation> expectations);
 }

@@ -7,24 +7,24 @@ import java.util.Map;
  * @author jamesdbloom
  */
 public class CircularHashMap<K, V> extends LinkedHashMap<K, V> {
-    private final int maxSize;
+  private final int maxSize;
 
-    public CircularHashMap(int maxSize) {
-        this.maxSize = maxSize;
-    }
+  public CircularHashMap(int maxSize) {
+    this.maxSize = maxSize;
+  }
 
-    @Override
-    protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-        return size() > maxSize;
-    }
+  @Override
+  protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+    return size() > maxSize;
+  }
 
-    public K findKey(V value) {
-        for (Map.Entry<K, V> entry : entrySet()) {
-            V entryValue = entry.getValue();
-            if (entryValue == value || (value != null && value.equals(entryValue))) {
-                return entry.getKey();
-            }
-        }
-        return null;
+  public K findKey(V value) {
+    for (Map.Entry<K, V> entry : entrySet()) {
+      V entryValue = entry.getValue();
+      if (entryValue == value || (value != null && value.equals(entryValue))) {
+        return entry.getKey();
+      }
     }
+    return null;
+  }
 }

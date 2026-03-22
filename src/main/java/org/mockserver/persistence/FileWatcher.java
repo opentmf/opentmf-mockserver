@@ -17,79 +17,91 @@ import org.mockserver.scheduler.Scheduler;
 
 public class FileWatcher {
 
-    private static ScheduledExecutorService scheduler;
+  private static ScheduledExecutorService scheduler;
 
-    public synchronized static ScheduledExecutorService getScheduler() {
-        if (scheduler == null) {
-            scheduler = new ScheduledThreadPoolExecutor(
-                2,
-                new Scheduler.SchedulerThreadFactory("FileWatcher"),
-                new ThreadPoolExecutor.CallerRunsPolicy()
-            );
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> scheduler.shutdown()));
-        }
-        return scheduler;
+  public static synchronized ScheduledExecutorService getScheduler() {
+    if (scheduler == null) {
+      scheduler =
+          new ScheduledThreadPoolExecutor(
+              2,
+              new Scheduler.SchedulerThreadFactory("FileWatcher"),
+              new ThreadPoolExecutor.CallerRunsPolicy());
+      Runtime.getRuntime().addShutdownHook(new Thread(() -> scheduler.shutdown()));
     }
+    return scheduler;
+  }
 
-    private boolean running = true;
-    private final ScheduledFuture<?> scheduledFuture;
-    private static long pollPeriod = 5;
-    private static TimeUnit pollPeriodUnits = TimeUnit.SECONDS;
+  private boolean running = true;
+  private final ScheduledFuture<?> scheduledFuture;
+  private static long pollPeriod = 5;
+  private static TimeUnit pollPeriodUnits = TimeUnit.SECONDS;
 
-    public FileWatcher(Path filePath, Runnable updatedHandler, Consumer<Throwable> errorHandler, MockServerLogger mockServerLogger) {
-        final Path path = filePath.getParent() != null ? filePath : Paths.get(new File(".").getAbsolutePath(), filePath.toString());
-        final AtomicReference<Integer> fileHash = new AtomicReference<>(getFileHash(path));
-        mockServerLogger.logEvent(
-            new LogEntry()
-                .setLogLevel(INFO)
-                .setMessageFormat("watching file:{}with file fingerprint:{}")
-                .setArguments(path, fileHash)
-        );
-        scheduledFuture = getScheduler().scheduleAtFixedRate(() -> {
-            try {
-                if (!getFileHash(path).equals(fileHash.get())) {
-                    updatedHandler.run();
-                    fileHash.set(getFileHash(path));
-                }
-            } catch (Throwable throwable) {
-                errorHandler.accept(throwable);
-            }
-        }, pollPeriod, pollPeriod, pollPeriodUnits);
+  public FileWatcher(
+      Path filePath,
+      Runnable updatedHandler,
+      Consumer<Throwable> errorHandler,
+      MockServerLogger mockServerLogger) {
+    final Path path =
+        filePath.getParent() != null
+            ? filePath
+            : Paths.get(new File(".").getAbsolutePath(), filePath.toString());
+    final AtomicReference<Integer> fileHash = new AtomicReference<>(getFileHash(path));
+    mockServerLogger.logEvent(
+        new LogEntry()
+            .setLogLevel(INFO)
+            .setMessageFormat("watching file:{}with file fingerprint:{}")
+            .setArguments(path, fileHash));
+    scheduledFuture =
+        getScheduler()
+            .scheduleAtFixedRate(
+                () -> {
+                  try {
+                    if (!getFileHash(path).equals(fileHash.get())) {
+                      updatedHandler.run();
+                      fileHash.set(getFileHash(path));
+                    }
+                  } catch (Throwable throwable) {
+                    errorHandler.accept(throwable);
+                  }
+                },
+                pollPeriod,
+                pollPeriod,
+                pollPeriodUnits);
+  }
+
+  private Integer getFileHash(Path path) {
+    try {
+      return Arrays.hashCode(Files.readAllBytes(path));
+    } catch (IOException ioe) {
+      return 0;
     }
+  }
 
-    private Integer getFileHash(Path path) {
-        try {
-            return Arrays.hashCode(Files.readAllBytes(path));
-        } catch (IOException ioe) {
-            return 0;
-        }
-    }
+  public boolean isRunning() {
+    return running;
+  }
 
-    public boolean isRunning() {
-        return running;
+  public FileWatcher setRunning(boolean running) {
+    this.running = running;
+    if (!running && this.scheduledFuture != null) {
+      this.scheduledFuture.cancel(true);
     }
+    return this;
+  }
 
-    public FileWatcher setRunning(boolean running) {
-        this.running = running;
-        if (!running && this.scheduledFuture != null) {
-            this.scheduledFuture.cancel(true);
-        }
-        return this;
-    }
+  public static long getPollPeriod() {
+    return FileWatcher.pollPeriod;
+  }
 
-    public static long getPollPeriod() {
-        return FileWatcher.pollPeriod;
-    }
+  public static void setPollPeriod(long pollPeriod) {
+    FileWatcher.pollPeriod = pollPeriod;
+  }
 
-    public static void setPollPeriod(long pollPeriod) {
-        FileWatcher.pollPeriod = pollPeriod;
-    }
+  public static TimeUnit getPollPeriodUnits() {
+    return FileWatcher.pollPeriodUnits;
+  }
 
-    public static TimeUnit getPollPeriodUnits() {
-        return FileWatcher.pollPeriodUnits;
-    }
-
-    public static void setPollPeriodUnits(TimeUnit pollPeriodUnits) {
-        FileWatcher.pollPeriodUnits = pollPeriodUnits;
-    }
+  public static void setPollPeriodUnits(TimeUnit pollPeriodUnits) {
+    FileWatcher.pollPeriodUnits = pollPeriodUnits;
+  }
 }

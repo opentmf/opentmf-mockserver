@@ -17,7 +17,10 @@ import tools.jackson.databind.node.NullNode;
 public final class CacheQuery {
   private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
-  /** One field==value condition. Path may be dot notation, [index], or a JSON Pointer if it starts with '/'. */
+  /**
+   * One field==value condition. Path may be dot notation, [index], or a JSON Pointer if it starts
+   * with '/'.
+   */
   public static final class Criterion {
     private final String path;
     private final Object expected;
@@ -26,13 +29,26 @@ public final class CacheQuery {
       this.path = path;
       this.expected = expected;
     }
-    public String path() { return path; }
-    public Object expected() { return expected; }
-    JsonNode expectedNode() { return toJsonNode(expected); }
+
+    public String path() {
+      return path;
+    }
+
+    public Object expected() {
+      return expected;
+    }
+
+    JsonNode expectedNode() {
+      return toJsonNode(expected);
+    }
   }
 
-  /** Core API: filter by a list of criteria. Keys may repeat; repeated keys are OR'ed, different keys are AND'ed. */
-  public static <K> Map<K, JsonNode> filter(SortedMap<K, JsonNode> cache, List<Criterion> criteria) {
+  /**
+   * Core API: filter by a list of criteria. Keys may repeat; repeated keys are OR'ed, different
+   * keys are AND'ed.
+   */
+  public static <K> Map<K, JsonNode> filter(
+      SortedMap<K, JsonNode> cache, List<Criterion> criteria) {
     if (criteria == null || criteria.isEmpty()) {
       return new LinkedHashMap<>(cache);
     }
@@ -45,15 +61,13 @@ public final class CacheQuery {
 
     return cache.entrySet().stream()
         .filter(e -> matchesGrouped(e.getValue(), grouped))
-        .collect(Collectors.toMap(
-            Map.Entry::getKey,
-            Map.Entry::getValue,
-            (a, b) -> a,
-            LinkedHashMap::new
-        ));
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
   }
 
-  private static final Set<String> IGNORED_KEYS = Set.of("limit", "offset", "sort", "fields", "filter");
+  private static final Set<String> IGNORED_KEYS =
+      Set.of("limit", "offset", "sort", "fields", "filter");
 
   public static <K> Map<K, JsonNode> filter(SortedMap<K, JsonNode> cache, HttpRequest httpRequest) {
     List<Criterion> list = new ArrayList<>();
@@ -89,10 +103,14 @@ public final class CacheQuery {
       boolean matchedAny = false;
       for (JsonNode expected : expectedList) {
         if (expected.isNull()) {
-          if (actual.isNull()) { matchedAny = true; break; }
+          if (actual.isNull()) {
+            matchedAny = true;
+            break;
+          }
           // if actual present & non-null, null doesn't match; keep checking others
         } else if (jsonEquals(actual, expected)) {
-          matchedAny = true; break;
+          matchedAny = true;
+          break;
         }
       }
       if (!matchedAny) return false; // AND fails
@@ -146,12 +164,16 @@ public final class CacheQuery {
     if (a.getNodeType() != b.getNodeType()) {
       // Coerce textual numbers ↔ numeric nodes when possible
       if (a.isNumber() && b.isTextual()) {
-        try { return new BigDecimal(b.asText()).compareTo(a.decimalValue()) == 0; }
-        catch (NumberFormatException ignore) {}
+        try {
+          return new BigDecimal(b.asText()).compareTo(a.decimalValue()) == 0;
+        } catch (NumberFormatException ignore) {
+        }
       }
       if (b.isNumber() && a.isTextual()) {
-        try { return new BigDecimal(a.asText()).compareTo(b.decimalValue()) == 0; }
-        catch (NumberFormatException ignore) {}
+        try {
+          return new BigDecimal(a.asText()).compareTo(b.decimalValue()) == 0;
+        } catch (NumberFormatException ignore) {
+        }
       }
       return false;
     }

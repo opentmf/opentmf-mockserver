@@ -5,10 +5,9 @@ package org.mockserver.serialization;
  */
 public interface Serializer<T> {
 
-    String serialize(T t);
+  String serialize(T t);
 
-    T deserialize(String json);
+  T deserialize(String json);
 
-    Class<T> supportsType();
-
+  Class<T> supportsType();
 }

@@ -10,17 +10,19 @@ import org.mockserver.model.HttpResponse;
 /**
  * @author jamesdbloom
  */
-public class MockServerHttpToNettyHttpResponseEncoder extends MessageToMessageEncoder<HttpResponse> {
+public class MockServerHttpToNettyHttpResponseEncoder
+    extends MessageToMessageEncoder<HttpResponse> {
 
-    private final MockServerHttpResponseToFullHttpResponse mockServerHttpResponseToFullHttpResponse;
+  private final MockServerHttpResponseToFullHttpResponse mockServerHttpResponseToFullHttpResponse;
 
-    public MockServerHttpToNettyHttpResponseEncoder(MockServerLogger mockServerLogger) {
-        mockServerHttpResponseToFullHttpResponse = new MockServerHttpResponseToFullHttpResponse(mockServerLogger);
-    }
+  public MockServerHttpToNettyHttpResponseEncoder(MockServerLogger mockServerLogger) {
+    mockServerHttpResponseToFullHttpResponse =
+        new MockServerHttpResponseToFullHttpResponse(mockServerLogger);
+  }
 
-    @Override
-    protected void encode(ChannelHandlerContext ctx, HttpResponse response, List<Object> out) {
-        out.addAll(mockServerHttpResponseToFullHttpResponse.mapMockServerResponseToNettyResponse(response));
-    }
-
+  @Override
+  protected void encode(ChannelHandlerContext ctx, HttpResponse response, List<Object> out) {
+    out.addAll(
+        mockServerHttpResponseToFullHttpResponse.mapMockServerResponseToNettyResponse(response));
+  }
 }

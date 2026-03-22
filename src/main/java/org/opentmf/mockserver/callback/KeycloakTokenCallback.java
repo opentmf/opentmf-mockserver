@@ -2,6 +2,7 @@ package org.opentmf.mockserver.callback;
 
 import static org.opentmf.mockserver.util.JacksonUtil.writeAsString;
 
+import io.hypersistence.tsid.TSID;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -11,7 +12,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import io.hypersistence.tsid.TSID;
 import java.util.stream.Collectors;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;

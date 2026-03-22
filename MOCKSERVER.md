@@ -8,61 +8,61 @@ lists what is carried over and what is intentionally excluded.
 
 ### Core Server
 
-| Feature | Details |
-|---|---|
-| Netty HTTP server | `MockServer`, `ClientAndServer`, CLI via `Main` |
-| Expectation engine | Create, match, prioritise, and expire expectations |
-| Request matching | Method, path, headers, query parameters, cookies, body |
-| Verification | `PUT /mockserver/verify` and `/mockserver/verifySequence` |
-| Logging & retrieval | `PUT /mockserver/retrieve` (requests, expectations, logs) |
-| Clear & reset | `PUT /mockserver/clear`, `/mockserver/reset` |
-| Port binding | `PUT /mockserver/bind` for dynamic port allocation |
-| Expectation persistence | JSON initialisation file and `ExpectationFileWatcher` |
-| CORS | Built-in CORS handling for browser clients |
+| Feature                 | Details                                                   |
+|-------------------------|-----------------------------------------------------------|
+| Netty HTTP server       | `MockServer`, `ClientAndServer`, CLI via `Main`           |
+| Expectation engine      | Create, match, prioritise, and expire expectations        |
+| Request matching        | Method, path, headers, query parameters, cookies, body    |
+| Verification            | `PUT /mockserver/verify` and `/mockserver/verifySequence` |
+| Logging & retrieval     | `PUT /mockserver/retrieve` (requests, expectations, logs) |
+| Clear & reset           | `PUT /mockserver/clear`, `/mockserver/reset`              |
+| Port binding            | `PUT /mockserver/bind` for dynamic port allocation        |
+| Expectation persistence | JSON initialisation file and `ExpectationFileWatcher`     |
+| CORS                    | Built-in CORS handling for browser clients                |
 
 ### Body Matching
 
-| Matcher | Description |
-|---|---|
-| Exact string | Literal string equality |
-| Substring | Contains check |
-| Regex | Java regex against body |
-| JSON | Structural JSON comparison |
-| JSON Schema | Validate body against a JSON Schema (Draft 7) |
-| JSONPath | Match when a JSONPath expression returns results |
-| Binary | Byte-array equality |
-| Parameter | Form-encoded parameter matching |
+| Matcher      | Description                                      |
+|--------------|--------------------------------------------------|
+| Exact string | Literal string equality                          |
+| Substring    | Contains check                                   |
+| Regex        | Java regex against body                          |
+| JSON         | Structural JSON comparison                       |
+| JSON Schema  | Validate body against a JSON Schema (Draft 7)    |
+| JSONPath     | Match when a JSONPath expression returns results |
+| Binary       | Byte-array equality                              |
+| Parameter    | Form-encoded parameter matching                  |
 
 ### Actions
 
-| Action | Description |
-|---|---|
-| Response | Return a static response |
-| Response class callback | Invoke a server-side Java class implementing `ExpectationResponseCallback` |
-| Response object callback | Invoke a client-supplied callback over WebSocket |
-| Forward | Forward the request to another host |
-| Forward class callback | Invoke a server-side Java class to modify the forwarded request |
-| Forward object callback | Invoke a client-supplied callback to modify the forwarded request |
-| Error | Drop the connection or return garbage bytes |
+| Action                   | Description                                                                |
+|--------------------------|----------------------------------------------------------------------------|
+| Response                 | Return a static response                                                   |
+| Response class callback  | Invoke a server-side Java class implementing `ExpectationResponseCallback` |
+| Response object callback | Invoke a client-supplied callback over WebSocket                           |
+| Forward                  | Forward the request to another host                                        |
+| Forward class callback   | Invoke a server-side Java class to modify the forwarded request            |
+| Forward object callback  | Invoke a client-supplied callback to modify the forwarded request          |
+| Error                    | Drop the connection or return garbage bytes                                |
 
 ### TLS / SSL
 
-| Feature | Details |
-|---|---|
-| Server-side TLS | Auto-generated self-signed certificates via BouncyCastle |
-| Client-side TLS | Outbound HTTPS when forwarding requests |
-| SNI | Server Name Indication for multi-domain certificates |
-| HTTP/2 + ALPN | Application-Layer Protocol Negotiation for HTTP/2 over TLS |
-| Mutual TLS | Configurable via `tlsMutualAuthenticationRequired` |
-| Certificate export | PEM and KeyStore export utilities |
+| Feature            | Details                                                    |
+|--------------------|------------------------------------------------------------|
+| Server-side TLS    | Auto-generated self-signed certificates via BouncyCastle   |
+| Client-side TLS    | Outbound HTTPS when forwarding requests                    |
+| SNI                | Server Name Indication for multi-domain certificates       |
+| HTTP/2 + ALPN      | Application-Layer Protocol Negotiation for HTTP/2 over TLS |
+| Mutual TLS         | Configurable via `tlsMutualAuthenticationRequired`         |
+| Certificate export | PEM and KeyStore export utilities                          |
 
 ### Networking
 
-| Feature | Details |
-|---|---|
-| HTTP/1.1 and HTTP/2 | Both supported on server and client side |
-| Port forwarding | `proxyRemotePort` / `proxyRemoteHost` for simple port-level forwarding |
-| WebSocket callbacks | Bidirectional callback channel between client and server |
+| Feature             | Details                                                                |
+|---------------------|------------------------------------------------------------------------|
+| HTTP/1.1 and HTTP/2 | Both supported on server and client side                               |
+| Port forwarding     | `proxyRemotePort` / `proxyRemoteHost` for simple port-level forwarding |
+| WebSocket callbacks | Bidirectional callback channel between client and server               |
 
 ### Serialization
 
@@ -137,7 +137,11 @@ curl -s -X PUT http://localhost:1080/mockserver/status | jq .
 ```
 
 ```json
-{ "ports": [1080] }
+{
+  "ports": [
+    1080
+  ]
+}
 ```
 
 ### 2. View the OpenAPI Specification
@@ -242,7 +246,10 @@ curl -s -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/a
 ```
 
 ```json
-{ "priority": "2", "revision": 3 }
+{
+  "priority": "2",
+  "revision": 3
+}
 ```
 
 **JSON Patch** — add a note:
@@ -254,7 +261,10 @@ curl -s -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/a
 ```
 
 ```json
-{ "note": "Escalated to L2", "revision": 4 }
+{
+  "note": "Escalated to L2",
+  "revision": 4
+}
 ```
 
 ### 7. List Resources with Paging

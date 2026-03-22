@@ -8,19 +8,19 @@ import org.mockserver.model.LogEntryBody;
  */
 public class LogEntryBodyDTO extends BodyWithContentTypeDTO {
 
-    private final Object value;
+  private final Object value;
 
-    public LogEntryBodyDTO(LogEntryBody logEventBody) {
-        super(Body.Type.STRING, null, null);
-        value = logEventBody.getValue();
-    }
+  public LogEntryBodyDTO(LogEntryBody logEventBody) {
+    super(Body.Type.STRING, null, null);
+    value = logEventBody.getValue();
+  }
 
-    public Object getValue() {
-        return value;
-    }
+  public Object getValue() {
+    return value;
+  }
 
-    @Override
-    public LogEntryBody buildObject() {
-        return (LogEntryBody) new LogEntryBody(value).withOptional(getOptional());
-    }
+  @Override
+  public LogEntryBody buildObject() {
+    return (LogEntryBody) new LogEntryBody(value).withOptional(getOptional());
+  }
 }

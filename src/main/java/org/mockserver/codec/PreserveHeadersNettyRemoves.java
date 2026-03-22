@@ -15,28 +15,33 @@ import org.mockserver.model.Header;
 
 public class PreserveHeadersNettyRemoves extends MessageToMessageDecoder<HttpObject> {
 
-    private static final AttributeKey<List<Header>> PRESERVED_HEADERS = AttributeKey.valueOf("PRESERVED_HEADERS");
+  private static final AttributeKey<List<Header>> PRESERVED_HEADERS =
+      AttributeKey.valueOf("PRESERVED_HEADERS");
 
-    @Override
-    protected void decode(ChannelHandlerContext ctx, HttpObject httpObject, List<Object> out) throws Exception {
-        if (httpObject instanceof HttpMessage) {
-            final HttpHeaders headers = ((HttpMessage) httpObject).headers();
-            if (headers.contains(HttpHeaderNames.CONTENT_ENCODING)) {
-                ctx.channel().attr(PRESERVED_HEADERS).set(ImmutableList.of(
-                    new Header(HttpHeaderNames.CONTENT_ENCODING.toString(), headers.getAll(HttpHeaderNames.CONTENT_ENCODING))
-                ));
-            }
-        }
-        ReferenceCountUtil.retain(httpObject);
-        out.add(httpObject);
+  @Override
+  protected void decode(ChannelHandlerContext ctx, HttpObject httpObject, List<Object> out)
+      throws Exception {
+    if (httpObject instanceof HttpMessage) {
+      final HttpHeaders headers = ((HttpMessage) httpObject).headers();
+      if (headers.contains(HttpHeaderNames.CONTENT_ENCODING)) {
+        ctx.channel()
+            .attr(PRESERVED_HEADERS)
+            .set(
+                ImmutableList.of(
+                    new Header(
+                        HttpHeaderNames.CONTENT_ENCODING.toString(),
+                        headers.getAll(HttpHeaderNames.CONTENT_ENCODING))));
+      }
     }
+    ReferenceCountUtil.retain(httpObject);
+    out.add(httpObject);
+  }
 
-    public static List<Header> preservedHeaders(Channel channel) {
-        if (channel.attr(PRESERVED_HEADERS) != null && channel.attr(PRESERVED_HEADERS).get() != null) {
-            return channel.attr(PRESERVED_HEADERS).get();
-        } else {
-            return ImmutableList.of();
-        }
+  public static List<Header> preservedHeaders(Channel channel) {
+    if (channel.attr(PRESERVED_HEADERS) != null && channel.attr(PRESERVED_HEADERS).get() != null) {
+      return channel.attr(PRESERVED_HEADERS).get();
+    } else {
+      return ImmutableList.of();
     }
-
+  }
 }

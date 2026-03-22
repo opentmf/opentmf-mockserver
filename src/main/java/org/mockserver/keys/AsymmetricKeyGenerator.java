@@ -1,9 +1,9 @@
 package org.mockserver.keys;
 
+import io.hypersistence.tsid.TSID;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.spec.ECGenParameterSpec;
-import io.hypersistence.tsid.TSID;
 
 public class AsymmetricKeyGenerator {
 

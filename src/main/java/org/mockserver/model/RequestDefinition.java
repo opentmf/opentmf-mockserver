@@ -8,32 +8,33 @@ import org.slf4j.event.Level;
 
 public abstract class RequestDefinition extends Not {
 
-    private String logCorrelationId;
+  private String logCorrelationId;
 
-    @JsonIgnore
-    public String getLogCorrelationId() {
-        return logCorrelationId;
-    }
+  @JsonIgnore
+  public String getLogCorrelationId() {
+    return logCorrelationId;
+  }
 
-    public RequestDefinition withLogCorrelationId(String logCorrelationId) {
-        this.logCorrelationId = logCorrelationId;
-        return this;
-    }
+  public RequestDefinition withLogCorrelationId(String logCorrelationId) {
+    this.logCorrelationId = logCorrelationId;
+    return this;
+  }
 
-    public abstract RequestDefinition shallowClone();
+  public abstract RequestDefinition shallowClone();
 
-    public RequestDefinition cloneWithLogCorrelationId() {
-        return MockServerLogger.isEnabled(Level.TRACE) && isNotBlank(getLogCorrelationId()) ? shallowClone().withLogCorrelationId(getLogCorrelationId()) : this;
-    }
+  public RequestDefinition cloneWithLogCorrelationId() {
+    return MockServerLogger.isEnabled(Level.TRACE) && isNotBlank(getLogCorrelationId())
+        ? shallowClone().withLogCorrelationId(getLogCorrelationId())
+        : this;
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        return super.equals(o);
-    }
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
 
-    @Override
-    public int hashCode() {
-        return super.hashCode();
-    }
-
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

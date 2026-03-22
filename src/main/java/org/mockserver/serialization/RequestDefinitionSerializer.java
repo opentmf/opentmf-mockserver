@@ -31,181 +31,220 @@ import tools.jackson.databind.ObjectWriter;
  */
 @SuppressWarnings("FieldMayBeFinal")
 public class RequestDefinitionSerializer implements Serializer<RequestDefinition> {
-    private final MockServerLogger mockServerLogger;
-    private ObjectWriter objectWriter = ObjectMapperFactory.createObjectMapper(true, false);
-    private ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
-    private JsonArraySerializer jsonArraySerializer = new JsonArraySerializer();
-    private JsonSchemaRequestDefinitionValidator requestDefinitionValidator;
+  private final MockServerLogger mockServerLogger;
+  private ObjectWriter objectWriter = ObjectMapperFactory.createObjectMapper(true, false);
+  private ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
+  private JsonArraySerializer jsonArraySerializer = new JsonArraySerializer();
+  private JsonSchemaRequestDefinitionValidator requestDefinitionValidator;
 
-    public RequestDefinitionSerializer(MockServerLogger mockServerLogger) {
-        this.mockServerLogger = mockServerLogger;
+  public RequestDefinitionSerializer(MockServerLogger mockServerLogger) {
+    this.mockServerLogger = mockServerLogger;
+  }
+
+  private JsonSchemaRequestDefinitionValidator getValidator() {
+    if (requestDefinitionValidator == null) {
+      requestDefinitionValidator = jsonSchemaRequestDefinitionValidator(mockServerLogger);
     }
+    return requestDefinitionValidator;
+  }
 
-    private JsonSchemaRequestDefinitionValidator getValidator() {
-        if (requestDefinitionValidator == null) {
-            requestDefinitionValidator = jsonSchemaRequestDefinitionValidator(mockServerLogger);
+  public String serialize(RequestDefinition requestDefinition) {
+    return serialize(false, requestDefinition);
+  }
+
+  public String serialize(boolean prettyPrint, RequestDefinition requestDefinition) {
+    try {
+      if (requestDefinition instanceof HttpRequest) {
+        return objectWriter.writeValueAsString(
+            prettyPrint
+                ? new HttpRequestPrettyPrintedDTO((HttpRequest) requestDefinition)
+                : new HttpRequestDTO((HttpRequest) requestDefinition));
+      } else if (requestDefinition instanceof OpenAPIDefinition) {
+        return objectWriter.writeValueAsString(
+            new OpenAPIDefinitionDTO((OpenAPIDefinition) requestDefinition));
+      } else {
+        return "";
+      }
+    } catch (Exception e) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setMessageFormat(
+                  "exception while serializing RequestDefinition to JSON with value "
+                      + requestDefinition)
+              .setThrowable(e));
+      throw new RuntimeException(
+          "Exception while serializing RequestDefinition to JSON with value " + requestDefinition,
+          e);
+    }
+  }
+
+  public String serialize(List<? extends RequestDefinition> requestDefinitions) {
+    return serialize(false, requestDefinitions);
+  }
+
+  public String serialize(
+      boolean prettyPrint, List<? extends RequestDefinition> requestDefinitions) {
+    return serialize(prettyPrint, requestDefinitions.toArray(new RequestDefinition[0]));
+  }
+
+  public String serialize(RequestDefinition... requestDefinitions) {
+    return serialize(false, requestDefinitions);
+  }
+
+  public String serialize(boolean prettyPrint, RequestDefinition... requestDefinitions) {
+    try {
+      if (requestDefinitions != null && requestDefinitions.length > 0) {
+        Object[] requestDefinitionDTOs = new Object[requestDefinitions.length];
+        for (int i = 0; i < requestDefinitions.length; i++) {
+          if (requestDefinitions[i] instanceof HttpRequest) {
+            requestDefinitionDTOs[i] =
+                prettyPrint
+                    ? new HttpRequestPrettyPrintedDTO((HttpRequest) requestDefinitions[i])
+                    : new HttpRequestDTO((HttpRequest) requestDefinitions[i]);
+          } else if (requestDefinitions[i] instanceof OpenAPIDefinition) {
+            requestDefinitionDTOs[i] =
+                new OpenAPIDefinitionDTO((OpenAPIDefinition) requestDefinitions[i]);
+          }
         }
-        return requestDefinitionValidator;
+        return objectWriter.writeValueAsString(requestDefinitionDTOs);
+      } else {
+        return "[]";
+      }
+    } catch (Exception e) {
+      mockServerLogger.logEvent(
+          new LogEntry()
+              .setLogLevel(Level.ERROR)
+              .setMessageFormat(
+                  "exception while serializing RequestDefinition to JSON with value "
+                      + Arrays.asList(requestDefinitions))
+              .setThrowable(e));
+      throw new RuntimeException(
+          "Exception while serializing RequestDefinition to JSON with value "
+              + Arrays.asList(requestDefinitions),
+          e);
     }
+  }
 
-    public String serialize(RequestDefinition requestDefinition) {
-        return serialize(false, requestDefinition);
-    }
-
-    public String serialize(boolean prettyPrint, RequestDefinition requestDefinition) {
+  public RequestDefinition deserialize(String jsonRequestDefinition) {
+    if (isBlank(jsonRequestDefinition)) {
+      throw new IllegalArgumentException(
+          "1 error:"
+              + NEW_LINE
+              + " - a request is required but value was \""
+              + jsonRequestDefinition
+              + "\""
+              + NEW_LINE
+              + NEW_LINE
+              + OPEN_API_SPECIFICATION_URL);
+    } else {
+      if (jsonRequestDefinition.contains("\"httpRequest\"")) {
         try {
-            if (requestDefinition instanceof HttpRequest) {
-                return objectWriter.writeValueAsString(prettyPrint ? new HttpRequestPrettyPrintedDTO((HttpRequest) requestDefinition) : new HttpRequestDTO((HttpRequest) requestDefinition));
-            } else if (requestDefinition instanceof OpenAPIDefinition) {
-                return objectWriter.writeValueAsString(new OpenAPIDefinitionDTO((OpenAPIDefinition) requestDefinition));
-            } else {
-                return "";
-            }
-        } catch (Exception e) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(Level.ERROR)
-                    .setMessageFormat("exception while serializing RequestDefinition to JSON with value " + requestDefinition)
-                    .setThrowable(e)
-            );
-            throw new RuntimeException("Exception while serializing RequestDefinition to JSON with value " + requestDefinition, e);
+          JsonNode jsonNode = objectMapper.readTree(jsonRequestDefinition);
+          if (jsonNode.has("httpRequest")) {
+            jsonRequestDefinition = jsonNode.get("httpRequest").toString();
+          }
+        } catch (Throwable throwable) {
+          mockServerLogger.logEvent(
+              new LogEntry()
+                  .setLogLevel(Level.ERROR)
+                  .setMessageFormat(
+                      "exception while parsing{}for RequestDefinition " + throwable.getMessage())
+                  .setArguments(jsonRequestDefinition)
+                  .setThrowable(throwable));
+          throw new IllegalArgumentException(
+              "exception while parsing [" + jsonRequestDefinition + "] for RequestDefinition",
+              throwable);
         }
-    }
-
-    public String serialize(List<? extends RequestDefinition> requestDefinitions) {
-        return serialize(false, requestDefinitions);
-    }
-
-    public String serialize(boolean prettyPrint, List<? extends RequestDefinition> requestDefinitions) {
-        return serialize(prettyPrint, requestDefinitions.toArray(new RequestDefinition[0]));
-    }
-
-    public String serialize(RequestDefinition... requestDefinitions) {
-        return serialize(false, requestDefinitions);
-    }
-
-    public String serialize(boolean prettyPrint, RequestDefinition... requestDefinitions) {
+      } else if (jsonRequestDefinition.contains("\"openAPIDefinition\"")) {
         try {
-            if (requestDefinitions != null && requestDefinitions.length > 0) {
-                Object[] requestDefinitionDTOs = new Object[requestDefinitions.length];
-                for (int i = 0; i < requestDefinitions.length; i++) {
-                    if (requestDefinitions[i] instanceof HttpRequest) {
-                        requestDefinitionDTOs[i] = prettyPrint ? new HttpRequestPrettyPrintedDTO((HttpRequest) requestDefinitions[i]) : new HttpRequestDTO((HttpRequest) requestDefinitions[i]);
-                    } else if (requestDefinitions[i] instanceof OpenAPIDefinition) {
-                        requestDefinitionDTOs[i] = new OpenAPIDefinitionDTO((OpenAPIDefinition) requestDefinitions[i]);
-                    }
-                }
-                return objectWriter.writeValueAsString(requestDefinitionDTOs);
-            } else {
-                return "[]";
-            }
-        } catch (Exception e) {
-            mockServerLogger.logEvent(
-                new LogEntry()
-                    .setLogLevel(Level.ERROR)
-                    .setMessageFormat("exception while serializing RequestDefinition to JSON with value " + Arrays.asList(requestDefinitions))
-                    .setThrowable(e)
-            );
-            throw new RuntimeException("Exception while serializing RequestDefinition to JSON with value " + Arrays.asList(requestDefinitions), e);
+          JsonNode jsonNode = objectMapper.readTree(jsonRequestDefinition);
+          if (jsonNode.has("openAPIDefinition")) {
+            jsonRequestDefinition = jsonNode.get("openAPIDefinition").toString();
+          }
+        } catch (Throwable throwable) {
+          mockServerLogger.logEvent(
+              new LogEntry()
+                  .setLogLevel(Level.ERROR)
+                  .setMessageFormat(
+                      "exception while parsing{}for RequestDefinition " + throwable.getMessage())
+                  .setArguments(jsonRequestDefinition)
+                  .setThrowable(throwable));
+          throw new IllegalArgumentException(
+              "exception while parsing [" + jsonRequestDefinition + "] for RequestDefinition",
+              throwable);
         }
-    }
-
-    public RequestDefinition deserialize(String jsonRequestDefinition) {
-        if (isBlank(jsonRequestDefinition)) {
-            throw new IllegalArgumentException(
-                "1 error:" + NEW_LINE
-                    + " - a request is required but value was \"" + jsonRequestDefinition + "\"" + NEW_LINE +
-                    NEW_LINE +
-                    OPEN_API_SPECIFICATION_URL
-            );
-        } else {
-            if (jsonRequestDefinition.contains("\"httpRequest\"")) {
-                try {
-                    JsonNode jsonNode = objectMapper.readTree(jsonRequestDefinition);
-                    if (jsonNode.has("httpRequest")) {
-                        jsonRequestDefinition = jsonNode.get("httpRequest").toString();
-                    }
-                } catch (Throwable throwable) {
-                    mockServerLogger.logEvent(
-                        new LogEntry()
-                            .setLogLevel(Level.ERROR)
-                            .setMessageFormat("exception while parsing{}for RequestDefinition " + throwable.getMessage())
-                            .setArguments(jsonRequestDefinition)
-                            .setThrowable(throwable)
-                    );
-                    throw new IllegalArgumentException("exception while parsing [" + jsonRequestDefinition + "] for RequestDefinition", throwable);
-                }
-            } else if (jsonRequestDefinition.contains("\"openAPIDefinition\"")) {
-                try {
-                    JsonNode jsonNode = objectMapper.readTree(jsonRequestDefinition);
-                    if (jsonNode.has("openAPIDefinition")) {
-                        jsonRequestDefinition = jsonNode.get("openAPIDefinition").toString();
-                    }
-                } catch (Throwable throwable) {
-                    mockServerLogger.logEvent(
-                        new LogEntry()
-                            .setLogLevel(Level.ERROR)
-                            .setMessageFormat("exception while parsing{}for RequestDefinition " + throwable.getMessage())
-                            .setArguments(jsonRequestDefinition)
-                            .setThrowable(throwable)
-                    );
-                    throw new IllegalArgumentException("exception while parsing [" + jsonRequestDefinition + "] for RequestDefinition", throwable);
-                }
-            }
-            String validationErrors = getValidator().isValid(jsonRequestDefinition);
-            if (validationErrors.isEmpty()) {
-                RequestDefinition requestDefinition = null;
-                try {
-                    RequestDefinitionDTO requestDefinitionDTO = objectMapper.readValue(jsonRequestDefinition, RequestDefinitionDTO.class);
-                    if (requestDefinitionDTO != null) {
-                        requestDefinition = requestDefinitionDTO.buildObject();
-                    }
-                } catch (Throwable throwable) {
-                    mockServerLogger.logEvent(
-                        new LogEntry()
-                            .setLogLevel(Level.ERROR)
-                            .setMessageFormat("exception while parsing{}for RequestDefinition " + throwable.getMessage())
-                            .setArguments(jsonRequestDefinition)
-                            .setThrowable(throwable)
-                    );
-                    throw new IllegalArgumentException("exception while parsing [" + jsonRequestDefinition + "] for RequestDefinition", throwable);
-                }
-                return requestDefinition;
-            } else {
-                throw new IllegalArgumentException(StringUtils.removeEndIgnoreCase(formatLogMessage("incorrect request matcher json format for:{}schema validation errors:{}", jsonRequestDefinition, validationErrors), "\n"));
-            }
+      }
+      String validationErrors = getValidator().isValid(jsonRequestDefinition);
+      if (validationErrors.isEmpty()) {
+        RequestDefinition requestDefinition = null;
+        try {
+          RequestDefinitionDTO requestDefinitionDTO =
+              objectMapper.readValue(jsonRequestDefinition, RequestDefinitionDTO.class);
+          if (requestDefinitionDTO != null) {
+            requestDefinition = requestDefinitionDTO.buildObject();
+          }
+        } catch (Throwable throwable) {
+          mockServerLogger.logEvent(
+              new LogEntry()
+                  .setLogLevel(Level.ERROR)
+                  .setMessageFormat(
+                      "exception while parsing{}for RequestDefinition " + throwable.getMessage())
+                  .setArguments(jsonRequestDefinition)
+                  .setThrowable(throwable));
+          throw new IllegalArgumentException(
+              "exception while parsing [" + jsonRequestDefinition + "] for RequestDefinition",
+              throwable);
         }
+        return requestDefinition;
+      } else {
+        throw new IllegalArgumentException(
+            StringUtils.removeEndIgnoreCase(
+                formatLogMessage(
+                    "incorrect request matcher json format for:{}schema validation errors:{}",
+                    jsonRequestDefinition,
+                    validationErrors),
+                "\n"));
+      }
     }
+  }
 
-    @Override
-    public Class<RequestDefinition> supportsType() {
-        return RequestDefinition.class;
-    }
+  @Override
+  public Class<RequestDefinition> supportsType() {
+    return RequestDefinition.class;
+  }
 
-    public RequestDefinition[] deserializeArray(String jsonRequestDefinitions) {
-        List<RequestDefinition> requestDefinitions = new ArrayList<>();
-        if (isBlank(jsonRequestDefinitions)) {
-            throw new IllegalArgumentException("1 error:" + NEW_LINE + " - a request or request array is required but value was \"" + jsonRequestDefinitions + "\"");
-        } else {
-            List<String> jsonRequestList = jsonArraySerializer.splitJSONArray(jsonRequestDefinitions);
-            if (jsonRequestList.isEmpty()) {
-                throw new IllegalArgumentException("1 error:" + NEW_LINE + " - a request or array of request is required");
-            } else {
-                List<String> validationErrorsList = new ArrayList<>();
-                for (String jsonRequest : jsonRequestList) {
-                    try {
-                        requestDefinitions.add(deserialize(jsonRequest));
-                    } catch (IllegalArgumentException iae) {
-                        validationErrorsList.add(iae.getMessage());
-                    }
-
-                }
-                if (!validationErrorsList.isEmpty()) {
-                    throw new IllegalArgumentException((validationErrorsList.size() > 1 ? "[" : "") + Joiner.on("," + NEW_LINE).join(validationErrorsList) + (validationErrorsList.size() > 1 ? "]" : ""));
-                }
-            }
+  public RequestDefinition[] deserializeArray(String jsonRequestDefinitions) {
+    List<RequestDefinition> requestDefinitions = new ArrayList<>();
+    if (isBlank(jsonRequestDefinitions)) {
+      throw new IllegalArgumentException(
+          "1 error:"
+              + NEW_LINE
+              + " - a request or request array is required but value was \""
+              + jsonRequestDefinitions
+              + "\"");
+    } else {
+      List<String> jsonRequestList = jsonArraySerializer.splitJSONArray(jsonRequestDefinitions);
+      if (jsonRequestList.isEmpty()) {
+        throw new IllegalArgumentException(
+            "1 error:" + NEW_LINE + " - a request or array of request is required");
+      } else {
+        List<String> validationErrorsList = new ArrayList<>();
+        for (String jsonRequest : jsonRequestList) {
+          try {
+            requestDefinitions.add(deserialize(jsonRequest));
+          } catch (IllegalArgumentException iae) {
+            validationErrorsList.add(iae.getMessage());
+          }
         }
-        return requestDefinitions.toArray(new RequestDefinition[0]);
+        if (!validationErrorsList.isEmpty()) {
+          throw new IllegalArgumentException(
+              (validationErrorsList.size() > 1 ? "[" : "")
+                  + Joiner.on("," + NEW_LINE).join(validationErrorsList)
+                  + (validationErrorsList.size() > 1 ? "]" : ""));
+        }
+      }
     }
-
+    return requestDefinitions.toArray(new RequestDefinition[0]);
+  }
 }

@@ -12,46 +12,49 @@ import tools.jackson.databind.deser.std.StdDeserializer;
  */
 public class VerificationTimesDTODeserializer extends StdDeserializer<VerificationTimesDTO> {
 
-    public VerificationTimesDTODeserializer() {
-        super(VerificationTimesDTO.class);
-    }
+  public VerificationTimesDTODeserializer() {
+    super(VerificationTimesDTO.class);
+  }
 
-    @Override
-    public VerificationTimesDTO deserialize(JsonParser jsonParser, DeserializationContext ctxt) {
-        VerificationTimesDTO verificationTimesDTO = null;
+  @Override
+  public VerificationTimesDTO deserialize(JsonParser jsonParser, DeserializationContext ctxt) {
+    VerificationTimesDTO verificationTimesDTO = null;
 
-        Integer count = null;
-        Boolean exact = null;
-        Integer atLeast = null;
-        Integer atMost = null;
+    Integer count = null;
+    Boolean exact = null;
+    Integer atLeast = null;
+    Integer atMost = null;
 
-        while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = jsonParser.currentName();
-            if ("count".equals(fieldName)) {
-                jsonParser.nextToken();
-                count = jsonParser.getIntValue();
-            } else if ("exact".equals(fieldName)) {
-                jsonParser.nextToken();
-                exact = jsonParser.getBooleanValue();
-            } else if ("atLeast".equals(fieldName)) {
-                jsonParser.nextToken();
-                atLeast = jsonParser.getIntValue();
-            } else if ("atMost".equals(fieldName)) {
-                jsonParser.nextToken();
-                atMost = jsonParser.getIntValue();
-            }
+    while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+      String fieldName = jsonParser.currentName();
+      if ("count".equals(fieldName)) {
+        jsonParser.nextToken();
+        count = jsonParser.getIntValue();
+      } else if ("exact".equals(fieldName)) {
+        jsonParser.nextToken();
+        exact = jsonParser.getBooleanValue();
+      } else if ("atLeast".equals(fieldName)) {
+        jsonParser.nextToken();
+        atLeast = jsonParser.getIntValue();
+      } else if ("atMost".equals(fieldName)) {
+        jsonParser.nextToken();
+        atMost = jsonParser.getIntValue();
+      }
 
-            if (atLeast != null || atMost != null) {
-                verificationTimesDTO = new VerificationTimesDTO(VerificationTimes.between(atLeast != null ? atLeast : -1, atMost != null ? atMost : -1));
-            } else if (count != null) {
-                if (exact != null && exact) {
-                    verificationTimesDTO = new VerificationTimesDTO(VerificationTimes.exactly(count));
-                } else {
-                    verificationTimesDTO = new VerificationTimesDTO(VerificationTimes.atLeast(count));
-                }
-            }
+      if (atLeast != null || atMost != null) {
+        verificationTimesDTO =
+            new VerificationTimesDTO(
+                VerificationTimes.between(
+                    atLeast != null ? atLeast : -1, atMost != null ? atMost : -1));
+      } else if (count != null) {
+        if (exact != null && exact) {
+          verificationTimesDTO = new VerificationTimesDTO(VerificationTimes.exactly(count));
+        } else {
+          verificationTimesDTO = new VerificationTimesDTO(VerificationTimes.atLeast(count));
         }
-
-        return verificationTimesDTO;
+      }
     }
+
+    return verificationTimesDTO;
+  }
 }

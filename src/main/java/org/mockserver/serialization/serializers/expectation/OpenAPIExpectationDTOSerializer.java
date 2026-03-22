@@ -14,25 +14,29 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class OpenAPIExpectationDTOSerializer extends StdSerializer<OpenAPIExpectationDTO> {
 
-    private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.createObjectMapper();
+  private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.createObjectMapper();
 
-    public OpenAPIExpectationDTOSerializer() {
-        super(OpenAPIExpectationDTO.class);
-    }
+  public OpenAPIExpectationDTOSerializer() {
+    super(OpenAPIExpectationDTO.class);
+  }
 
-    @Override
-    public void serialize(OpenAPIExpectationDTO openAPIDefinition, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (isNotBlank(openAPIDefinition.getSpecUrlOrPayload())) {
-            if (openAPIDefinition.getSpecUrlOrPayload().trim().startsWith("{")) {
-                jgen.writePOJOProperty("specUrlOrPayload", OBJECT_MAPPER.readTree(openAPIDefinition.getSpecUrlOrPayload()));
-            } else {
-                jgen.writePOJOProperty("specUrlOrPayload", openAPIDefinition.getSpecUrlOrPayload());
-            }
-        }
-        if (openAPIDefinition.getOperationsAndResponses() != null && !openAPIDefinition.getOperationsAndResponses().isEmpty()) {
-            jgen.writePOJOProperty("operationsAndResponses", openAPIDefinition.getOperationsAndResponses());
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(
+      OpenAPIExpectationDTO openAPIDefinition, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (isNotBlank(openAPIDefinition.getSpecUrlOrPayload())) {
+      if (openAPIDefinition.getSpecUrlOrPayload().trim().startsWith("{")) {
+        jgen.writePOJOProperty(
+            "specUrlOrPayload", OBJECT_MAPPER.readTree(openAPIDefinition.getSpecUrlOrPayload()));
+      } else {
+        jgen.writePOJOProperty("specUrlOrPayload", openAPIDefinition.getSpecUrlOrPayload());
+      }
     }
+    if (openAPIDefinition.getOperationsAndResponses() != null
+        && !openAPIDefinition.getOperationsAndResponses().isEmpty()) {
+      jgen.writePOJOProperty(
+          "operationsAndResponses", openAPIDefinition.getOperationsAndResponses());
+    }
+    jgen.writeEndObject();
+  }
 }

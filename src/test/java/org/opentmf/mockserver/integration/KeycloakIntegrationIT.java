@@ -25,8 +25,8 @@ import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Integration test that starts a real Keycloak container, obtains real tokens,
- * and validates them with {@link TokenEnforcer}.
+ * Integration test that starts a real Keycloak container, obtains real tokens, and validates them
+ * with {@link TokenEnforcer}.
  *
  * <p>Runs during {@code mvn integration-test} or {@code mvn verify} (not during {@code mvn test}).
  * Requires Docker to be available.
@@ -38,15 +38,15 @@ class KeycloakIntegrationIT {
 
   @SuppressWarnings("resource")
   @Container
-  static final GenericContainer<?> keycloak = new GenericContainer<>(
-      "quay.io/keycloak/keycloak:24.0")
-      .withExposedPorts(8080)
-      .withCopyFileToContainer(
-          MountableFile.forClasspathResource("keycloak-test-realm.json"),
-          "/opt/keycloak/data/import/realm1.json")
-      .withCommand("start-dev", "--import-realm")
-      .waitingFor(Wait.forHttp("/realms/realm1").forPort(8080).forStatusCode(200))
-      .withStartupTimeout(java.time.Duration.ofMinutes(3));
+  static final GenericContainer<?> keycloak =
+      new GenericContainer<>("quay.io/keycloak/keycloak:24.0")
+          .withExposedPorts(8080)
+          .withCopyFileToContainer(
+              MountableFile.forClasspathResource("keycloak-test-realm.json"),
+              "/opt/keycloak/data/import/realm1.json")
+          .withCommand("start-dev", "--import-realm")
+          .waitingFor(Wait.forHttp("/realms/realm1").forPort(8080).forStatusCode(200))
+          .withStartupTimeout(java.time.Duration.ofMinutes(3));
 
   private static String issuer;
   private static String tokenEndpoint;
@@ -64,14 +64,15 @@ class KeycloakIntegrationIT {
 
   @Test
   void clientCredentialsToken_validatedByJwksUri() throws Exception {
-    String token = obtainToken(
-        "grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
+    String token =
+        obtainToken("grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
     assertNotNull(token);
 
     TokenEnforcer enforcer = new TokenEnforcer(true, "", jwksUri);
 
-    assertNull(enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
+    assertNull(
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
         "Valid client_credentials token should pass validation");
 
     SignedJWT jwt = SignedJWT.parse(token);
@@ -85,15 +86,17 @@ class KeycloakIntegrationIT {
 
   @Test
   void passwordGrantToken_validatedByJwksUri() throws Exception {
-    String token = obtainToken(
-        "grant_type=password&client_id=client2&client_secret=client2Secret"
-            + "&username=admin_usr&password=admin_pwd");
+    String token =
+        obtainToken(
+            "grant_type=password&client_id=client2&client_secret=client2Secret"
+                + "&username=admin_usr&password=admin_pwd");
     assertNotNull(token);
 
     TokenEnforcer enforcer = new TokenEnforcer(true, "", jwksUri);
 
-    assertNull(enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
+    assertNull(
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
         "Valid password grant token should pass validation");
 
     SignedJWT jwt = SignedJWT.parse(token);
@@ -102,15 +105,16 @@ class KeycloakIntegrationIT {
 
   @Test
   void passwordGrantToken_readerUser_hasClaims() throws Exception {
-    String token = obtainToken(
-        "grant_type=password&client_id=uiClient"
-            + "&username=reader_usr&password=reader_pwd");
+    String token =
+        obtainToken(
+            "grant_type=password&client_id=uiClient" + "&username=reader_usr&password=reader_pwd");
     assertNotNull(token);
 
     TokenEnforcer enforcer = new TokenEnforcer(true, "", jwksUri);
 
-    assertNull(enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)));
+    assertNull(
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)));
 
     SignedJWT jwt = SignedJWT.parse(token);
     assertEquals("reader_usr", jwt.getJWTClaimsSet().getStringClaim("preferred_username"));
@@ -120,13 +124,14 @@ class KeycloakIntegrationIT {
 
   @Test
   void tokenValidated_viaOidcDiscovery() throws Exception {
-    String token = obtainToken(
-        "grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
+    String token =
+        obtainToken("grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
 
     TokenEnforcer enforcer = new TokenEnforcer(true, issuer, "");
 
-    assertNull(enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
+    assertNull(
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
         "Token should be validated via auto-discovered JWKS URI");
   }
 
@@ -134,13 +139,14 @@ class KeycloakIntegrationIT {
 
   @Test
   void wrongIssuerConfig_rejectsValidToken() throws Exception {
-    String token = obtainToken(
-        "grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
+    String token =
+        obtainToken("grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
 
     TokenEnforcer enforcer = new TokenEnforcer(true, "https://wrong-issuer", jwksUri);
 
-    HttpResponse resp = enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + token));
+    HttpResponse resp =
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + token));
     assertNotNull(resp, "Token with wrong issuer should be rejected");
     assertEquals(401, resp.getStatusCode());
     assertTrue(resp.getBodyAsString().contains("Issuer mismatch"));
@@ -148,14 +154,16 @@ class KeycloakIntegrationIT {
 
   @Test
   void correctIssuerConfig_acceptsValidToken() throws Exception {
-    String token = obtainToken(
-        "grant_type=password&client_id=client2&client_secret=client2Secret"
-            + "&username=writer_usr&password=writer_pwd");
+    String token =
+        obtainToken(
+            "grant_type=password&client_id=client2&client_secret=client2Secret"
+                + "&username=writer_usr&password=writer_pwd");
 
     TokenEnforcer enforcer = new TokenEnforcer(true, issuer, jwksUri);
 
-    assertNull(enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
+    assertNull(
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + token)),
         "Token with correct issuer should pass");
   }
 
@@ -163,15 +171,16 @@ class KeycloakIntegrationIT {
 
   @Test
   void tamperedToken_isRejected() throws Exception {
-    String token = obtainToken(
-        "grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
+    String token =
+        obtainToken("grant_type=client_credentials&client_id=client1&client_secret=client1Secret");
 
     String tampered = token.substring(0, token.lastIndexOf('.')) + ".dGFtcGVyZWQ";
 
     TokenEnforcer enforcer = new TokenEnforcer(true, "", jwksUri);
 
-    HttpResponse resp = enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + tampered));
+    HttpResponse resp =
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + tampered));
     assertNotNull(resp, "Tampered token should be rejected");
     assertEquals(401, resp.getStatusCode());
   }
@@ -188,9 +197,11 @@ class KeycloakIntegrationIT {
 
     TokenEnforcer enforcer = new TokenEnforcer(true, "", jwksUri);
 
-    HttpResponse resp = enforcer.validate(
-        request().withPath("/api/test").withHeader("Authorization", "Bearer " + mockToken));
-    assertNotNull(resp, "Mock-signed token must be rejected when validating against real Keycloak JWKS");
+    HttpResponse resp =
+        enforcer.validate(
+            request().withPath("/api/test").withHeader("Authorization", "Bearer " + mockToken));
+    assertNotNull(
+        resp, "Mock-signed token must be rejected when validating against real Keycloak JWKS");
     assertEquals(401, resp.getStatusCode());
   }
 
@@ -206,8 +217,8 @@ class KeycloakIntegrationIT {
       os.write(formBody.getBytes(StandardCharsets.UTF_8));
     }
 
-    assertEquals(200, conn.getResponseCode(),
-        "Token request failed: " + readStream(conn.getErrorStream()));
+    assertEquals(
+        200, conn.getResponseCode(), "Token request failed: " + readStream(conn.getErrorStream()));
 
     String responseBody;
     try (InputStream is = conn.getInputStream()) {

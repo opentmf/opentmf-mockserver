@@ -14,34 +14,34 @@ import org.slf4j.event.Level;
  */
 public class IntegerStringListParser {
 
-    private static final MockServerLogger MOCK_SERVER_LOGGER = new MockServerLogger(IntegerStringListParser.class);
+  private static final MockServerLogger MOCK_SERVER_LOGGER =
+      new MockServerLogger(IntegerStringListParser.class);
 
-    public Integer[] toArray(String integers) {
-        return toList(integers).toArray(new Integer[0]);
-    }
+  public Integer[] toArray(String integers) {
+    return toList(integers).toArray(new Integer[0]);
+  }
 
-    List<Integer> toList(String integers) {
-        List<Integer> integerList = new ArrayList<Integer>();
-        for (String integer : Splitter.on(",").split(integers)) {
-            try {
-                integerList.add(Integer.parseInt(integer.trim()));
-            } catch (NumberFormatException nfe) {
-                MOCK_SERVER_LOGGER.logEvent(
-                    new LogEntry()
-                        .setLogLevel(Level.ERROR)
-                        .setMessageFormat("NumberFormatException converting " + integer + " to integer")
-                        .setThrowable(nfe)
-                );
-            }
-        }
-        return integerList;
+  List<Integer> toList(String integers) {
+    List<Integer> integerList = new ArrayList<Integer>();
+    for (String integer : Splitter.on(",").split(integers)) {
+      try {
+        integerList.add(Integer.parseInt(integer.trim()));
+      } catch (NumberFormatException nfe) {
+        MOCK_SERVER_LOGGER.logEvent(
+            new LogEntry()
+                .setLogLevel(Level.ERROR)
+                .setMessageFormat("NumberFormatException converting " + integer + " to integer")
+                .setThrowable(nfe));
+      }
     }
+    return integerList;
+  }
 
-    public String toString(Integer[] integers) {
-        return toString(Arrays.asList(integers));
-    }
+  public String toString(Integer[] integers) {
+    return toString(Arrays.asList(integers));
+  }
 
-    public String toString(List<Integer> integers) {
-        return Joiner.on(",").join(integers);
-    }
+  public String toString(List<Integer> integers) {
+    return Joiner.on(",").join(integers);
+  }
 }

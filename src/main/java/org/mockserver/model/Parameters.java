@@ -9,50 +9,48 @@ import java.util.List;
  */
 public class Parameters extends KeysToMultiValues<Parameter, Parameters> {
 
-    private String rawParameterString;
+  private String rawParameterString;
 
-    public Parameters(List<Parameter> parameters) {
-        withEntries(parameters);
-    }
+  public Parameters(List<Parameter> parameters) {
+    withEntries(parameters);
+  }
 
-    public Parameters(Parameter... parameters) {
-        withEntries(parameters);
-    }
+  public Parameters(Parameter... parameters) {
+    withEntries(parameters);
+  }
 
-    public Parameters(Multimap<NottableString, NottableString> headers) {
-        super(headers);
-    }
+  public Parameters(Multimap<NottableString, NottableString> headers) {
+    super(headers);
+  }
 
-    public static Parameters parameters(Parameter... parameters) {
-        return new Parameters(parameters);
-    }
+  public static Parameters parameters(Parameter... parameters) {
+    return new Parameters(parameters);
+  }
 
-    @Override
-    public Parameter build(NottableString name, Collection<NottableString> values) {
-        return new Parameter(name, values);
-    }
+  @Override
+  public Parameter build(NottableString name, Collection<NottableString> values) {
+    return new Parameter(name, values);
+  }
 
-    protected void isModified() {
-        rawParameterString = null;
-    }
+  protected void isModified() {
+    rawParameterString = null;
+  }
 
-    public Parameters withKeyMatchStyle(KeyMatchStyle keyMatchStyle) {
-        super.withKeyMatchStyle(keyMatchStyle);
-        return this;
-    }
+  public Parameters withKeyMatchStyle(KeyMatchStyle keyMatchStyle) {
+    super.withKeyMatchStyle(keyMatchStyle);
+    return this;
+  }
 
-    public String getRawParameterString() {
-        return rawParameterString;
-    }
+  public String getRawParameterString() {
+    return rawParameterString;
+  }
 
-    public Parameters withRawParameterString(String rawParameterString) {
-        this.rawParameterString = rawParameterString;
-        return this;
-    }
+  public Parameters withRawParameterString(String rawParameterString) {
+    this.rawParameterString = rawParameterString;
+    return this;
+  }
 
-    public Parameters clone() {
-        return new Parameters(getMultimap())
-            .withRawParameterString(rawParameterString);
-    }
-
+  public Parameters clone() {
+    return new Parameters(getMultimap()).withRawParameterString(rawParameterString);
+  }
 }

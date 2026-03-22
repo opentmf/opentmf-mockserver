@@ -8,23 +8,23 @@ import org.mockserver.model.RegexBody;
  */
 public class RegexBodyDTO extends BodyDTO {
 
-    private final String regex;
+  private final String regex;
 
-    public RegexBodyDTO(RegexBody regexBody) {
-        this(regexBody, null);
-    }
+  public RegexBodyDTO(RegexBody regexBody) {
+    this(regexBody, null);
+  }
 
-    public RegexBodyDTO(RegexBody regexBody, Boolean not) {
-        super(Body.Type.REGEX, not);
-        this.regex = regexBody.getValue();
-        withOptional(regexBody.getOptional());
-    }
+  public RegexBodyDTO(RegexBody regexBody, Boolean not) {
+    super(Body.Type.REGEX, not);
+    this.regex = regexBody.getValue();
+    withOptional(regexBody.getOptional());
+  }
 
-    public String getRegex() {
-        return regex;
-    }
+  public String getRegex() {
+    return regex;
+  }
 
-    public RegexBody buildObject() {
-        return (RegexBody) new RegexBody(getRegex()).withOptional(getOptional());
-    }
+  public RegexBody buildObject() {
+    return (RegexBody) new RegexBody(getRegex()).withOptional(getOptional());
+  }
 }

@@ -5,15 +5,13 @@ import org.apache.commons.lang3.StringUtils;
 
 public class JDKVersion {
 
-    @VisibleForTesting
-    public static String javaVersion = System.getProperty("java.version");
+  @VisibleForTesting public static String javaVersion = System.getProperty("java.version");
 
-    public static int getVersion() {
-        String version = javaVersion;
-        if (version.startsWith("1.")) {
-            version = StringUtils.substringAfter(version, ".");
-        }
-        return Integer.parseInt(StringUtils.substringBefore(version, "."));
+  public static int getVersion() {
+    String version = javaVersion;
+    if (version.startsWith("1.")) {
+      version = StringUtils.substringAfter(version, ".");
     }
-
+    return Integer.parseInt(StringUtils.substringBefore(version, "."));
+  }
 }

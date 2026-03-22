@@ -1,49 +1,59 @@
 # opentmf-mockserver
 
-General-purpose, [TMF-630](https://www.tmforum.org/resources/specification/tmf630-rest-api-design-guidelines-4-2-0/)-compatible dynamic mock server built on top of [MockServer](https://github.com/mock-server/mockserver). Ships with **out-of-the-box Keycloak-like OIDC support** -- realms, clients, users, roles, real signed JWTs, JWKS, and token enforcement are all included without any external dependencies.
+General-purpose, [TMF-630](https://www.tmforum.org/resources/specification/tmf630-rest-api-design-guidelines-4-2-0/)
+-compatible dynamic mock server built on top of [MockServer](https://github.com/mock-server/mockserver). Ships with *
+*out-of-the-box Keycloak-like OIDC support** -- realms, clients, users, roles, real signed JWTs, JWKS, and token
+enforcement are all included without any external dependencies.
 
 > **MockServer feature matrix** -- This project embeds a subset of MockServer. For a detailed
 > breakdown of what is included and what is intentionally excluded (OpenAPI, XML matching,
 > dashboard, proxy, templates, etc.), see [MOCKSERVER.md](MOCKSERVER.md).
 
 <!-- TOC -->
+
 * [opentmf-mockserver](#opentmf-mockserver)
-  * [Features](#features)
-  * [Quick Start](#quick-start)
-    * [Docker](#docker)
-    * [Standalone](#standalone)
-  * [Keycloak Mock](#keycloak-mock)
-    * [What You Get for Free](#what-you-get-for-free)
-    * [Default Configuration](#default-configuration)
-    * [Obtaining Tokens](#obtaining-tokens)
-    * [OIDC Discovery and JWKS](#oidc-discovery-and-jwks)
-    * [Custom Keycloak Configuration](#custom-keycloak-configuration)
-  * [Token Enforcement and Role-Based Access](#token-enforcement-and-role-based-access)
-    * [Validating Against an External Keycloak](#validating-against-an-external-keycloak)
-    * [Role Matrix](#role-matrix)
-  * [Dynamic Callbacks](#dynamic-callbacks)
-    * [POST (DynamicPostCallback)](#post-dynamicpostcallback)
-    * [GET by ID (DynamicGetCallback)](#get-by-id-dynamicgetcallback)
-    * [GET List (DynamicGetListCallback)](#get-list-dynamicgetlistcallback)
-    * [JSON Patch (DynamicJsonPatchCallback)](#json-patch-dynamicjsonpatchcallback)
-    * [Merge Patch (DynamicMergePatchCallback)](#merge-patch-dynamicmergepatchcallback)
-    * [DELETE (DynamicDeleteCallback)](#delete-dynamicdeletecallback)
-  * [Create Expectations](#create-expectations)
-  * [Environment Variables](#environment-variables)
-  * [Content-Range Calculations](#content-range-calculations)
-  * [API Reference](#api-reference)
-  * [MockServer Feature Matrix](#mockserver-feature-matrix)
-  * [Acknowledgments](#acknowledgments)
-  * [Release Notes](#release-notes)
+    * [Features](#features)
+    * [Quick Start](#quick-start)
+        * [Docker](#docker)
+        * [Standalone](#standalone)
+    * [Keycloak Mock](#keycloak-mock)
+        * [What You Get for Free](#what-you-get-for-free)
+        * [Default Configuration](#default-configuration)
+        * [Obtaining Tokens](#obtaining-tokens)
+        * [OIDC Discovery and JWKS](#oidc-discovery-and-jwks)
+        * [Custom Keycloak Configuration](#custom-keycloak-configuration)
+    * [Token Enforcement and Role-Based Access](#token-enforcement-and-role-based-access)
+        * [Validating Against an External Keycloak](#validating-against-an-external-keycloak)
+        * [Role Matrix](#role-matrix)
+    * [Dynamic Callbacks](#dynamic-callbacks)
+        * [POST (DynamicPostCallback)](#post-dynamicpostcallback)
+        * [GET by ID (DynamicGetCallback)](#get-by-id-dynamicgetcallback)
+        * [GET List (DynamicGetListCallback)](#get-list-dynamicgetlistcallback)
+        * [JSON Patch (DynamicJsonPatchCallback)](#json-patch-dynamicjsonpatchcallback)
+        * [Merge Patch (DynamicMergePatchCallback)](#merge-patch-dynamicmergepatchcallback)
+        * [DELETE (DynamicDeleteCallback)](#delete-dynamicdeletecallback)
+    * [Create Expectations](#create-expectations)
+    * [Environment Variables](#environment-variables)
+    * [Content-Range Calculations](#content-range-calculations)
+    * [API Reference](#api-reference)
+    * [MockServer Feature Matrix](#mockserver-feature-matrix)
+    * [Acknowledgments](#acknowledgments)
+    * [Release Notes](#release-notes)
+
 <!-- TOC -->
 
 ## Features
 
-- **Zero-configuration TMF mocking** -- POST, GET, GET List, JSON Patch, Merge Patch, and DELETE with automatic `id`, `href`, state transitions, audit fields, and paging.
-- **Built-in Keycloak mock** -- real RSA-signed JWTs, OIDC discovery, JWKS endpoint, configurable realms / clients / users / roles. No real Keycloak needed.
-- **Token enforcement** -- optionally validate Bearer tokens on every request, with role-based access control (reader / writer / admin).
-- **External IdP support** -- validate tokens against a real Keycloak (or any OIDC provider) via `JWKS_URI` or `TOKEN_ISSUER` auto-discovery.
-- **TMF-630 compliant** -- Content-Range, X-Total-Count, X-Result-Count headers, status-field lifecycle, versioned entities, query parameters, jsonPath filters, `fields=` parameter.
+- **Zero-configuration TMF mocking** -- POST, GET, GET List, JSON Patch, Merge Patch, and DELETE with automatic `id`,
+  `href`, state transitions, audit fields, and paging.
+- **Built-in Keycloak mock** -- real RSA-signed JWTs, OIDC discovery, JWKS endpoint, configurable realms / clients /
+  users / roles. No real Keycloak needed.
+- **Token enforcement** -- optionally validate Bearer tokens on every request, with role-based access control (reader /
+  writer / admin).
+- **External IdP support** -- validate tokens against a real Keycloak (or any OIDC provider) via `JWKS_URI` or
+  `TOKEN_ISSUER` auto-discovery.
+- **TMF-630 compliant** -- Content-Range, X-Total-Count, X-Result-Count headers, status-field lifecycle, versioned
+  entities, query parameters, jsonPath filters, `fields=` parameter.
 
 ## Quick Start
 
@@ -77,15 +87,16 @@ java -Dmockserver.initializationClass=org.opentmf.mockserver.callback.JwksExpect
 
 On startup, the following endpoints are automatically registered for each configured realm (no expectations to create):
 
-| Endpoint | Description |
-|---|---|
-| `GET /realms/{realm}/protocol/openid-connect/certs` | JWKS (public keys for token verification) |
-| `GET /realms/{realm}/.well-known/openid-configuration` | OIDC discovery document |
-| `POST /realms/{realm}/protocol/openid-connect/token` | Token endpoint (issue JWTs) |
-| `GET /.well-known/jwks.json` | Global JWKS (backward-compatible) |
-| `GET /mockserver/openapi` | OpenAPI 3.1 specification (YAML) |
+| Endpoint                                               | Description                               |
+|--------------------------------------------------------|-------------------------------------------|
+| `GET /realms/{realm}/protocol/openid-connect/certs`    | JWKS (public keys for token verification) |
+| `GET /realms/{realm}/.well-known/openid-configuration` | OIDC discovery document                   |
+| `POST /realms/{realm}/protocol/openid-connect/token`   | Token endpoint (issue JWTs)               |
+| `GET /.well-known/jwks.json`                           | Global JWKS (backward-compatible)         |
+| `GET /mockserver/openapi`                              | OpenAPI 3.1 specification (YAML)          |
 
-All issued tokens are **real, parsable, RSA-signed JWTs** with Keycloak-compatible claims (`iss`, `sub`, `azp`, `realm_access`, `resource_access`, `preferred_username`, `exp`, etc.).
+All issued tokens are **real, parsable, RSA-signed JWTs** with Keycloak-compatible claims (`iss`, `sub`, `azp`,
+`realm_access`, `resource_access`, `preferred_username`, `exp`, etc.).
 
 ### Default Configuration
 
@@ -95,19 +106,19 @@ The built-in default configuration provides a ready-to-use setup:
 
 **Clients:**
 
-| Client ID | Type | Secret | Allowed Grants |
-|---|---|---|---|
-| `client1` | Confidential | `client1Secret` | `client_credentials` |
-| `client2` | Confidential | `client2Secret` | `password` |
-| `uiClient` | Public | -- | `password`, `refresh_token` |
+| Client ID  | Type         | Secret          | Allowed Grants              |
+|------------|--------------|-----------------|-----------------------------|
+| `client1`  | Confidential | `client1Secret` | `client_credentials`        |
+| `client2`  | Confidential | `client2Secret` | `password`                  |
+| `uiClient` | Public       | --              | `password`, `refresh_token` |
 
 **Users:**
 
-| Username | Password | Roles |
-|---|---|---|
-| `admin_usr` | `admin_pwd` | `admin`, `writer`, `reader` |
-| `writer_usr` | `writer_pwd` | `writer`, `reader` |
-| `reader_usr` | `reader_pwd` | `reader` |
+| Username     | Password     | Roles                       |
+|--------------|--------------|-----------------------------|
+| `admin_usr`  | `admin_pwd`  | `admin`, `writer`, `reader` |
+| `writer_usr` | `writer_pwd` | `writer`, `reader`          |
+| `reader_usr` | `reader_pwd` | `reader`                    |
 
 ### Obtaining Tokens
 
@@ -176,26 +187,40 @@ The JSON format:
   "realms": [
     {
       "name": "my-realm",
-      "roles": ["admin", "user"],
+      "roles": [
+        "admin",
+        "user"
+      ],
       "clients": [
         {
           "clientId": "my-app",
           "clientSecret": "secret",
           "publicClient": false,
-          "allowedGrantTypes": ["client_credentials", "password"],
-          "serviceAccountRoles": ["admin"]
+          "allowedGrantTypes": [
+            "client_credentials",
+            "password"
+          ],
+          "serviceAccountRoles": [
+            "admin"
+          ]
         },
         {
           "clientId": "my-spa",
           "publicClient": true,
-          "allowedGrantTypes": ["password", "refresh_token"]
+          "allowedGrantTypes": [
+            "password",
+            "refresh_token"
+          ]
         }
       ],
       "users": [
         {
           "username": "alice",
           "password": "alice123",
-          "roles": ["admin", "user"]
+          "roles": [
+            "admin",
+            "user"
+          ]
         }
       ]
     }
@@ -211,7 +236,9 @@ Enable token validation on all dynamic callbacks with a single environment varia
 docker run -p 1080:1080 -e ENFORCE_TOKEN=true local/opentmf-mockserver:2.1.0-SNAPSHOT
 ```
 
-When enabled, every request to a dynamic callback must include a valid `Authorization: Bearer <token>` header. The token's signature, expiration, and (optionally) issuer are verified. In addition, the token's roles are checked against the operation being performed.
+When enabled, every request to a dynamic callback must include a valid `Authorization: Bearer <token>` header. The
+token's signature, expiration, and (optionally) issuer are verified. In addition, the token's roles are checked against
+the operation being performed.
 
 ### Validating Against an External Keycloak
 
@@ -238,20 +265,22 @@ When `TOKEN_ISSUER` is set, the `iss` claim in the token is also validated again
 
 Roles are extracted from the JWT's `realm_access.roles` claim (Keycloak standard).
 
-| Operation | Required Role (any of) |
-|---|---|
-| GET, GET List | `reader`, `writer`, `admin` |
-| POST, JSON Patch, Merge Patch | `writer`, `admin` |
-| DELETE | `admin` |
+| Operation                     | Required Role (any of)      |
+|-------------------------------|-----------------------------|
+| GET, GET List                 | `reader`, `writer`, `admin` |
+| POST, JSON Patch, Merge Patch | `writer`, `admin`           |
+| DELETE                        | `admin`                     |
 
 Insufficient roles return **403 Forbidden**; missing/invalid tokens return **401 Unauthorized**.
 
 ## Dynamic Callbacks
 
 All callbacks share these behaviors:
+
 - Payloads are cached in-memory with a configurable TTL (default: 2 hours).
 - GET, POST, and PATCH operations reset the eviction timer.
-- `id`, `href`, `createdDate`, `createdBy`, `updatedDate`, `updatedBy`, `revision`, and state fields are managed automatically.
+- `id`, `href`, `createdDate`, `createdBy`, `updatedDate`, `updatedBy`, `revision`, and state fields are managed
+  automatically.
 - Versioned entities are supported via `:(version=XYZ)` in the path or `?version=XYZ` query parameter.
 
 ### POST (DynamicPostCallback)
@@ -263,13 +292,13 @@ All callbacks share these behaviors:
 
 State field mapping by path:
 
-| Type | Field | Initial | Final |
-|---|---|---|---|
-| Orders | `state` | `acknowledged` | `completed` |
-| Inventory | `status` | `created` | `active` |
-| Catalog | `lifecycleStatus` | `inStudy` | `inDesign` |
-| Candidate | `lifecycleStatus` | `inStudy` | `inDesign` |
-| Default | `state` | `acknowledged` | `completed` |
+| Type      | Field             | Initial        | Final       |
+|-----------|-------------------|----------------|-------------|
+| Orders    | `state`           | `acknowledged` | `completed` |
+| Inventory | `status`          | `created`      | `active`    |
+| Catalog   | `lifecycleStatus` | `inStudy`      | `inDesign`  |
+| Candidate | `lifecycleStatus` | `inStudy`      | `inDesign`  |
+| Default   | `state`           | `acknowledged` | `completed` |
 
 ### GET by ID (DynamicGetCallback)
 
@@ -347,16 +376,16 @@ curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: ap
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `SERVER_PORT` | `1080` | MockServer listen port |
-| `CACHE_DURATION_MILLIS` | `7200000` (2h) | Payload cache TTL in milliseconds |
-| `ADDITIONAL_FIELDS` | -- | Comma-separated `key` or `key=value` pairs added to POST payloads |
-| `CONTENT_RANGE_OFFSET_BASE` | `1` | `0` or `1` -- base for Content-Range offset calculation |
-| `KEYCLOAK_CONFIG` | `/config/keycloak-mock.json` | Path to Keycloak mock configuration JSON |
-| `ENFORCE_TOKEN` | `false` | `true` to require valid Bearer JWT on all dynamic callbacks |
-| `TOKEN_ISSUER` | -- | Expected `iss` claim; also enables OIDC auto-discovery |
-| `JWKS_URI` | -- | Explicit JWKS endpoint URL (takes precedence over discovery) |
+| Variable                    | Default                      | Description                                                       |
+|-----------------------------|------------------------------|-------------------------------------------------------------------|
+| `SERVER_PORT`               | `1080`                       | MockServer listen port                                            |
+| `CACHE_DURATION_MILLIS`     | `7200000` (2h)               | Payload cache TTL in milliseconds                                 |
+| `ADDITIONAL_FIELDS`         | --                           | Comma-separated `key` or `key=value` pairs added to POST payloads |
+| `CONTENT_RANGE_OFFSET_BASE` | `1`                          | `0` or `1` -- base for Content-Range offset calculation           |
+| `KEYCLOAK_CONFIG`           | `/config/keycloak-mock.json` | Path to Keycloak mock configuration JSON                          |
+| `ENFORCE_TOKEN`             | `false`                      | `true` to require valid Bearer JWT on all dynamic callbacks       |
+| `TOKEN_ISSUER`              | --                           | Expected `iss` claim; also enables OIDC auto-discovery            |
+| `JWKS_URI`                  | --                           | Explicit JWKS endpoint URL (takes precedence over discovery)      |
 
 ## Content-Range Calculations
 
@@ -366,18 +395,19 @@ The `Content-Range` header follows the TMF-630 REST API Design Guidelines:
 
 Given 23 items in the domain (1-based offset, the default):
 
-| Offset | Limit | Status | Content-Range |
-|:---:|:---:|:---:|---|
-| 0 | 10 | 200 | `items 1-10/23` |
-| 10 | 10 | 200 | `items 11-20/23` |
-| 20 | 10 | 200 | `items 21-23/23` |
-| 30 | 10 | 416 | `items */23` |
+| Offset | Limit | Status | Content-Range    |
+|:------:|:-----:|:------:|------------------|
+|   0    |  10   |  200   | `items 1-10/23`  |
+|   10   |  10   |  200   | `items 11-20/23` |
+|   20   |  10   |  200   | `items 21-23/23` |
+|   30   |  10   |  416   | `items */23`     |
 
 Set `CONTENT_RANGE_OFFSET_BASE=0` for zero-based offset values. Default offset is 0, default limit is 10.
 
 ## API Reference
 
-The full API is documented in [opentmf-mockserver-openapi.yaml](opentmf-mockserver-openapi.yaml) (OpenAPI 3.1). It covers all three
+The full API is documented in [opentmf-mockserver-openapi.yaml](opentmf-mockserver-openapi.yaml) (OpenAPI 3.1). It
+covers all three
 endpoint groups: the MockServer control plane, the Keycloak OIDC mock, and the dynamic TMF
 resource callbacks.
 

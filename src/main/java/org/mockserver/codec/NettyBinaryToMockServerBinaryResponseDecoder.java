@@ -9,8 +9,8 @@ import io.netty.handler.codec.MessageToMessageDecoder;
 import java.util.List;
 
 public class NettyBinaryToMockServerBinaryResponseDecoder extends MessageToMessageDecoder<ByteBuf> {
-    @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> out) {
-        out.add(bytes(ByteBufUtil.getBytes(byteBuf)));
-    }
+  @Override
+  protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> out) {
+    out.add(bytes(ByteBufUtil.getBytes(byteBuf)));
+  }
 }

@@ -11,52 +11,54 @@ import java.util.concurrent.Callable;
 
 public class AsymmetricKeyConverter {
 
-    public static RSAPublicKey getRSAPublicKey(byte[] publicKey) {
-        return convertKey(
-            "RSA",
-            "public",
-            () -> (RSAPublicKey) KeyFactory
-                .getInstance("RSA")
-                .generatePublic(new X509EncodedKeySpec(publicKey))
-        );
-    }
+  public static RSAPublicKey getRSAPublicKey(byte[] publicKey) {
+    return convertKey(
+        "RSA",
+        "public",
+        () ->
+            (RSAPublicKey)
+                KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey)));
+  }
 
-    public static RSAPrivateKey getRSAPrivateKey(byte[] privateKey) {
-        return convertKey(
-            "RSA",
-            "private",
-            () -> (RSAPrivateKey) KeyFactory
-                .getInstance("RSA")
-                .generatePrivate(new PKCS8EncodedKeySpec(privateKey))
-        );
-    }
+  public static RSAPrivateKey getRSAPrivateKey(byte[] privateKey) {
+    return convertKey(
+        "RSA",
+        "private",
+        () ->
+            (RSAPrivateKey)
+                KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(privateKey)));
+  }
 
-    public static ECPublicKey getECPublicKey(byte[] publicKey) {
-        return convertKey(
-            "EC",
-            "public",
-            () -> (ECPublicKey) KeyFactory
-                .getInstance("EC")
-                .generatePublic(new X509EncodedKeySpec(publicKey))
-        );
-    }
+  public static ECPublicKey getECPublicKey(byte[] publicKey) {
+    return convertKey(
+        "EC",
+        "public",
+        () ->
+            (ECPublicKey)
+                KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(publicKey)));
+  }
 
-    public static ECPrivateKey getECPrivateKey(byte[] privateKey) {
-        return convertKey(
-            "EC",
-            "private",
-            () -> (ECPrivateKey) KeyFactory
-                .getInstance("EC")
-                .generatePrivate(new PKCS8EncodedKeySpec(privateKey))
-        );
-    }
+  public static ECPrivateKey getECPrivateKey(byte[] privateKey) {
+    return convertKey(
+        "EC",
+        "private",
+        () ->
+            (ECPrivateKey)
+                KeyFactory.getInstance("EC").generatePrivate(new PKCS8EncodedKeySpec(privateKey)));
+  }
 
-    private static <T> T convertKey(String algorithm, String keyType, Callable<T> callable) {
-        try {
-            return callable.call();
-        } catch (Throwable throwable) {
-            throw new RuntimeException("Exception converting " + keyType + " key for algorithm \"" + algorithm + "\" " + throwable.getMessage(), throwable);
-        }
+  private static <T> T convertKey(String algorithm, String keyType, Callable<T> callable) {
+    try {
+      return callable.call();
+    } catch (Throwable throwable) {
+      throw new RuntimeException(
+          "Exception converting "
+              + keyType
+              + " key for algorithm \""
+              + algorithm
+              + "\" "
+              + throwable.getMessage(),
+          throwable);
     }
-
+  }
 }

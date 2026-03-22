@@ -39,7 +39,7 @@ paths:
 
   /mockserver/status:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: getStatus
       summary: Server status
       description: Returns the listening ports. Also useful as a health check.
@@ -55,11 +55,11 @@ paths:
                     type: array
                     items:
                       type: integer
-                    example: [1080]
+                    example: [ 1080 ]
 
   /mockserver/expectation:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: upsertExpectation
       summary: Create or update expectations
       description: |
@@ -95,7 +95,7 @@ paths:
 
   /mockserver/clear:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: clear
       summary: Clear expectations and/or logs
       description: |
@@ -142,7 +142,7 @@ paths:
 
   /mockserver/reset:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: reset
       summary: Reset everything
       description: Clears all expectations, recorded requests, and logs.
@@ -152,7 +152,7 @@ paths:
 
   /mockserver/retrieve:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: retrieve
       summary: Retrieve recorded requests, expectations, or logs
       parameters:
@@ -209,7 +209,7 @@ paths:
 
   /mockserver/verify:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: verify
       summary: Verify requests were received
       description: |
@@ -233,7 +233,7 @@ paths:
 
   /mockserver/verifySequence:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: verifySequence
       summary: Verify requests were received in order
       requestBody:
@@ -254,7 +254,7 @@ paths:
 
   /mockserver/bind:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: bind
       summary: Bind additional ports
       requestBody:
@@ -269,7 +269,7 @@ paths:
                   items:
                     type: integer
               example:
-                ports: [1081, 1082]
+                ports: [ 1081, 1082 ]
       responses:
         "200":
           description: Ports bound
@@ -285,7 +285,7 @@ paths:
 
   /mockserver/stop:
     put:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: stop
       summary: Stop the server
       responses:
@@ -294,7 +294,7 @@ paths:
 
   /mockserver/openapi:
     get:
-      tags: [MockServer]
+      tags: [ MockServer ]
       operationId: getOpenApiSpec
       summary: OpenAPI specification
       description: Returns this OpenAPI 3.1 specification document as YAML.
@@ -312,7 +312,7 @@ paths:
 
   /.well-known/jwks.json:
     get:
-      tags: [Keycloak Mock]
+      tags: [ Keycloak Mock ]
       operationId: getGlobalJwks
       summary: Global JWKS
       description: Returns the JSON Web Key Set containing the RSA public key used to sign all JWTs.
@@ -326,7 +326,7 @@ paths:
 
   /realms/{realm}/.well-known/openid-configuration:
     get:
-      tags: [Keycloak Mock]
+      tags: [ Keycloak Mock ]
       operationId: getOidcDiscovery
       summary: OIDC discovery document
       description: |
@@ -344,7 +344,7 @@ paths:
 
   /realms/{realm}/protocol/openid-connect/certs:
     get:
-      tags: [Keycloak Mock]
+      tags: [ Keycloak Mock ]
       operationId: getRealmJwks
       summary: Realm JWKS
       description: Returns the JWKS for the specified realm (same keys as the global endpoint).
@@ -360,7 +360,7 @@ paths:
 
   /realms/{realm}/protocol/openid-connect/token:
     post:
-      tags: [Keycloak Mock]
+      tags: [ Keycloak Mock ]
       operationId: issueToken
       summary: Issue a token
       description: |
@@ -374,11 +374,11 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required: [grant_type]
+              required: [ grant_type ]
               properties:
                 grant_type:
                   type: string
-                  enum: [client_credentials, password, refresh_token]
+                  enum: [ client_credentials, password, refresh_token ]
                 client_id:
                   type: string
                 client_secret:
@@ -441,7 +441,7 @@ paths:
 
   /{basePath}:
     post:
-      tags: [TMF Resources]
+      tags: [ TMF Resources ]
       operationId: createResource
       summary: Create a resource
       description: |
@@ -453,8 +453,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/basePath"
       security:
-        - bearer: []
-        - {}
+        - bearer: [ ]
+        - { }
       requestBody:
         required: true
         content:
@@ -486,7 +486,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
     get:
-      tags: [TMF Resources]
+      tags: [ TMF Resources ]
       operationId: listResources
       summary: List resources
       description: |
@@ -519,8 +519,8 @@ paths:
             type: string
           example: id,href,name,state
       security:
-        - bearer: []
-        - {}
+        - bearer: [ ]
+        - { }
       responses:
         "200":
           description: Resource list
@@ -556,7 +556,7 @@ paths:
 
   /{basePath}/{id}:
     get:
-      tags: [TMF Resources]
+      tags: [ TMF Resources ]
       operationId: getResource
       summary: Get a resource by ID
       description: |
@@ -573,8 +573,8 @@ paths:
           schema:
             type: string
       security:
-        - bearer: []
-        - {}
+        - bearer: [ ]
+        - { }
       responses:
         "200":
           description: Resource found
@@ -593,7 +593,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
     patch:
-      tags: [TMF Resources]
+      tags: [ TMF Resources ]
       operationId: patchResource
       summary: Patch a resource (JSON Patch or Merge Patch)
       description: |
@@ -611,8 +611,8 @@ paths:
           schema:
             type: string
       security:
-        - bearer: []
-        - {}
+        - bearer: [ ]
+        - { }
       requestBody:
         required: true
         content:
@@ -655,7 +655,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
     delete:
-      tags: [TMF Resources]
+      tags: [ TMF Resources ]
       operationId: deleteResource
       summary: Delete a resource
       description: |
@@ -671,8 +671,8 @@ paths:
           schema:
             type: string
       security:
-        - bearer: []
-        - {}
+        - bearer: [ ]
+        - { }
       responses:
         "204":
           description: Resource deleted
@@ -754,7 +754,7 @@ components:
     ExpectationId:
       type: object
       description: Identifies a single expectation by its ID
-      required: [id]
+      required: [ id ]
       properties:
         id:
           type: string
@@ -825,7 +825,7 @@ components:
               type: integer
             scheme:
               type: string
-              enum: [HTTP, HTTPS]
+              enum: [ HTTP, HTTPS ]
         httpError:
           type: object
           description: Error action (drop connection or return garbage)
@@ -841,7 +841,7 @@ components:
           properties:
             timeUnit:
               type: string
-              enum: [HOURS, MINUTES, SECONDS, MILLISECONDS]
+              enum: [ HOURS, MINUTES, SECONDS, MILLISECONDS ]
             timeToLive:
               type: integer
             unlimited:
@@ -915,7 +915,7 @@ components:
           type: array
           items:
             type: string
-          example: [authorization_code, client_credentials, password, refresh_token]
+          example: [ authorization_code, client_credentials, password, refresh_token ]
         response_types_supported:
           type: array
           items:
@@ -928,7 +928,7 @@ components:
           type: array
           items:
             type: string
-          example: [RS256]
+          example: [ RS256 ]
 
     TokenResponse:
       type: object
@@ -1025,11 +1025,11 @@ components:
 
     JsonPatchOperation:
       type: object
-      required: [op, path]
+      required: [ op, path ]
       properties:
         op:
           type: string
-          enum: [add, remove, replace, move, copy, test]
+          enum: [ add, remove, replace, move, copy, test ]
         path:
           type: string
           description: JSON Pointer (RFC 6901)

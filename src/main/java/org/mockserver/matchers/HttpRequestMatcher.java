@@ -8,28 +8,27 @@ import org.mockserver.model.RequestDefinition;
 
 public interface HttpRequestMatcher extends Matcher<RequestDefinition> {
 
-    List<HttpRequest> getHttpRequests();
+  List<HttpRequest> getHttpRequests();
 
-    boolean matches(final RequestDefinition request);
+  boolean matches(final RequestDefinition request);
 
-    boolean matches(MatchDifference context, RequestDefinition httpRequest);
+  boolean matches(MatchDifference context, RequestDefinition httpRequest);
 
-    Expectation getExpectation();
+  Expectation getExpectation();
 
-    boolean update(Expectation expectation);
+  boolean update(Expectation expectation);
 
-    boolean update(RequestDefinition requestDefinition);
+  boolean update(RequestDefinition requestDefinition);
 
-    @SuppressWarnings("UnusedReturnValue")
-    HttpRequestMatcher setResponseInProgress(boolean responseInProgress);
+  @SuppressWarnings("UnusedReturnValue")
+  HttpRequestMatcher setResponseInProgress(boolean responseInProgress);
 
-    boolean isResponseInProgress();
+  boolean isResponseInProgress();
 
-    MockServerMatcherNotifier.Cause getSource();
+  MockServerMatcherNotifier.Cause getSource();
 
-    @SuppressWarnings("UnusedReturnValue")
-    HttpRequestMatcher withSource(MockServerMatcherNotifier.Cause source);
+  @SuppressWarnings("UnusedReturnValue")
+  HttpRequestMatcher withSource(MockServerMatcherNotifier.Cause source);
 
-    boolean isActive();
-
+  boolean isActive();
 }

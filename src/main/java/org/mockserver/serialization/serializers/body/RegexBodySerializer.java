@@ -10,21 +10,21 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class RegexBodySerializer extends StdSerializer<RegexBody> {
 
-    public RegexBodySerializer() {
-        super(RegexBody.class);
-    }
+  public RegexBodySerializer() {
+    super(RegexBody.class);
+  }
 
-    @Override
-    public void serialize(RegexBody regexBody, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (regexBody.getNot() != null && regexBody.getNot()) {
-            jgen.writeBooleanProperty("not", regexBody.getNot());
-        }
-        if (regexBody.getOptional() != null && regexBody.getOptional()) {
-            jgen.writeBooleanProperty("optional", regexBody.getOptional());
-        }
-        jgen.writeStringProperty("type", regexBody.getType().name());
-        jgen.writeStringProperty("regex", regexBody.getValue());
-        jgen.writeEndObject();
+  @Override
+  public void serialize(RegexBody regexBody, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (regexBody.getNot() != null && regexBody.getNot()) {
+      jgen.writeBooleanProperty("not", regexBody.getNot());
     }
+    if (regexBody.getOptional() != null && regexBody.getOptional()) {
+      jgen.writeBooleanProperty("optional", regexBody.getOptional());
+    }
+    jgen.writeStringProperty("type", regexBody.getType().name());
+    jgen.writeStringProperty("regex", regexBody.getValue());
+    jgen.writeEndObject();
+  }
 }

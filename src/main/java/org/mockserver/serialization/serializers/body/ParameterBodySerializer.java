@@ -10,23 +10,24 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class ParameterBodySerializer extends StdSerializer<ParameterBody> {
 
-    public ParameterBodySerializer() {
-        super(ParameterBody.class);
-    }
+  public ParameterBodySerializer() {
+    super(ParameterBody.class);
+  }
 
-    @Override
-    public void serialize(ParameterBody parameterBody, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (parameterBody.getNot() != null && parameterBody.getNot()) {
-            jgen.writeBooleanProperty("not", parameterBody.getNot());
-        }
-        if (parameterBody.getOptional() != null && parameterBody.getOptional()) {
-            jgen.writeBooleanProperty("optional", parameterBody.getOptional());
-        }
-        jgen.writeStringProperty("type", parameterBody.getType().name());
-        if (!parameterBody.getValue().isEmpty()) {
-            jgen.writePOJOProperty("parameters", parameterBody.getValue());
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(
+      ParameterBody parameterBody, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (parameterBody.getNot() != null && parameterBody.getNot()) {
+      jgen.writeBooleanProperty("not", parameterBody.getNot());
     }
+    if (parameterBody.getOptional() != null && parameterBody.getOptional()) {
+      jgen.writeBooleanProperty("optional", parameterBody.getOptional());
+    }
+    jgen.writeStringProperty("type", parameterBody.getType().name());
+    if (!parameterBody.getValue().isEmpty()) {
+      jgen.writePOJOProperty("parameters", parameterBody.getValue());
+    }
+    jgen.writeEndObject();
+  }
 }

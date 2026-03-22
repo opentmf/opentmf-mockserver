@@ -7,12 +7,12 @@ import org.mockserver.model.Parameters;
  */
 public class ParametersDeserializer extends KeysToMultiValuesDeserializer<Parameters> {
 
-    public ParametersDeserializer() {
-        super(Parameters.class);
-    }
+  public ParametersDeserializer() {
+    super(Parameters.class);
+  }
 
-    @Override
-    public Parameters build() {
-        return new Parameters();
-    }
+  @Override
+  public Parameters build() {
+    return new Parameters();
+  }
 }

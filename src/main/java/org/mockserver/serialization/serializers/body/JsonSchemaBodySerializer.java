@@ -12,26 +12,27 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class JsonSchemaBodySerializer extends StdSerializer<JsonSchemaBody> {
 
-    private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.createObjectMapper();
+  private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.createObjectMapper();
 
-    public JsonSchemaBodySerializer() {
-        super(JsonSchemaBody.class);
-    }
+  public JsonSchemaBodySerializer() {
+    super(JsonSchemaBody.class);
+  }
 
-    @Override
-    public void serialize(JsonSchemaBody jsonSchemaBody, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (jsonSchemaBody.getNot() != null && jsonSchemaBody.getNot()) {
-            jgen.writeBooleanProperty("not", jsonSchemaBody.getNot());
-        }
-        if (jsonSchemaBody.getOptional() != null && jsonSchemaBody.getOptional()) {
-            jgen.writeBooleanProperty("optional", jsonSchemaBody.getOptional());
-        }
-        jgen.writeStringProperty("type", jsonSchemaBody.getType().name());
-        jgen.writePOJOProperty("jsonSchema", OBJECT_MAPPER.readTree(jsonSchemaBody.getValue()));
-        if (jsonSchemaBody.getParameterStyles() != null) {
-            jgen.writePOJOProperty("parameterStyles", jsonSchemaBody.getParameterStyles());
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(
+      JsonSchemaBody jsonSchemaBody, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (jsonSchemaBody.getNot() != null && jsonSchemaBody.getNot()) {
+      jgen.writeBooleanProperty("not", jsonSchemaBody.getNot());
     }
+    if (jsonSchemaBody.getOptional() != null && jsonSchemaBody.getOptional()) {
+      jgen.writeBooleanProperty("optional", jsonSchemaBody.getOptional());
+    }
+    jgen.writeStringProperty("type", jsonSchemaBody.getType().name());
+    jgen.writePOJOProperty("jsonSchema", OBJECT_MAPPER.readTree(jsonSchemaBody.getValue()));
+    if (jsonSchemaBody.getParameterStyles() != null) {
+      jgen.writePOJOProperty("parameterStyles", jsonSchemaBody.getParameterStyles());
+    }
+    jgen.writeEndObject();
+  }
 }

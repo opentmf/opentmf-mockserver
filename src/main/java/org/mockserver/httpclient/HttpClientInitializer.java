@@ -26,68 +26,81 @@ import org.mockserver.socket.tls.NettySslContextFactory;
 @ChannelHandler.Sharable
 public class HttpClientInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final MockServerLogger mockServerLogger;
-    private final boolean forwardProxyClient;
-    private final Protocol httpProtocol;
-    private final HttpClientConnectionErrorHandler httpClientConnectionHandler;
-    private final CompletableFuture<Protocol> protocolFuture;
-    private final HttpClientHandler httpClientHandler;
-    private final NettySslContextFactory nettySslContextFactory;
+  private final MockServerLogger mockServerLogger;
+  private final boolean forwardProxyClient;
+  private final Protocol httpProtocol;
+  private final HttpClientConnectionErrorHandler httpClientConnectionHandler;
+  private final CompletableFuture<Protocol> protocolFuture;
+  private final HttpClientHandler httpClientHandler;
+  private final NettySslContextFactory nettySslContextFactory;
 
-    HttpClientInitializer(MockServerLogger mockServerLogger, boolean forwardProxyClient, NettySslContextFactory nettySslContextFactory, Protocol httpProtocol) {
-        this.mockServerLogger = mockServerLogger;
-        this.forwardProxyClient = forwardProxyClient;
-        this.httpProtocol = httpProtocol;
-        this.protocolFuture = new CompletableFuture<>();
-        this.httpClientHandler = new HttpClientHandler();
-        this.httpClientConnectionHandler = new HttpClientConnectionErrorHandler();
-        this.nettySslContextFactory = nettySslContextFactory;
+  HttpClientInitializer(
+      MockServerLogger mockServerLogger,
+      boolean forwardProxyClient,
+      NettySslContextFactory nettySslContextFactory,
+      Protocol httpProtocol) {
+    this.mockServerLogger = mockServerLogger;
+    this.forwardProxyClient = forwardProxyClient;
+    this.httpProtocol = httpProtocol;
+    this.protocolFuture = new CompletableFuture<>();
+    this.httpClientHandler = new HttpClientHandler();
+    this.httpClientConnectionHandler = new HttpClientConnectionErrorHandler();
+    this.nettySslContextFactory = nettySslContextFactory;
+  }
+
+  public void whenComplete(BiConsumer<? super Protocol, ? super Throwable> action) {
+    protocolFuture.whenComplete(action);
+  }
+
+  @Override
+  public void initChannel(SocketChannel channel) {
+    ChannelPipeline pipeline = channel.pipeline();
+    boolean secure =
+        channel.attr(SECURE) != null
+            && channel.attr(SECURE).get() != null
+            && channel.attr(SECURE).get();
+
+    pipeline.addLast(httpClientConnectionHandler);
+
+    if (secure) {
+      InetSocketAddress remoteAddress = channel.attr(REMOTE_SOCKET).get();
+      pipeline.addLast(
+          nettySslContextFactory
+              .createClientSslContext(
+                  forwardProxyClient, httpProtocol != null && httpProtocol.equals(Protocol.HTTP_2))
+              .newHandler(channel.alloc(), remoteAddress.getHostName(), remoteAddress.getPort()));
     }
 
-    public void whenComplete(BiConsumer<? super Protocol, ? super Throwable> action) {
-        protocolFuture.whenComplete(action);
+    // add logging
+    if (MockServerLogger.isEnabled(TRACE)) {
+      pipeline.addLast(new LoggingHandler(HttpClientHandler.class.getName()));
     }
 
-    @Override
-    public void initChannel(SocketChannel channel) {
-        ChannelPipeline pipeline = channel.pipeline();
-        boolean secure = channel.attr(SECURE) != null && channel.attr(SECURE).get() != null && channel.attr(SECURE).get();
-
-        pipeline.addLast(httpClientConnectionHandler);
-
-        if (secure) {
-            InetSocketAddress remoteAddress = channel.attr(REMOTE_SOCKET).get();
-            pipeline.addLast(nettySslContextFactory.createClientSslContext(forwardProxyClient, httpProtocol != null && httpProtocol.equals(Protocol.HTTP_2)).newHandler(channel.alloc(), remoteAddress.getHostName(), remoteAddress.getPort()));
-        }
-
-        // add logging
-        if (MockServerLogger.isEnabled(TRACE)) {
-            pipeline.addLast(new LoggingHandler(HttpClientHandler.class.getName()));
-        }
-
-        if (httpProtocol == null) {
-            configureBinaryPipeline(pipeline);
-        } else if (secure) {
-            // use ALPN to determine http1 or http2
-            pipeline.addLast(new HttpOrHttp2Initializer(this::configureHttp1Pipeline, this::configureHttp2Pipeline));
-        } else {
-            // default to http1 without TLS
-            configureHttp1Pipeline(pipeline);
-        }
+    if (httpProtocol == null) {
+      configureBinaryPipeline(pipeline);
+    } else if (secure) {
+      // use ALPN to determine http1 or http2
+      pipeline.addLast(
+          new HttpOrHttp2Initializer(this::configureHttp1Pipeline, this::configureHttp2Pipeline));
+    } else {
+      // default to http1 without TLS
+      configureHttp1Pipeline(pipeline);
     }
+  }
 
-    private void configureHttp1Pipeline(ChannelPipeline pipeline) {
-        pipeline.addLast(new HttpClientCodec());
-        pipeline.addLast(new HttpContentDecompressor());
-        pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
-        pipeline.addLast(new MockServerHttpClientCodec(mockServerLogger));
-        pipeline.addLast(httpClientHandler);
-        protocolFuture.complete(Protocol.HTTP_1_1);
-    }
+  private void configureHttp1Pipeline(ChannelPipeline pipeline) {
+    pipeline.addLast(new HttpClientCodec());
+    pipeline.addLast(new HttpContentDecompressor());
+    pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+    pipeline.addLast(new MockServerHttpClientCodec(mockServerLogger));
+    pipeline.addLast(httpClientHandler);
+    protocolFuture.complete(Protocol.HTTP_1_1);
+  }
 
-    private void configureHttp2Pipeline(ChannelPipeline pipeline) {
-        final Http2Connection connection = new DefaultHttp2Connection(false);
-        final HttpToHttp2ConnectionHandlerBuilder http2ConnectionHandlerBuilder = new HttpToHttp2ConnectionHandlerBuilder()
+  private void configureHttp2Pipeline(ChannelPipeline pipeline) {
+    final Http2Connection connection = new DefaultHttp2Connection(false);
+    final HttpToHttp2ConnectionHandlerBuilder http2ConnectionHandlerBuilder =
+        new HttpToHttp2ConnectionHandlerBuilder()
             .frameListener(
                 new DelegatingDecompressorFrameListener(
                     connection,
@@ -95,23 +108,22 @@ public class HttpClientInitializer extends ChannelInitializer<SocketChannel> {
                         .maxContentLength(Integer.MAX_VALUE)
                         .propagateSettings(true)
                         .validateHttpHeaders(false)
-                        .build()
-                )
-            )
+                        .build()))
             .connection(connection)
             .flushPreface(true);
-        if (MockServerLogger.isEnabled(TRACE)) {
-            http2ConnectionHandlerBuilder.frameLogger(new Http2FrameLogger(LogLevel.TRACE, HttpClientHandler.class.getName()));
-        }
-        pipeline.addLast(http2ConnectionHandlerBuilder.build());
-        pipeline.addLast(new Http2SettingsHandler(protocolFuture));
-        pipeline.addLast(new MockServerHttpClientCodec(mockServerLogger));
-        pipeline.addLast(httpClientHandler);
+    if (MockServerLogger.isEnabled(TRACE)) {
+      http2ConnectionHandlerBuilder.frameLogger(
+          new Http2FrameLogger(LogLevel.TRACE, HttpClientHandler.class.getName()));
     }
+    pipeline.addLast(http2ConnectionHandlerBuilder.build());
+    pipeline.addLast(new Http2SettingsHandler(protocolFuture));
+    pipeline.addLast(new MockServerHttpClientCodec(mockServerLogger));
+    pipeline.addLast(httpClientHandler);
+  }
 
-    private void configureBinaryPipeline(ChannelPipeline pipeline) {
-        pipeline.addLast(new MockServerBinaryClientCodec());
-        pipeline.addLast(httpClientHandler);
-        protocolFuture.complete(null);
-    }
+  private void configureBinaryPipeline(ChannelPipeline pipeline) {
+    pipeline.addLast(new MockServerBinaryClientCodec());
+    pipeline.addLast(httpClientHandler);
+    protocolFuture.complete(null);
+  }
 }

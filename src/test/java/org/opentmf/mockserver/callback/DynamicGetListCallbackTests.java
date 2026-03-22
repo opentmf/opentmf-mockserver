@@ -33,10 +33,7 @@ class DynamicGetListCallbackTests {
 
   @SystemStub
   private static final EnvironmentVariables TEST_ENV_VARIABLES =
-      new EnvironmentVariables(
-          CACHE_DURATION_MILLIS, THREE_SECONDS,
-          ADDITIONAL_FIELDS, "project"
-      );
+      new EnvironmentVariables(CACHE_DURATION_MILLIS, THREE_SECONDS, ADDITIONAL_FIELDS, "project");
 
   @Test
   void testResponseWithValidParameters() {
@@ -292,8 +289,7 @@ class DynamicGetListCallbackTests {
         Arguments.of(10, 5, 5, "items 6-10/10", 200),
         Arguments.of(10, 10, 5, "items */10", 416),
         Arguments.of(10, 0, 15, "items 1-10/10", 200),
-        Arguments.of(0, 0, 5, "items */0", 200)
-    );
+        Arguments.of(0, 0, 5, "items */0", 200));
   }
 
   @ParameterizedTest

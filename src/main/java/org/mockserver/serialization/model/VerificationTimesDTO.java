@@ -8,26 +8,25 @@ import org.mockserver.verify.VerificationTimes;
  */
 public class VerificationTimesDTO extends ObjectWithJsonToString implements DTO<VerificationTimes> {
 
-    private int atLeast;
-    private int atMost;
+  private int atLeast;
+  private int atMost;
 
-    public VerificationTimesDTO(VerificationTimes times) {
-        atLeast = times.getAtLeast();
-        atMost = times.getAtMost();
-    }
+  public VerificationTimesDTO(VerificationTimes times) {
+    atLeast = times.getAtLeast();
+    atMost = times.getAtMost();
+  }
 
-    public VerificationTimesDTO() {
-    }
+  public VerificationTimesDTO() {}
 
-    public VerificationTimes buildObject() {
-        return VerificationTimes.between(atLeast, atMost);
-    }
+  public VerificationTimes buildObject() {
+    return VerificationTimes.between(atLeast, atMost);
+  }
 
-    public int getAtLeast() {
-        return atLeast;
-    }
+  public int getAtLeast() {
+    return atLeast;
+  }
 
-    public int getAtMost() {
-        return atMost;
-    }
+  public int getAtMost() {
+    return atMost;
+  }
 }

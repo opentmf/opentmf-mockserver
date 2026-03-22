@@ -10,23 +10,34 @@ import org.mockserver.model.HttpRequest;
  */
 public class HttpOverrideForwardedRequestActionHandler extends HttpForwardAction {
 
-    public HttpOverrideForwardedRequestActionHandler(MockServerLogger logFormatter, NettyHttpClient httpClient) {
-        super(logFormatter, httpClient);
-    }
+  public HttpOverrideForwardedRequestActionHandler(
+      MockServerLogger logFormatter, NettyHttpClient httpClient) {
+    super(logFormatter, httpClient);
+  }
 
-    public HttpForwardActionResult handle(final HttpOverrideForwardedRequest httpOverrideForwardedRequest, final HttpRequest request) {
-        if (httpOverrideForwardedRequest != null) {
-            HttpRequest requestToSend = request.clone().update(httpOverrideForwardedRequest.getRequestOverride(), httpOverrideForwardedRequest.getRequestModifier());
-            return sendRequest(requestToSend, null, httpResponse -> {
-                if (httpResponse == null) {
-                    return httpOverrideForwardedRequest.getResponseOverride();
-                } else {
-                    return httpResponse.update(httpOverrideForwardedRequest.getResponseOverride(), httpOverrideForwardedRequest.getResponseModifier());
-                }
-            });
-        } else {
-            return sendRequest(request, null, httpResponse -> httpResponse);
-        }
+  public HttpForwardActionResult handle(
+      final HttpOverrideForwardedRequest httpOverrideForwardedRequest, final HttpRequest request) {
+    if (httpOverrideForwardedRequest != null) {
+      HttpRequest requestToSend =
+          request
+              .clone()
+              .update(
+                  httpOverrideForwardedRequest.getRequestOverride(),
+                  httpOverrideForwardedRequest.getRequestModifier());
+      return sendRequest(
+          requestToSend,
+          null,
+          httpResponse -> {
+            if (httpResponse == null) {
+              return httpOverrideForwardedRequest.getResponseOverride();
+            } else {
+              return httpResponse.update(
+                  httpOverrideForwardedRequest.getResponseOverride(),
+                  httpOverrideForwardedRequest.getResponseModifier());
+            }
+          });
+    } else {
+      return sendRequest(request, null, httpResponse -> httpResponse);
     }
-
+  }
 }

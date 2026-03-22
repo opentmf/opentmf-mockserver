@@ -4,5 +4,5 @@ import org.mockserver.mock.Expectation;
 
 public interface ExpectationLogEntry {
 
-    Expectation getExpectation();
+  Expectation getExpectation();
 }

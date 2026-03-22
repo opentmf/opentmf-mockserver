@@ -10,19 +10,20 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class VerificationTimesSerializer extends StdSerializer<VerificationTimes> {
 
-    public VerificationTimesSerializer() {
-        super(VerificationTimes.class);
-    }
+  public VerificationTimesSerializer() {
+    super(VerificationTimes.class);
+  }
 
-    @Override
-    public void serialize(VerificationTimes verificationTimesDTO, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (verificationTimesDTO.getAtLeast() != -1) {
-            jgen.writeNumberProperty("atLeast", verificationTimesDTO.getAtLeast());
-        }
-        if (verificationTimesDTO.getAtMost() != -1) {
-            jgen.writeNumberProperty("atMost", verificationTimesDTO.getAtMost());
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(
+      VerificationTimes verificationTimesDTO, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (verificationTimesDTO.getAtLeast() != -1) {
+      jgen.writeNumberProperty("atLeast", verificationTimesDTO.getAtLeast());
     }
+    if (verificationTimesDTO.getAtMost() != -1) {
+      jgen.writeNumberProperty("atMost", verificationTimesDTO.getAtMost());
+    }
+    jgen.writeEndObject();
+  }
 }

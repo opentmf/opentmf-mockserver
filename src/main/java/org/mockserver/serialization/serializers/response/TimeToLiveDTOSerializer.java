@@ -10,19 +10,20 @@ import tools.jackson.databind.ser.std.StdSerializer;
  */
 public class TimeToLiveDTOSerializer extends StdSerializer<TimeToLiveDTO> {
 
-    public TimeToLiveDTOSerializer() {
-        super(TimeToLiveDTO.class);
-    }
+  public TimeToLiveDTOSerializer() {
+    super(TimeToLiveDTO.class);
+  }
 
-    @Override
-    public void serialize(TimeToLiveDTO timeToLive, JsonGenerator jgen, SerializationContext provider) {
-        jgen.writeStartObject();
-        if (!timeToLive.isUnlimited()) {
-            jgen.writePOJOProperty("timeUnit", timeToLive.getTimeUnit());
-            jgen.writeNumberProperty("timeToLive", timeToLive.getTimeToLive());
-        } else {
-            jgen.writeBooleanProperty("unlimited", timeToLive.isUnlimited());
-        }
-        jgen.writeEndObject();
+  @Override
+  public void serialize(
+      TimeToLiveDTO timeToLive, JsonGenerator jgen, SerializationContext provider) {
+    jgen.writeStartObject();
+    if (!timeToLive.isUnlimited()) {
+      jgen.writePOJOProperty("timeUnit", timeToLive.getTimeUnit());
+      jgen.writeNumberProperty("timeToLive", timeToLive.getTimeToLive());
+    } else {
+      jgen.writeBooleanProperty("unlimited", timeToLive.isUnlimited());
     }
+    jgen.writeEndObject();
+  }
 }

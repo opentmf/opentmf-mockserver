@@ -29,16 +29,17 @@ public final class JwtKeyProvider {
   private final String jwksJson;
 
   private JwtKeyProvider() {
-    AsymmetricKeyPair keyPair = AsymmetricKeyGenerator.createAsymmetricKeyPair(
-        AsymmetricKeyPairAlgorithm.RSA2048_SHA256);
+    AsymmetricKeyPair keyPair =
+        AsymmetricKeyGenerator.createAsymmetricKeyPair(AsymmetricKeyPairAlgorithm.RSA2048_SHA256);
     this.jwtGenerator = new JWTGenerator(keyPair);
 
     RSAPublicKey publicKey = (RSAPublicKey) keyPair.getKeyPair().getPublic();
-    RSAKey jwk = new RSAKey.Builder(publicKey)
-        .keyID(keyPair.getKeyId())
-        .keyUse(KeyUse.SIGNATURE)
-        .algorithm(JWSAlgorithm.RS256)
-        .build();
+    RSAKey jwk =
+        new RSAKey.Builder(publicKey)
+            .keyID(keyPair.getKeyId())
+            .keyUse(KeyUse.SIGNATURE)
+            .algorithm(JWSAlgorithm.RS256)
+            .build();
     this.jwksJson = new JWKSet(jwk).toString();
     LOG.info("JWT key pair initialised with kid=\"{}\"", keyPair.getKeyId());
   }

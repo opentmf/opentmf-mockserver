@@ -7,14 +7,13 @@ import org.mockserver.model.Header;
  */
 public class HeaderDTO extends KeyToMultiValueDTO implements DTO<Header> {
 
-    public HeaderDTO(Header header) {
-        super(header);
-    }
+  public HeaderDTO(Header header) {
+    super(header);
+  }
 
-    protected HeaderDTO() {
-    }
+  protected HeaderDTO() {}
 
-    public Header buildObject() {
-        return new Header(getName(), getValues());
-    }
+  public Header buildObject() {
+    return new Header(getName(), getValues());
+  }
 }

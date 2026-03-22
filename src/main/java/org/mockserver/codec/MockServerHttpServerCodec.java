@@ -10,14 +10,35 @@ import org.mockserver.logging.MockServerLogger;
 /**
  * @author jamesdbloom
  */
-public class MockServerHttpServerCodec extends CombinedChannelDuplexHandler<NettyHttpToMockServerHttpRequestDecoder, MockServerHttpToNettyHttpResponseEncoder> {
+public class MockServerHttpServerCodec
+    extends CombinedChannelDuplexHandler<
+        NettyHttpToMockServerHttpRequestDecoder, MockServerHttpToNettyHttpResponseEncoder> {
 
-    public MockServerHttpServerCodec(Configuration configuration, MockServerLogger mockServerLogger, boolean isSecure, Certificate[] clientCertificates, SocketAddress socketAddress) {
-        this(configuration, mockServerLogger, isSecure, clientCertificates, socketAddress instanceof InetSocketAddress ? ((InetSocketAddress) socketAddress).getPort() : null);
-    }
+  public MockServerHttpServerCodec(
+      Configuration configuration,
+      MockServerLogger mockServerLogger,
+      boolean isSecure,
+      Certificate[] clientCertificates,
+      SocketAddress socketAddress) {
+    this(
+        configuration,
+        mockServerLogger,
+        isSecure,
+        clientCertificates,
+        socketAddress instanceof InetSocketAddress
+            ? ((InetSocketAddress) socketAddress).getPort()
+            : null);
+  }
 
-    public MockServerHttpServerCodec(Configuration configuration, MockServerLogger mockServerLogger, boolean isSecure, Certificate[] clientCertificates, Integer port) {
-        init(new NettyHttpToMockServerHttpRequestDecoder(configuration, mockServerLogger, isSecure, clientCertificates, port), new MockServerHttpToNettyHttpResponseEncoder(mockServerLogger));
-    }
-
+  public MockServerHttpServerCodec(
+      Configuration configuration,
+      MockServerLogger mockServerLogger,
+      boolean isSecure,
+      Certificate[] clientCertificates,
+      Integer port) {
+    init(
+        new NettyHttpToMockServerHttpRequestDecoder(
+            configuration, mockServerLogger, isSecure, clientCertificates, port),
+        new MockServerHttpToNettyHttpResponseEncoder(mockServerLogger));
+  }
 }
