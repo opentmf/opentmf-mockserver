@@ -21,8 +21,8 @@ class JwksExpectationInitializerTests {
     Expectation[] expectations = initializer.initializeExpectations();
 
     int realmCount = KeycloakConfig.getInstance().getRealms().size();
-    // 1 global JWKS + 3 per realm (certs, discovery, token) + 1 OpenAPI spec
-    assertEquals(1 + realmCount * 3 + 1, expectations.length);
+    // 1 global JWKS + 4 per realm (certs, discovery, token, admin) + 1 OpenAPI spec
+    assertEquals(1 + realmCount * 4 + 1, expectations.length);
 
     // First expectation is the global JWKS
     Expectation globalJwks = expectations[0];

@@ -11,6 +11,7 @@ info:
     |-----|-------------|
     | **MockServer** | Control-plane API for managing expectations, verification, and server lifecycle. |
     | **Keycloak Mock** | OIDC endpoints automatically registered at startup (discovery, JWKS, token). |
+    | **Keycloak Admin** | Read-only Keycloak Admin REST API mock (users, groups, roles, clients). |
     | **TMF Resources** | Dynamic CRUD operations backed by class callbacks (user-registered expectations). |
   version: ${project.version}
   license:
@@ -29,6 +30,8 @@ tags:
     description: Control-plane API inherited from MockServer
   - name: Keycloak Mock
     description: Auto-registered OIDC / OAuth 2.0 endpoints
+  - name: Keycloak Admin
+    description: Read-only Keycloak Admin REST API mock
   - name: TMF Resources
     description: Dynamic CRUD for TMF-630 resources (callback-backed)
 
@@ -434,6 +437,359 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenError"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  Keycloak Admin REST API (read-only mock)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  /admin/realms/{realm}:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminRealm
+      summary: Get realm representation
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: Realm representation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRealmRepresentation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Realm not found
+
+  /admin/realms/{realm}/users:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: listAdminUsers
+      summary: List users
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: username
+          in: query
+          schema:
+            type: string
+          description: Exact username filter
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Case-insensitive search across username, email, first/last name
+        - name: first
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: max
+          in: query
+          schema:
+            type: integer
+            default: 100
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of user representations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUserRepresentation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/realms/{realm}/users/count:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: countAdminUsers
+      summary: Count users
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: User count
+          content:
+            application/json:
+              schema:
+                type: integer
+
+  /admin/realms/{realm}/users/{userId}:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminUser
+      summary: Get user by ID
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: User representation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserRepresentation"
+        "404":
+          description: User not found
+
+  /admin/realms/{realm}/users/{userId}/role-mappings/realm:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminUserRealmRoles
+      summary: Get realm role mappings for a user
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of role representations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminRoleRepresentation"
+
+  /admin/realms/{realm}/users/{userId}/groups:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminUserGroups
+      summary: Get groups a user belongs to
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminGroupRepresentation"
+
+  /admin/realms/{realm}/groups:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: listAdminGroups
+      summary: List groups
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: first
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: max
+          in: query
+          schema:
+            type: integer
+            default: 100
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of group representations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminGroupRepresentation"
+
+  /admin/realms/{realm}/groups/count:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: countAdminGroups
+      summary: Count groups
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: Group count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+
+  /admin/realms/{realm}/groups/{groupId}:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminGroup
+      summary: Get group by ID
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: Group representation with sub-groups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminGroupRepresentation"
+        "404":
+          description: Group not found
+
+  /admin/realms/{realm}/groups/{groupId}/members:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminGroupMembers
+      summary: Get members of a group
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of user representations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUserRepresentation"
+
+  /admin/realms/{realm}/roles:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: listAdminRoles
+      summary: List realm roles
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of role representations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminRoleRepresentation"
+
+  /admin/realms/{realm}/roles/{roleName}:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminRole
+      summary: Get role by name
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: Role representation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRoleRepresentation"
+        "404":
+          description: Role not found
+
+  /admin/realms/{realm}/roles/{roleName}/users:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: getAdminRoleUsers
+      summary: Get users with a specific role
+      parameters:
+        - $ref: "#/components/parameters/realm"
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of user representations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUserRepresentation"
+        "404":
+          description: Role not found
+
+  /admin/realms/{realm}/clients:
+    get:
+      tags: [ Keycloak Admin ]
+      operationId: listAdminClients
+      summary: List clients
+      parameters:
+        - $ref: "#/components/parameters/realm"
+      security:
+        - bearer: [ ]
+      responses:
+        "200":
+          description: List of client representations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminClientRepresentation"
 
   # ═══════════════════════════════════════════════════════════════════════════
   #  TMF dynamic resources (callback-backed)
@@ -964,6 +1320,106 @@ components:
           example: Token has expired
         error_uri:
           type: string
+
+    # ── Keycloak Admin API schemas ───────────────────────────────────────────
+
+    AdminRealmRepresentation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        realm:
+          type: string
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        defaultRoles:
+          type: array
+          items:
+            type: string
+        sslRequired:
+          type: string
+
+    AdminUserRepresentation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        enabled:
+          type: boolean
+        emailVerified:
+          type: boolean
+        createdTimestamp:
+          type: integer
+          format: int64
+        access:
+          type: object
+          additionalProperties:
+            type: boolean
+
+    AdminGroupRepresentation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        path:
+          type: string
+        subGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminGroupRepresentation"
+        subGroupCount:
+          type: integer
+
+    AdminRoleRepresentation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        composite:
+          type: boolean
+        clientRole:
+          type: boolean
+        containerId:
+          type: string
+
+    AdminClientRepresentation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clientId:
+          type: string
+        enabled:
+          type: boolean
+        publicClient:
+          type: boolean
+        protocol:
+          type: string
+        directAccessGrantsEnabled:
+          type: boolean
+        serviceAccountsEnabled:
+          type: boolean
 
     # ── TMF resource schemas ────────────────────────────────────────────────
 

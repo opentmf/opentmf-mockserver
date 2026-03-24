@@ -55,6 +55,7 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
       expectations.add(realmJwks(oidcBase, jwksJson));
       expectations.add(realmDiscovery(realmName, baseUrl));
       expectations.add(realmToken(oidcBase));
+      expectations.add(realmAdmin(realmName));
     }
 
     Expectation openapi = openapiSpec();
@@ -143,6 +144,16 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
                 HttpRequest.request().withMethod("POST").withPath(path), Times.unlimited(), null)
             .thenRespond(HttpClassCallback.callback(KeycloakTokenCallback.class.getName()));
     LOG.info("  POST {}", path);
+    return e;
+  }
+
+  private Expectation realmAdmin(String realmName) {
+    String path = "/admin/realms/" + realmName + ".*";
+    Expectation e =
+        Expectation.when(
+                HttpRequest.request().withMethod("GET").withPath(path), Times.unlimited(), null)
+            .thenRespond(HttpClassCallback.callback(KeycloakAdminCallback.class.getName()));
+    LOG.info("  GET  /admin/realms/{}/*", realmName);
     return e;
   }
 

@@ -3,66 +3,60 @@
   "realms": [
     {
       "name": "realm1",
-      "roles": [
-        "admin",
-        "writer",
-        "reader"
+      "roles": ["admin", "writer", "reader"],
+      "groups": [
+        { "name": "admins", "subGroups": [] },
+        { "name": "developers", "subGroups": ["backend", "frontend"] },
+        { "name": "viewers", "subGroups": [] }
       ],
       "clients": [
         {
           "clientId": "client1",
           "clientSecret": "client1Secret",
           "publicClient": false,
-          "allowedGrantTypes": [
-            "client_credentials"
-          ],
-          "serviceAccountRoles": [
-            "admin",
-            "writer",
-            "reader"
-          ]
+          "allowedGrantTypes": ["client_credentials"],
+          "serviceAccountRoles": ["admin", "writer", "reader"]
         },
         {
           "clientId": "client2",
           "clientSecret": "client2Secret",
           "publicClient": false,
-          "allowedGrantTypes": [
-            "password"
-          ]
+          "allowedGrantTypes": ["password"],
+          "serviceAccountRoles": ["writer", "reader"]
         },
         {
           "clientId": "uiClient",
           "publicClient": true,
-          "allowedGrantTypes": [
-            "password",
-            "refresh_token"
-          ]
+          "allowedGrantTypes": ["password", "refresh_token"]
         }
       ],
       "users": [
         {
           "username": "admin_usr",
           "password": "admin_pwd",
-          "roles": [
-            "admin",
-            "writer",
-            "reader"
-          ]
+          "email": "admin@example.com",
+          "firstName": "Admin",
+          "lastName": "User",
+          "roles": ["admin", "writer", "reader"],
+          "groups": ["admins"]
         },
         {
           "username": "writer_usr",
           "password": "writer_pwd",
-          "roles": [
-            "writer",
-            "reader"
-          ]
+          "email": "writer@example.com",
+          "firstName": "Writer",
+          "lastName": "User",
+          "roles": ["writer", "reader"],
+          "groups": ["developers"]
         },
         {
           "username": "reader_usr",
           "password": "reader_pwd",
-          "roles": [
-            "reader"
-          ]
+          "email": "reader@example.com",
+          "firstName": "Reader",
+          "lastName": "User",
+          "roles": ["reader"],
+          "groups": ["viewers"]
         }
       ]
     }
