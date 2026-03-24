@@ -53,8 +53,12 @@ class KeycloakConfigTests {
     Optional<UserConfig> admin = realm.findUser("admin_usr");
     assertTrue(admin.isPresent());
     assertEquals("admin_pwd", admin.get().getPassword());
+    assertEquals("admin@example.com", admin.get().getEmail());
+    assertEquals("Admin", admin.get().getFirstName());
+    assertEquals("User", admin.get().getLastName());
     assertEquals(3, admin.get().getRoles().size());
     assertTrue(admin.get().getRoles().contains("admin"));
+    assertEquals(List.of("admins"), admin.get().getGroups());
 
     Optional<UserConfig> writer = realm.findUser("writer_usr");
     assertTrue(writer.isPresent());
@@ -64,6 +68,18 @@ class KeycloakConfigTests {
     assertTrue(reader.isPresent());
     assertEquals(1, reader.get().getRoles().size());
     assertTrue(reader.get().getRoles().contains("reader"));
+  }
+
+  @Test
+  void realm1HasExpectedGroups() {
+    RealmConfig realm = KeycloakConfig.getInstance().findRealm("realm1").orElseThrow();
+    assertEquals(3, realm.getGroups().size());
+    assertTrue(realm.findGroup("admins").isPresent());
+    assertTrue(realm.findGroup("developers").isPresent());
+    assertTrue(realm.findGroup("viewers").isPresent());
+
+    GroupConfig developers = realm.findGroup("developers").orElseThrow();
+    assertEquals(List.of("backend", "frontend"), developers.getSubGroups());
   }
 
   @Test
@@ -94,6 +110,7 @@ class KeycloakConfigTests {
             + "\"realms\":[{"
             + "  \"name\":\"testRealm\","
             + "  \"roles\":[\"role1\",\"role2\"],"
+            + "  \"groups\":[{\"name\":\"g1\",\"subGroups\":[\"sub1\",\"sub2\"]}],"
             + "  \"clients\":[{"
             + "    \"clientId\":\"c1\","
             + "    \"clientSecret\":\"s1\","
@@ -104,7 +121,11 @@ class KeycloakConfigTests {
             + "  \"users\":[{"
             + "    \"username\":\"u1\","
             + "    \"password\":\"p1\","
-            + "    \"roles\":[\"role1\",\"role2\"]"
+            + "    \"email\":\"u1@example.com\","
+            + "    \"firstName\":\"First\","
+            + "    \"lastName\":\"Last\","
+            + "    \"roles\":[\"role1\",\"role2\"],"
+            + "    \"groups\":[\"g1\"]"
             + "  }]"
             + "}]}";
 
@@ -121,6 +142,13 @@ class KeycloakConfigTests {
     assertEquals("testRealm", realm.getName());
     assertEquals(Arrays.asList("role1", "role2"), realm.getRoles());
 
+    assertEquals(1, realm.getGroups().size());
+    GroupConfig group = realm.getGroups().get(0);
+    assertEquals("g1", group.getName());
+    assertEquals(Arrays.asList("sub1", "sub2"), group.getSubGroups());
+    assertTrue(realm.findGroup("g1").isPresent());
+    assertFalse(realm.findGroup("nonexistent").isPresent());
+
     List<ClientConfig> clients = realm.getClients();
     assertEquals(1, clients.size());
     ClientConfig client = clients.get(0);
@@ -135,7 +163,11 @@ class KeycloakConfigTests {
     UserConfig user = users.get(0);
     assertEquals("u1", user.getUsername());
     assertEquals("p1", user.getPassword());
+    assertEquals("u1@example.com", user.getEmail());
+    assertEquals("First", user.getFirstName());
+    assertEquals("Last", user.getLastName());
     assertEquals(Arrays.asList("role1", "role2"), user.getRoles());
+    assertEquals(List.of("g1"), user.getGroups());
   }
 
   @Test
@@ -155,18 +187,34 @@ class KeycloakConfigTests {
     UserConfig user = new UserConfig();
     user.setUsername("usr");
     user.setPassword("pwd");
+    user.setEmail("usr@example.com");
+    user.setFirstName("First");
+    user.setLastName("Last");
     user.setRoles(List.of("reader"));
+    user.setGroups(List.of("g1"));
     assertEquals("usr", user.getUsername());
     assertEquals("pwd", user.getPassword());
+    assertEquals("usr@example.com", user.getEmail());
+    assertEquals("First", user.getFirstName());
+    assertEquals("Last", user.getLastName());
     assertEquals(List.of("reader"), user.getRoles());
+    assertEquals(List.of("g1"), user.getGroups());
+
+    GroupConfig group = new GroupConfig();
+    group.setName("g1");
+    group.setSubGroups(List.of("sub1"));
+    assertEquals("g1", group.getName());
+    assertEquals(List.of("sub1"), group.getSubGroups());
 
     RealmConfig realm = new RealmConfig();
     realm.setName("r1");
     realm.setRoles(List.of("a", "b"));
+    realm.setGroups(List.of(group));
     realm.setClients(List.of(client));
     realm.setUsers(List.of(user));
     assertEquals("r1", realm.getName());
     assertEquals(List.of("a", "b"), realm.getRoles());
+    assertEquals(1, realm.getGroups().size());
     assertEquals(1, realm.getClients().size());
     assertEquals(1, realm.getUsers().size());
 

@@ -220,11 +220,12 @@
       <scope>runtime</scope>
     </dependency>
 
-    <!-- JSR 305 annotations (@Nullable, @Nonnull) -->
+    <!-- JSR 305 annotations (@Nullable, @Nonnull) – compile-time only -->
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
       <version>${jsr305.version}</version>
+      <optional>true</optional>
     </dependency>
 
     <!-- TSID (Time-Sorted IDs) -->
@@ -272,6 +273,7 @@
       <artifactId>slf4j-jdk14</artifactId>
       <version>${slf4j.version}</version>
       <scope>runtime</scope>
+      <optional>true</optional>
     </dependency>
 
     <!-- Test -->
@@ -361,7 +363,7 @@
                   <version>17</version>
                 </requireJavaVersion>
                 <requireMavenVersion>
-                  <version>3.6.3</version>
+                  <version>3.9.0</version>
                 </requireMavenVersion>
               </rules>
             </configuration>

@@ -22,6 +22,9 @@ enforcement are all included without any external dependencies.
         * [Obtaining Tokens](#obtaining-tokens)
         * [OIDC Discovery and JWKS](#oidc-discovery-and-jwks)
         * [Custom Keycloak Configuration](#custom-keycloak-configuration)
+    * [Keycloak Admin REST API](#keycloak-admin-rest-api)
+        * [Admin Endpoints](#admin-endpoints)
+        * [Admin API Examples](#admin-api-examples)
     * [Token Enforcement and Role-Based Access](#token-enforcement-and-role-based-access)
         * [Validating Against an External Keycloak](#validating-against-an-external-keycloak)
         * [Role Matrix](#role-matrix)
@@ -46,8 +49,8 @@ enforcement are all included without any external dependencies.
 
 - **Zero-configuration TMF mocking** -- POST, GET, GET List, JSON Patch, Merge Patch, and DELETE with automatic `id`,
   `href`, state transitions, audit fields, and paging.
-- **Built-in Keycloak mock** -- real RSA-signed JWTs, OIDC discovery, JWKS endpoint, configurable realms / clients /
-  users / roles. No real Keycloak needed.
+- **Built-in Keycloak mock** -- real RSA-signed JWTs, OIDC discovery, JWKS endpoint, Admin REST API, configurable realms
+  / clients / users / roles / groups. No real Keycloak needed.
 - **Token enforcement** -- optionally validate Bearer tokens on every request, with role-based access control (reader /
   writer / admin).
 - **External IdP support** -- validate tokens against a real Keycloak (or any OIDC provider) via `JWKS_URI` or
@@ -87,13 +90,14 @@ java -Dmockserver.initializationClass=org.opentmf.mockserver.callback.JwksExpect
 
 On startup, the following endpoints are automatically registered for each configured realm (no expectations to create):
 
-| Endpoint                                               | Description                               |
-|--------------------------------------------------------|-------------------------------------------|
-| `GET /realms/{realm}/protocol/openid-connect/certs`    | JWKS (public keys for token verification) |
-| `GET /realms/{realm}/.well-known/openid-configuration` | OIDC discovery document                   |
-| `POST /realms/{realm}/protocol/openid-connect/token`   | Token endpoint (issue JWTs)               |
-| `GET /.well-known/jwks.json`                           | Global JWKS (backward-compatible)         |
-| `GET /mockserver/openapi`                              | OpenAPI 3.1 specification (YAML)          |
+| Endpoint                                               | Description                                        |
+|--------------------------------------------------------|----------------------------------------------------|
+| `GET /realms/{realm}/protocol/openid-connect/certs`    | JWKS (public keys for token verification)          |
+| `GET /realms/{realm}/.well-known/openid-configuration` | OIDC discovery document                            |
+| `POST /realms/{realm}/protocol/openid-connect/token`   | Token endpoint (issue JWTs)                        |
+| `GET /admin/realms/{realm}/...`                        | Keycloak Admin REST API (users, groups, roles, ...) |
+| `GET /.well-known/jwks.json`                           | Global JWKS (backward-compatible)                  |
+| `GET /mockserver/openapi`                              | OpenAPI 3.1 specification (YAML)                   |
 
 All issued tokens are **real, parsable, RSA-signed JWTs** with Keycloak-compatible claims (`iss`, `sub`, `azp`,
 `realm_access`, `resource_access`, `preferred_username`, `exp`, etc.).
@@ -112,13 +116,15 @@ The built-in default configuration provides a ready-to-use setup:
 | `client2`  | Confidential | `client2Secret` | `password`                  |
 | `uiClient` | Public       | --              | `password`, `refresh_token` |
 
+**Groups:** `admins`, `developers` (sub-groups: `backend`, `frontend`), `viewers`
+
 **Users:**
 
-| Username     | Password     | Roles                       |
-|--------------|--------------|-----------------------------|
-| `admin_usr`  | `admin_pwd`  | `admin`, `writer`, `reader` |
-| `writer_usr` | `writer_pwd` | `writer`, `reader`          |
-| `reader_usr` | `reader_pwd` | `reader`                    |
+| Username     | Password     | Roles                       | Groups        |
+|--------------|--------------|-----------------------------|---------------|
+| `admin_usr`  | `admin_pwd`  | `admin`, `writer`, `reader` | `admins`      |
+| `writer_usr` | `writer_pwd` | `writer`, `reader`          | `developers`  |
+| `reader_usr` | `reader_pwd` | `reader`                    | `viewers`     |
 
 ### Obtaining Tokens
 
@@ -187,45 +193,89 @@ The JSON format:
   "realms": [
     {
       "name": "my-realm",
-      "roles": [
-        "admin",
-        "user"
+      "roles": ["admin", "user"],
+      "groups": [
+        { "name": "team-a", "subGroups": ["backend", "frontend"] },
+        { "name": "team-b", "subGroups": [] }
       ],
       "clients": [
         {
           "clientId": "my-app",
           "clientSecret": "secret",
           "publicClient": false,
-          "allowedGrantTypes": [
-            "client_credentials",
-            "password"
-          ],
-          "serviceAccountRoles": [
-            "admin"
-          ]
+          "allowedGrantTypes": ["client_credentials", "password"],
+          "serviceAccountRoles": ["admin"]
         },
         {
           "clientId": "my-spa",
           "publicClient": true,
-          "allowedGrantTypes": [
-            "password",
-            "refresh_token"
-          ]
+          "allowedGrantTypes": ["password", "refresh_token"]
         }
       ],
       "users": [
         {
           "username": "alice",
           "password": "alice123",
-          "roles": [
-            "admin",
-            "user"
-          ]
+          "email": "alice@example.com",
+          "firstName": "Alice",
+          "lastName": "Smith",
+          "roles": ["admin", "user"],
+          "groups": ["team-a"]
         }
       ]
     }
   ]
 }
+```
+
+## Keycloak Admin REST API
+
+A read-only subset of the [Keycloak Admin REST API](https://www.keycloak.org/docs-api/latest/rest-api/index.html) is
+automatically registered for every configured realm. When token enforcement is enabled (`ENFORCE_TOKEN=true`), a valid
+Bearer token with the `admin` role is required.
+
+### Admin Endpoints
+
+| Endpoint                                                   | Description                            |
+|------------------------------------------------------------|----------------------------------------|
+| `GET /admin/realms/{realm}`                                | Realm representation                   |
+| `GET /admin/realms/{realm}/users`                          | List users (supports `username`, `search`, `first`, `max`) |
+| `GET /admin/realms/{realm}/users/count`                    | User count                             |
+| `GET /admin/realms/{realm}/users/{id}`                     | Single user by ID                      |
+| `GET /admin/realms/{realm}/users/{id}/role-mappings/realm` | Realm roles for a user                 |
+| `GET /admin/realms/{realm}/users/{id}/groups`              | Groups a user belongs to               |
+| `GET /admin/realms/{realm}/groups`                         | List groups (supports `search`, `first`, `max`) |
+| `GET /admin/realms/{realm}/groups/count`                   | Group count                            |
+| `GET /admin/realms/{realm}/groups/{id}`                    | Single group by ID (includes sub-groups) |
+| `GET /admin/realms/{realm}/groups/{id}/members`            | Members of a group                     |
+| `GET /admin/realms/{realm}/roles`                          | List realm roles                       |
+| `GET /admin/realms/{realm}/roles/{name}`                   | Single role by name                    |
+| `GET /admin/realms/{realm}/roles/{name}/users`             | Users with a specific role             |
+| `GET /admin/realms/{realm}/clients`                        | List clients                           |
+
+All IDs are deterministic UUIDs derived from the realm and entity name, so they remain stable across restarts.
+
+### Admin API Examples
+
+```shell
+# Get a token with admin role
+TOKEN=$(curl -s -X POST 'http://localhost:1080/realms/realm1/protocol/openid-connect/token' \
+  -d 'grant_type=client_credentials&client_id=client1&client_secret=client1Secret' | jq -r .access_token)
+
+# List all users
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:1080/admin/realms/realm1/users | jq .
+
+# Search users
+curl -s -H "Authorization: Bearer $TOKEN" 'http://localhost:1080/admin/realms/realm1/users?search=admin' | jq .
+
+# List groups
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:1080/admin/realms/realm1/groups | jq .
+
+# List realm roles
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:1080/admin/realms/realm1/roles | jq .
+
+# Get users with a specific role
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:1080/admin/realms/realm1/roles/admin/users | jq .
 ```
 
 ## Token Enforcement and Role-Based Access

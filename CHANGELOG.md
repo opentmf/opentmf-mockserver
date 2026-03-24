@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-03-24
+
+### Added
+
+- **Keycloak Admin REST API mock**: Read-only `GET /admin/realms/{realm}/...` endpoints returning
+  Keycloak-compatible JSON representations for users, groups, roles, and clients. Includes
+  filtering (`username`, `search`), pagination (`first`, `max`), and sub-resource navigation
+  (user role-mappings, user groups, group members, role users). Requires `admin` role when
+  `ENFORCE_TOKEN=true`.
+- **Group support**: New `GroupConfig` model with `name` and `subGroups`. Groups are configurable
+  per realm and exposed via the Admin API.
+- **Extended user metadata**: `UserConfig` now supports `email`, `firstName`, `lastName`, and
+  `groups` fields, included in Admin API user representations and the default configuration.
+- **Enriched default configuration**: `default-keycloak-config.json` now includes groups
+  (`admins`, `developers`, `viewers`), user metadata (email, name), and explicit
+  `serviceAccountRoles` for all clients.
+
+### Changed
+
+- Marked `jsr305` (compile-time annotations) and `slf4j-jdk14` (SLF4J binding) as
+  `<optional>true</optional>` so they are not pulled transitively by consumers.
+
 ## [2.1.0] - 2026-03-22
 
 ### Changed

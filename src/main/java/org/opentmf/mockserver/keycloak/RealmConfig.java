@@ -8,6 +8,7 @@ public class RealmConfig {
 
   private String name;
   private List<String> roles = Collections.emptyList();
+  private List<GroupConfig> groups = Collections.emptyList();
   private List<ClientConfig> clients = Collections.emptyList();
   private List<UserConfig> users = Collections.emptyList();
 
@@ -43,11 +44,23 @@ public class RealmConfig {
     this.users = users;
   }
 
+  public List<GroupConfig> getGroups() {
+    return groups;
+  }
+
+  public void setGroups(List<GroupConfig> groups) {
+    this.groups = groups;
+  }
+
   public Optional<ClientConfig> findClient(String clientId) {
     return clients.stream().filter(c -> c.getClientId().equals(clientId)).findFirst();
   }
 
   public Optional<UserConfig> findUser(String username) {
     return users.stream().filter(u -> u.getUsername().equals(username)).findFirst();
+  }
+
+  public Optional<GroupConfig> findGroup(String name) {
+    return groups.stream().filter(g -> g.getName().equals(name)).findFirst();
   }
 }
