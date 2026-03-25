@@ -193,6 +193,7 @@ The JSON format:
   "realms": [
     {
       "name": "my-realm",
+      "expiresIn": 1800,
       "roles": ["admin", "user"],
       "groups": [
         { "name": "team-a", "subGroups": ["backend", "frontend"] },
@@ -203,6 +204,7 @@ The JSON format:
           "clientId": "my-app",
           "clientSecret": "secret",
           "publicClient": false,
+          "expiresIn": 300,
           "allowedGrantTypes": ["client_credentials", "password"],
           "serviceAccountRoles": ["admin"]
         },
@@ -227,6 +229,10 @@ The JSON format:
   ]
 }
 ```
+
+The `expiresIn` field (in seconds) controls the lifetime of issued access and ID tokens. It can be set at
+the realm level (applies to all clients) or per client (overrides the realm setting). If omitted, the default
+is **3600** seconds (1 hour).
 
 ## Keycloak Admin REST API
 

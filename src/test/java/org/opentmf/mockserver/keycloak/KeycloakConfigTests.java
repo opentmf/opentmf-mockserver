@@ -109,12 +109,14 @@ class KeycloakConfigTests {
             + "\"baseUrl\":\"http://custom:9090\","
             + "\"realms\":[{"
             + "  \"name\":\"testRealm\","
+            + "  \"expiresIn\":1800,"
             + "  \"roles\":[\"role1\",\"role2\"],"
             + "  \"groups\":[{\"name\":\"g1\",\"subGroups\":[\"sub1\",\"sub2\"]}],"
             + "  \"clients\":[{"
             + "    \"clientId\":\"c1\","
             + "    \"clientSecret\":\"s1\","
             + "    \"publicClient\":true,"
+            + "    \"expiresIn\":300,"
             + "    \"allowedGrantTypes\":[\"client_credentials\",\"password\"],"
             + "    \"serviceAccountRoles\":[\"role1\"]"
             + "  }],"
@@ -141,6 +143,7 @@ class KeycloakConfigTests {
     RealmConfig realm = config.getRealms().get(0);
     assertEquals("testRealm", realm.getName());
     assertEquals(Arrays.asList("role1", "role2"), realm.getRoles());
+    assertEquals(Integer.valueOf(1800), realm.getExpiresIn());
 
     assertEquals(1, realm.getGroups().size());
     GroupConfig group = realm.getGroups().get(0);
@@ -155,6 +158,7 @@ class KeycloakConfigTests {
     assertEquals("c1", client.getClientId());
     assertEquals("s1", client.getClientSecret());
     assertTrue(client.isPublicClient());
+    assertEquals(Integer.valueOf(300), client.getExpiresIn());
     assertEquals(Arrays.asList("client_credentials", "password"), client.getAllowedGrantTypes());
     assertEquals(List.of("role1"), client.getServiceAccountRoles());
 
@@ -176,11 +180,13 @@ class KeycloakConfigTests {
     client.setClientId("cid");
     client.setClientSecret("csec");
     client.setPublicClient(true);
+    client.setExpiresIn(600);
     client.setAllowedGrantTypes(List.of("password"));
     client.setServiceAccountRoles(List.of("admin"));
     assertEquals("cid", client.getClientId());
     assertEquals("csec", client.getClientSecret());
     assertTrue(client.isPublicClient());
+    assertEquals(Integer.valueOf(600), client.getExpiresIn());
     assertEquals(List.of("password"), client.getAllowedGrantTypes());
     assertEquals(List.of("admin"), client.getServiceAccountRoles());
 
@@ -208,11 +214,13 @@ class KeycloakConfigTests {
 
     RealmConfig realm = new RealmConfig();
     realm.setName("r1");
+    realm.setExpiresIn(1800);
     realm.setRoles(List.of("a", "b"));
     realm.setGroups(List.of(group));
     realm.setClients(List.of(client));
     realm.setUsers(List.of(user));
     assertEquals("r1", realm.getName());
+    assertEquals(Integer.valueOf(1800), realm.getExpiresIn());
     assertEquals(List.of("a", "b"), realm.getRoles());
     assertEquals(1, realm.getGroups().size());
     assertEquals(1, realm.getClients().size());

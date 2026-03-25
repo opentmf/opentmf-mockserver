@@ -7,6 +7,7 @@ import java.util.Optional;
 public class RealmConfig {
 
   private String name;
+  private Integer expiresIn;
   private List<String> roles = Collections.emptyList();
   private List<GroupConfig> groups = Collections.emptyList();
   private List<ClientConfig> clients = Collections.emptyList();
@@ -18,6 +19,14 @@ public class RealmConfig {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public Integer getExpiresIn() {
+    return expiresIn;
+  }
+
+  public void setExpiresIn(Integer expiresIn) {
+    this.expiresIn = expiresIn;
   }
 
   public List<String> getRoles() {

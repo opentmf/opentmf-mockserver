@@ -39,7 +39,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
 
   private static final Logger LOG = LoggerFactory.getLogger(KeycloakTokenCallback.class);
 
-  private static final int EXPIRES_IN_SECONDS = 3600;
+  private static final int DEFAULT_EXPIRES_IN = 3600;
   private static final String GRANT_CLIENT_CREDENTIALS = "client_credentials";
   private static final String GRANT_PASSWORD = "password";
   private static final String GRANT_REFRESH_TOKEN = "refresh_token";
@@ -93,14 +93,15 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
 
     String baseUrl = config.getBaseUrl();
     String issuer = baseUrl + "/realms/" + realm;
+    int expiresIn = resolveExpiresIn(realmCfg, clientCfg);
 
     switch (grantType) {
       case GRANT_CLIENT_CREDENTIALS:
-        return handleClientCredentials(realmCfg, clientCfg, issuer);
+        return handleClientCredentials(realmCfg, clientCfg, issuer, expiresIn);
       case GRANT_PASSWORD:
-        return handlePassword(realmCfg, clientCfg, params, issuer);
+        return handlePassword(realmCfg, clientCfg, params, issuer, expiresIn);
       case GRANT_REFRESH_TOKEN:
-        return handleRefreshToken(realmCfg, clientCfg, params, issuer);
+        return handleRefreshToken(realmCfg, clientCfg, params, issuer, expiresIn);
       default:
         return tokenError(400, "unsupported_grant_type",
             "Grant type \"" + grantType + "\" is not supported");
@@ -108,7 +109,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
   }
 
   private HttpResponse handleClientCredentials(RealmConfig realmCfg, ClientConfig clientCfg,
-      String issuer) {
+      String issuer, int expiresIn) {
     List<String> roles = clientCfg.getServiceAccountRoles() != null
         ? clientCfg.getServiceAccountRoles()
         : realmCfg.getRoles();
@@ -116,11 +117,12 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     String subject = "service-account-" + clientCfg.getClientId();
     String scope = "openid profile email";
 
-    return buildTokenResponse(issuer, subject, clientCfg.getClientId(), roles, null, scope);
+    return buildTokenResponse(issuer, subject, clientCfg.getClientId(), roles, null, scope,
+        expiresIn);
   }
 
   private HttpResponse handlePassword(RealmConfig realmCfg, ClientConfig clientCfg,
-      Map<String, String> params, String issuer) {
+      Map<String, String> params, String issuer, int expiresIn) {
     String username = params.getOrDefault("username", "");
     String password = params.getOrDefault("password", "");
 
@@ -137,11 +139,11 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     String scope = params.getOrDefault("scope", "openid profile email");
 
     return buildTokenResponse(issuer, username, clientCfg.getClientId(), user.getRoles(), username,
-        scope);
+        scope, expiresIn);
   }
 
   private HttpResponse handleRefreshToken(RealmConfig realmCfg, ClientConfig clientCfg,
-      Map<String, String> params, String issuer) {
+      Map<String, String> params, String issuer, int expiresIn) {
     String refreshToken = params.getOrDefault("refresh_token", "");
     if (refreshToken.isEmpty()) {
       return tokenError(400, "invalid_request", "Missing refresh_token");
@@ -161,7 +163,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
         scope = "openid profile email";
       }
       return buildTokenResponse(issuer, subject, clientCfg.getClientId(), roles,
-          preferredUsername, scope);
+          preferredUsername, scope, expiresIn);
     } catch (java.text.ParseException e) {
       LOG.debug("Could not parse refresh_token JWT, issuing generic token", e);
       String subject = "service-account-" + clientCfg.getClientId();
@@ -169,24 +171,25 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
           ? clientCfg.getServiceAccountRoles()
           : realmCfg.getRoles();
       return buildTokenResponse(issuer, subject, clientCfg.getClientId(), roles, null,
-          "openid profile email");
+          "openid profile email", expiresIn);
     }
   }
 
   private HttpResponse buildTokenResponse(String issuer, String subject, String clientId,
-      List<String> roles, String preferredUsername, String scope) {
+      List<String> roles, String preferredUsername, String scope, int expiresIn) {
     JwtKeyProvider keyProvider = JwtKeyProvider.getInstance();
 
     String accessToken = buildAccessToken(keyProvider, issuer, subject, clientId, roles,
-        preferredUsername, scope);
-    String idToken = buildIdToken(keyProvider, issuer, subject, clientId, preferredUsername, scope);
+        preferredUsername, scope, expiresIn);
+    String idToken = buildIdToken(keyProvider, issuer, subject, clientId, preferredUsername, scope,
+        expiresIn);
     String refreshJwt = buildRefreshToken(keyProvider, issuer, subject, clientId, roles,
         preferredUsername, scope);
 
     OpenidTokenResponse response = new OpenidTokenResponse();
     response.setAccessToken(accessToken);
     response.setTokenType("Bearer");
-    response.setExpiresIn(EXPIRES_IN_SECONDS);
+    response.setExpiresIn(expiresIn);
     response.setRefreshToken(refreshJwt);
     response.setIdToken(idToken);
     response.setScope(scope);
@@ -200,7 +203,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
   }
 
   private String buildAccessToken(JwtKeyProvider kp, String issuer, String subject,
-      String clientId, List<String> roles, String preferredUsername, String scope) {
+      String clientId, List<String> roles, String preferredUsername, String scope, int expiresIn) {
     long now = System.currentTimeMillis();
     Map<String, Serializable> claims = new LinkedHashMap<>();
     claims.put("iss", issuer);
@@ -208,7 +211,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("typ", "Bearer");
     claims.put("azp", clientId);
     claims.put("iat", now / 1000);
-    claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
+    claims.put("exp", now / 1000 + expiresIn);
     claims.put("jti", TSID.Factory.getTsid().toString());
     claims.put("scope", scope);
 
@@ -229,7 +232,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
   }
 
   private String buildIdToken(JwtKeyProvider kp, String issuer, String subject,
-      String clientId, String preferredUsername, String scope) {
+      String clientId, String preferredUsername, String scope, int expiresIn) {
     long now = System.currentTimeMillis();
     Map<String, Serializable> claims = new LinkedHashMap<>();
     claims.put("iss", issuer);
@@ -237,7 +240,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("typ", "ID");
     claims.put("azp", clientId);
     claims.put("iat", now / 1000);
-    claims.put("exp", now / 1000 + EXPIRES_IN_SECONDS);
+    claims.put("exp", now / 1000 + expiresIn);
     claims.put("jti", TSID.Factory.getTsid().toString());
     if (preferredUsername != null) {
       claims.put("preferred_username", preferredUsername);
@@ -271,6 +274,16 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
   }
 
   // ---- helpers ----
+
+  static int resolveExpiresIn(RealmConfig realmCfg, ClientConfig clientCfg) {
+    if (clientCfg.getExpiresIn() != null) {
+      return clientCfg.getExpiresIn();
+    }
+    if (realmCfg.getExpiresIn() != null) {
+      return realmCfg.getExpiresIn();
+    }
+    return DEFAULT_EXPIRES_IN;
+  }
 
   static String extractRealm(String path) {
     String prefix = "/realms/";

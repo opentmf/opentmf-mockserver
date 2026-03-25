@@ -3,6 +3,7 @@
   "realms": [
     {
       "name": "realm1",
+      "expiresIn": 3600,
       "roles": ["admin", "writer", "reader"],
       "groups": [
         { "name": "admins", "subGroups": [] },
@@ -20,6 +21,14 @@
         {
           "clientId": "client2",
           "clientSecret": "client2Secret",
+          "publicClient": false,
+          "allowedGrantTypes": ["password"],
+          "serviceAccountRoles": ["writer", "reader"]
+        },
+        {
+          "clientId": "shortTokenClient",
+          "clientSecret": "shortTokenClientSecret",
+          "expiresIn": 3,
           "publicClient": false,
           "allowedGrantTypes": ["password"],
           "serviceAccountRoles": ["writer", "reader"]

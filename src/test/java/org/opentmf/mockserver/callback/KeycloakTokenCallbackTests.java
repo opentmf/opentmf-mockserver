@@ -13,6 +13,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
+import org.opentmf.mockserver.keycloak.ClientConfig;
+import org.opentmf.mockserver.keycloak.RealmConfig;
 import org.opentmf.mockserver.util.JacksonUtil;
 import tools.jackson.databind.JsonNode;
 
@@ -317,6 +319,46 @@ class KeycloakTokenCallbackTests {
     assertNotNull(body.get("expires_in"));
     assertNotNull(body.get("scope"));
     assertEquals("Bearer", body.get("token_type").asText());
+  }
+
+  @Test
+  void defaultExpiresIn_is3600() {
+    HttpResponse resp =
+        callback.handle(
+            tokenRequest(
+                "grant_type=client_credentials&client_id=client1&client_secret=client1Secret"));
+
+    JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
+    assertEquals(3600, body.get("expires_in").asInt());
+  }
+
+  @Test
+  void resolveExpiresIn_clientOverridesRealm() {
+    RealmConfig realm = new RealmConfig();
+    realm.setExpiresIn(1800);
+
+    ClientConfig client = new ClientConfig();
+    client.setExpiresIn(300);
+
+    assertEquals(300, KeycloakTokenCallback.resolveExpiresIn(realm, client));
+  }
+
+  @Test
+  void resolveExpiresIn_fallsBackToRealm() {
+    RealmConfig realm = new RealmConfig();
+    realm.setExpiresIn(1800);
+
+    ClientConfig client = new ClientConfig();
+
+    assertEquals(1800, KeycloakTokenCallback.resolveExpiresIn(realm, client));
+  }
+
+  @Test
+  void resolveExpiresIn_fallsBackToDefault() {
+    RealmConfig realm = new RealmConfig();
+    ClientConfig client = new ClientConfig();
+
+    assertEquals(3600, KeycloakTokenCallback.resolveExpiresIn(realm, client));
   }
 
   @Test

@@ -8,6 +8,7 @@ public class ClientConfig {
   private String clientId;
   private String clientSecret;
   private boolean publicClient;
+  private Integer expiresIn;
   private List<String> allowedGrantTypes = Collections.emptyList();
   private List<String> serviceAccountRoles;
 
@@ -33,6 +34,14 @@ public class ClientConfig {
 
   public void setPublicClient(boolean publicClient) {
     this.publicClient = publicClient;
+  }
+
+  public Integer getExpiresIn() {
+    return expiresIn;
+  }
+
+  public void setExpiresIn(Integer expiresIn) {
+    this.expiresIn = expiresIn;
   }
 
   public List<String> getAllowedGrantTypes() {
