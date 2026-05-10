@@ -296,7 +296,7 @@ class KeycloakAdminCallbackTests {
 
     JsonNode body = parse(resp);
     assertTrue(body.isArray());
-    assertEquals(3, body.size());
+    assertEquals(4, body.size());
     assertNotNull(body.get(0).get("id"));
     assertNotNull(body.get(0).get("clientId"));
     assertEquals("openid-connect", body.get(0).get("protocol").asText());
