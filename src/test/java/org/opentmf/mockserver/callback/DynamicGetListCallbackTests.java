@@ -225,6 +225,33 @@ class DynamicGetListCallbackTests {
   }
 
   @Test
+  void testHandleWithFieldsNone() {
+    // Given
+    String domain = RandomStringUtils.randomAlphabetic(5);
+    addDataToCache(domain, 5);
+    HttpRequest httpRequest =
+        new HttpRequest().withPath("/" + domain).withQueryStringParameter("fields", "none");
+
+    // When
+    HttpResponse httpResponse = dynamicGetListCallback.handle(httpRequest);
+
+    // Then
+    assertEquals(200, httpResponse.getStatusCode());
+    JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
+    assertTrue(responseJson.isArray());
+    ArrayNode arrayNode = (ArrayNode) responseJson;
+    assertEquals(5, arrayNode.size());
+    for (JsonNode node : arrayNode) {
+      assertEquals(2, node.size());
+      assertTrue(node.has("id"));
+      assertTrue(node.has("href"));
+      assertFalse(node.has("description"));
+      assertFalse(node.has("name"));
+      assertFalse(node.has("randomNumber"));
+    }
+  }
+
+  @Test
   void testHandleWithSort() {
     // Given
     String domain = RandomStringUtils.randomAlphabetic(5);

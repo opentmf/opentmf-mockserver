@@ -360,12 +360,15 @@ State field mapping by path:
 
 - Returns the cached payload for the given ID (404 if not found).
 - On first GET, transitions the state field from initial to final value and sets `updatedDate`, `updatedBy`, `revision`.
+- Supports `fields=` to project specific attributes; `id` and `href` are always included. The TMF-630
+  sentinel `fields=none` (case-insensitive) projects the response to only `id` and `href`.
 - Returns **200 OK**.
 
 ### GET List (DynamicGetListCallback)
 
 - Returns all cached payloads for the domain, filtered/sorted/paged per TMF-630.
 - Supports query parameters: `offset`, `limit`, `sort`, `fields`, and attribute-based filtering.
+  `fields=none` (case-insensitive) projects each item to only `id` and `href`.
 - Sets `X-Total-Count`, `X-Result-Count`, and `Content-Range` headers.
 - Returns **200 OK** or **416 Range Not Satisfiable** if offset exceeds total count.
 

@@ -74,6 +74,56 @@ class DynamicGetCallbackTests {
   }
 
   @Test
+  void shouldReturnOnlyIdAndHrefWhenFieldsIsNone() {
+    // Given
+    String domain = "serviceInventory";
+    String id = TSID.Factory.getTsid().toString();
+    addDataToCache(domain, id, "created");
+
+    HttpRequest httpRequest =
+        new HttpRequest()
+            .withPath("/" + domain + "/" + id)
+            .withQueryStringParameter("fields", "none");
+
+    // When
+    HttpResponse httpResponse = dynamicGetCallback.handle(httpRequest);
+
+    // Then
+    assertEquals(200, httpResponse.getStatusCode());
+    JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
+    assertEquals(id, responseJson.get("id").asText());
+    assertNotNull(responseJson.get("href"));
+    assertNull(responseJson.get("status"));
+    assertNull(responseJson.get("createdDate"));
+    assertNull(responseJson.get("createdBy"));
+    assertNull(responseJson.get("revision"));
+    assertEquals(2, responseJson.size());
+  }
+
+  @Test
+  void shouldReturnOnlyIdAndHrefWhenFieldsIsNoneCaseInsensitive() {
+    // Given
+    String domain = "serviceInventory";
+    String id = TSID.Factory.getTsid().toString();
+    addDataToCache(domain, id, "created");
+
+    HttpRequest httpRequest =
+        new HttpRequest()
+            .withPath("/" + domain + "/" + id)
+            .withQueryStringParameter("fields", "NONE");
+
+    // When
+    HttpResponse httpResponse = dynamicGetCallback.handle(httpRequest);
+
+    // Then
+    assertEquals(200, httpResponse.getStatusCode());
+    JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
+    assertEquals(2, responseJson.size());
+    assertNotNull(responseJson.get("id"));
+    assertNotNull(responseJson.get("href"));
+  }
+
+  @Test
   void shouldReturnNotFoundWhenDataDoesNotExist() {
     // Given
     String domain = "testDomain";

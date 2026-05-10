@@ -1,5 +1,8 @@
 package org.opentmf.mockserver.util;
 
+import static org.opentmf.mockserver.model.TmfConstants.HREF;
+import static org.opentmf.mockserver.model.TmfConstants.ID;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -64,6 +67,10 @@ public class HttpRequestUtil {
    * Extracts the 'fields' parameter from the HTTP request. Splits the parameter value by comma and
    * returns as a set of strings. If the parameter is not found or is empty, returns an empty set.
    *
+   * <p>The TMF630 sentinel {@code fields=none} (case-insensitive, exact match) projects the
+   * response to only {@code id} and {@code href}. A list containing {@code none} alongside other
+   * tokens (e.g. {@code fields=none,description}) is treated as a literal field name list.
+   *
    * @param httpRequest The HTTP request from which to extract the parameter.
    * @return The extracted fields as a set of strings, or an empty set if not found or empty.
    */
@@ -71,6 +78,12 @@ public class HttpRequestUtil {
     String fields = extractStringParameter(httpRequest, "fields", null);
     if (fields == null || fields.isEmpty()) {
       return Collections.emptySet();
+    }
+    if ("none".equalsIgnoreCase(fields.trim())) {
+      Set<String> result = new HashSet<>();
+      result.add(ID);
+      result.add(HREF);
+      return result;
     }
     return new HashSet<>(Arrays.asList(fields.split(",")));
   }

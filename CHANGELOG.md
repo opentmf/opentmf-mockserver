@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-05-10
+
+### Added
+
+- **`fields=none` support on GET callbacks**: `DynamicGetCallback` and `DynamicGetListCallback`
+  now recognize `?fields=none` (case-insensitive) as a TMF630 sentinel that projects each
+  returned resource to only `id` and `href`. Mixed lists like `fields=none,description` continue
+  to be treated as literal field names.
+
 ## [2.1.2] - 2026-03-25
 
 ### Added
