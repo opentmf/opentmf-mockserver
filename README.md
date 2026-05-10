@@ -16,6 +16,14 @@ enforcement are all included without any external dependencies.
     * [Quick Start](#quick-start)
         * [Docker](#docker)
         * [Standalone](#standalone)
+    * [Dynamic Callbacks](#dynamic-callbacks)
+        * [POST (DynamicPostCallback)](#post-dynamicpostcallback)
+        * [Bulk Create (DynamicJsonPatchCollectionCallback)](#bulk-create-dynamicjsonpatchcollectioncallback)
+        * [GET by ID (DynamicGetCallback)](#get-by-id-dynamicgetcallback)
+        * [GET List (DynamicGetListCallback)](#get-list-dynamicgetlistcallback)
+        * [JSON Patch (DynamicJsonPatchCallback)](#json-patch-dynamicjsonpatchcallback)
+        * [Merge Patch (DynamicMergePatchCallback)](#merge-patch-dynamicmergepatchcallback)
+        * [DELETE (DynamicDeleteCallback)](#delete-dynamicdeletecallback)
     * [Keycloak Mock](#keycloak-mock)
         * [What You Get for Free](#what-you-get-for-free)
         * [Default Configuration](#default-configuration)
@@ -28,14 +36,6 @@ enforcement are all included without any external dependencies.
     * [Token Enforcement and Role-Based Access](#token-enforcement-and-role-based-access)
         * [Validating Against an External Keycloak](#validating-against-an-external-keycloak)
         * [Role Matrix](#role-matrix)
-    * [Dynamic Callbacks](#dynamic-callbacks)
-        * [POST (DynamicPostCallback)](#post-dynamicpostcallback)
-        * [GET by ID (DynamicGetCallback)](#get-by-id-dynamicgetcallback)
-        * [GET List (DynamicGetListCallback)](#get-list-dynamicgetlistcallback)
-        * [JSON Patch (DynamicJsonPatchCallback)](#json-patch-dynamicjsonpatchcallback)
-        * [Merge Patch (DynamicMergePatchCallback)](#merge-patch-dynamicmergepatchcallback)
-        * [DELETE (DynamicDeleteCallback)](#delete-dynamicdeletecallback)
-    * [Create Expectations](#create-expectations)
     * [Environment Variables](#environment-variables)
     * [Content-Range Calculations](#content-range-calculations)
     * [API Reference](#api-reference)
@@ -82,6 +82,354 @@ mvn clean package
 java -Dmockserver.initializationClass=org.opentmf.mockserver.callback.JwksExpectationInitializer \
   -cp target/opentmf-mockserver-*.jar:target/libs/* \
   org.mockserver.cli.Main -serverPort 1080
+```
+
+## Dynamic Callbacks
+
+All callbacks share these behaviors:
+
+- Payloads are cached in-memory with a configurable TTL (default: 2 hours).
+- GET, POST, and PATCH operations reset the eviction timer.
+- `id`, `href`, `createdDate`, `createdBy`, `updatedDate`, `updatedBy`, `revision`, and state fields are managed
+  automatically.
+- Versioned entities are supported via `:(version=XYZ)` in the path or `?version=XYZ` query parameter.
+
+Token and OIDC endpoints are auto-registered. TMF resource endpoints require an expectation per
+domain; each subsection below shows the registration call alongside the callback's behavior and an
+example exchange. The examples all use `/tmf-api/serviceOrdering/v4/serviceOrder` as the domain.
+
+> **Tip:** Instead of registering each expectation with `PUT /mockserver/expectation` after
+> startup, you can pre-load a batch from a JSON file via `MOCKSERVER_INITIALIZATION_JSON_PATH`.
+> See [Initializing Expectations from a JSON File](MOCKSERVER.md#initializing-expectations-from-a-json-file)
+> in MOCKSERVER.md for the file format and a complete example.
+
+### POST (DynamicPostCallback)
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "POST", "path": "/tmf-api/serviceOrdering/v4/serviceOrder" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPostCallback" }
+  }'
+```
+
+**Behavior:**
+
+- Generates a UUID `id` if not provided; returns 400 if the ID already exists.
+- Sets `createdDate`, `createdBy`, `revision`, `href`, and the initial state field.
+- Sets `version="0"` for versioned entities if not provided.
+- Returns **201 Created**.
+
+State field mapping by path:
+
+| Type      | Field             | Initial        | Final       |
+|-----------|-------------------|----------------|-------------|
+| Orders    | `state`           | `acknowledged` | `completed` |
+| Inventory | `status`          | `created`      | `active`    |
+| Catalog   | `lifecycleStatus` | `inStudy`      | `inDesign`  |
+| Candidate | `lifecycleStatus` | `inStudy`      | `inDesign`  |
+| Default   | `state`           | `acknowledged` | `completed` |
+
+**Example request:**
+
+```shell
+curl -s -X POST http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Install fibre to building 7","priority":"1"}'
+```
+
+**Example response** *(HTTP 201)*:
+
+```json
+{
+  "id": "0QB98VRNHGM4G",
+  "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+  "state": "acknowledged",
+  "revision": 0,
+  "createdDate": "2026-05-10T18:00:00.000Z",
+  "createdBy": "anonymous",
+  "description": "Install fibre to building 7",
+  "priority": "1"
+}
+```
+
+### Bulk Create (DynamicJsonPatchCollectionCallback)
+
+Implements [TMF630 Part 1 §6.2 "Creating Multiple Resources"](https://www.tmforum.org/resources/specification/tmf630-rest-api-design-guidelines-4-2-0/).
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder",
+                     "headers": { "Content-Type": ["application/json-patch+json"] } },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCollectionCallback" }
+  }'
+```
+
+**Behavior:**
+
+- Bound to `PATCH /{basePath}` (the collection URL, **no id segment**) with
+  `Content-Type: application/json-patch+json`.
+- Body MUST be a non-empty JSON array of `{"op":"add", "path":"/", "value":{...}}` operations.
+  Other ops or paths return **400**; an empty array or non-array body also returns **400**.
+- Each `value` runs through the same flow as a single POST: `id` is generated when missing,
+  `href` is set, the state/status field is defaulted, audit fields and `ADDITIONAL_FIELDS` are
+  applied.
+- Atomic per RFC 5789. A duplicate `id` within the batch -- or against an already-cached
+  resource -- returns **409 Conflict** with no resources committed.
+- Response is **200 OK** with a JSON array of the created resources. `?fields=none` projects
+  each item to `id` and `href` only; `?fields=description,name` projects to those plus `id`
+  and `href`.
+
+**Example request:**
+
+```shell
+curl -s -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
+  -H "Content-Type: application/json-patch+json" \
+  -d '[
+    {"op":"add","path":"/","value":{"description":"Install fibre to building 7"}},
+    {"op":"add","path":"/","value":{"description":"Activate VPN tunnel"}}
+  ]'
+```
+
+**Example response** *(HTTP 200)*:
+
+```json
+[
+  {
+    "id": "0QB98VRNHGM4G",
+    "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+    "state": "acknowledged",
+    "revision": 0,
+    "createdDate": "2026-05-10T18:00:00.000Z",
+    "createdBy": "anonymous",
+    "description": "Install fibre to building 7"
+  },
+  {
+    "id": "0QB98VRNHGM4H",
+    "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4H",
+    "state": "acknowledged",
+    "revision": 0,
+    "createdDate": "2026-05-10T18:00:00.000Z",
+    "createdBy": "anonymous",
+    "description": "Activate VPN tunnel"
+  }
+]
+```
+
+### GET by ID (DynamicGetCallback)
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetCallback" }
+  }'
+```
+
+**Behavior:**
+
+- Returns the cached payload for the given ID (404 if not found).
+- On first GET, transitions the state field from initial to final value and sets `updatedDate`, `updatedBy`, `revision`.
+- Supports `fields=` to project specific attributes; `id` and `href` are always included. The TMF-630
+  sentinel `fields=none` (case-insensitive) projects the response to only `id` and `href`.
+- Returns **200 OK**.
+
+**Example request:**
+
+```shell
+curl -s http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G
+```
+
+**Example response** *(HTTP 200, after state transition on first GET)*:
+
+```json
+{
+  "id": "0QB98VRNHGM4G",
+  "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+  "state": "completed",
+  "revision": 1,
+  "createdDate": "2026-05-10T18:00:00.000Z",
+  "createdBy": "anonymous",
+  "updatedDate": "2026-05-10T18:00:01.000Z",
+  "updatedBy": "anonymous",
+  "description": "Install fibre to building 7"
+}
+```
+
+### GET List (DynamicGetListCallback)
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetListCallback" }
+  }'
+```
+
+**Behavior:**
+
+- Returns all cached payloads for the domain, filtered/sorted/paged per TMF-630.
+- Supports query parameters: `offset`, `limit`, `sort`, `fields`, and attribute-based filtering.
+  `fields=none` (case-insensitive) projects each item to only `id` and `href`.
+- Sets `X-Total-Count`, `X-Result-Count`, and `Content-Range` headers.
+- Returns **200 OK** or **416 Range Not Satisfiable** if offset exceeds total count.
+
+**Example request:**
+
+```shell
+curl -s -i 'http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder?offset=0&limit=2&sort=-createdDate'
+```
+
+**Example response** *(HTTP 200, headers + body)*:
+
+```
+X-Total-Count: 5
+X-Result-Count: 2
+Content-Range: items 1-2/5
+Content-Type: application/json
+```
+
+```json
+[
+  {
+    "id": "0QB98VRNHGM4G",
+    "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+    "state": "completed",
+    "description": "Install fibre to building 7"
+  },
+  {
+    "id": "0QB98VRNHGM4H",
+    "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4H",
+    "state": "completed",
+    "description": "Activate VPN tunnel"
+  }
+]
+```
+
+### JSON Patch (DynamicJsonPatchCallback)
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
+                     "headers": { "Content-Type": ["application/json-patch+json"] } },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCallback" }
+  }'
+```
+
+**Behavior:**
+
+- Applies an [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Patch to the cached payload.
+- Sets `updatedDate`, `updatedBy` and increments `revision`.
+- Returns **200 OK** (or 404/400 on error).
+
+**Example request:**
+
+```shell
+curl -s -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G \
+  -H "Content-Type: application/json-patch+json" \
+  -d '[{"op":"add","path":"/note","value":"Escalated to L2"}]'
+```
+
+**Example response** *(HTTP 200)*:
+
+```json
+{
+  "id": "0QB98VRNHGM4G",
+  "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+  "state": "completed",
+  "revision": 2,
+  "createdDate": "2026-05-10T18:00:00.000Z",
+  "createdBy": "anonymous",
+  "updatedDate": "2026-05-10T18:00:02.000Z",
+  "updatedBy": "anonymous",
+  "description": "Install fibre to building 7",
+  "note": "Escalated to L2"
+}
+```
+
+### Merge Patch (DynamicMergePatchCallback)
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
+                     "headers": { "Content-Type": ["application/merge-patch+json"] } },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicMergePatchCallback" }
+  }'
+```
+
+**Behavior:**
+
+- Applies an [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON Merge Patch to the cached payload.
+- Sets `updatedDate`, `updatedBy` and increments `revision`.
+- Returns **200 OK** (or 404/400 on error).
+
+**Example request:**
+
+```shell
+curl -s -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G \
+  -H "Content-Type: application/merge-patch+json" \
+  -d '{"priority":"2"}'
+```
+
+**Example response** *(HTTP 200)*:
+
+```json
+{
+  "id": "0QB98VRNHGM4G",
+  "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+  "state": "completed",
+  "revision": 3,
+  "createdDate": "2026-05-10T18:00:00.000Z",
+  "createdBy": "anonymous",
+  "updatedDate": "2026-05-10T18:00:03.000Z",
+  "updatedBy": "anonymous",
+  "description": "Install fibre to building 7",
+  "priority": "2"
+}
+```
+
+### DELETE (DynamicDeleteCallback)
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "DELETE", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicDeleteCallback" }
+  }'
+```
+
+**Behavior:**
+
+- Removes the cached payload for the given ID (404 if not found).
+- Returns **204 No Content**.
+
+**Example request:**
+
+```shell
+curl -s -X DELETE -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G
+```
+
+**Example response** *(HTTP 204, no body)*:
+
+```
+HTTP/1.1 204 No Content
 ```
 
 ## Keycloak Mock
@@ -329,122 +677,20 @@ Roles are extracted from the JWT's `realm_access.roles` claim (Keycloak standard
 
 Insufficient roles return **403 Forbidden**; missing/invalid tokens return **401 Unauthorized**.
 
-## Dynamic Callbacks
-
-All callbacks share these behaviors:
-
-- Payloads are cached in-memory with a configurable TTL (default: 2 hours).
-- GET, POST, and PATCH operations reset the eviction timer.
-- `id`, `href`, `createdDate`, `createdBy`, `updatedDate`, `updatedBy`, `revision`, and state fields are managed
-  automatically.
-- Versioned entities are supported via `:(version=XYZ)` in the path or `?version=XYZ` query parameter.
-
-### POST (DynamicPostCallback)
-
-- Generates a UUID `id` if not provided; returns 400 if the ID already exists.
-- Sets `createdDate`, `createdBy`, `revision`, `href`, and the initial state field.
-- Sets `version="0"` for versioned entities if not provided.
-- Returns **201 Created**.
-
-State field mapping by path:
-
-| Type      | Field             | Initial        | Final       |
-|-----------|-------------------|----------------|-------------|
-| Orders    | `state`           | `acknowledged` | `completed` |
-| Inventory | `status`          | `created`      | `active`    |
-| Catalog   | `lifecycleStatus` | `inStudy`      | `inDesign`  |
-| Candidate | `lifecycleStatus` | `inStudy`      | `inDesign`  |
-| Default   | `state`           | `acknowledged` | `completed` |
-
-### GET by ID (DynamicGetCallback)
-
-- Returns the cached payload for the given ID (404 if not found).
-- On first GET, transitions the state field from initial to final value and sets `updatedDate`, `updatedBy`, `revision`.
-- Supports `fields=` to project specific attributes; `id` and `href` are always included. The TMF-630
-  sentinel `fields=none` (case-insensitive) projects the response to only `id` and `href`.
-- Returns **200 OK**.
-
-### GET List (DynamicGetListCallback)
-
-- Returns all cached payloads for the domain, filtered/sorted/paged per TMF-630.
-- Supports query parameters: `offset`, `limit`, `sort`, `fields`, and attribute-based filtering.
-  `fields=none` (case-insensitive) projects each item to only `id` and `href`.
-- Sets `X-Total-Count`, `X-Result-Count`, and `Content-Range` headers.
-- Returns **200 OK** or **416 Range Not Satisfiable** if offset exceeds total count.
-
-### JSON Patch (DynamicJsonPatchCallback)
-
-- Applies an [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) JSON Patch to the cached payload.
-- Sets `updatedDate`, `updatedBy` and increments `revision`.
-- Returns **200 OK** (or 404/400 on error).
-
-### Merge Patch (DynamicMergePatchCallback)
-
-- Applies an [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) JSON Merge Patch to the cached payload.
-- Sets `updatedDate`, `updatedBy` and increments `revision`.
-- Returns **200 OK** (or 404/400 on error).
-
-### DELETE (DynamicDeleteCallback)
-
-- Removes the cached payload for the given ID (404 if not found).
-- Returns **204 No Content**.
-
-## Create Expectations
-
-Token and OIDC endpoints are auto-registered. For TMF resource endpoints, register expectations as needed:
-
-```shell
-# POST
-curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
-  "httpRequest": { "method": "POST", "path": "/tmf-api/serviceOrdering/v4/serviceOrder" },
-  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPostCallback" }
-}'
-
-# GET by ID
-curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
-  "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
-  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetCallback" }
-}'
-
-# GET List
-curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
-  "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder.*" },
-  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetListCallback" }
-}'
-
-# JSON Patch
-curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
-  "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
-                   "headers": { "Content-Type": ["application/json-patch+json"] } },
-  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCallback" }
-}'
-
-# Merge Patch
-curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
-  "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
-                   "headers": { "Content-Type": ["application/merge-patch+json"] } },
-  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicMergePatchCallback" }
-}'
-
-# DELETE
-curl -s -X PUT http://localhost:1080/mockserver/expectation -H "Content-Type: application/json" -d '{
-  "httpRequest": { "method": "DELETE", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
-  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicDeleteCallback" }
-}'
-```
-
 ## Environment Variables
 
-| Variable                    | Default                      | Description                                                       |
-|-----------------------------|------------------------------|-------------------------------------------------------------------|
-| `SERVER_PORT`               | `1080`                       | MockServer listen port                                            |
-| `CACHE_DURATION_MILLIS`     | `7200000` (2h)               | Payload cache TTL in milliseconds                                 |
-| `ADDITIONAL_FIELDS`         | --                           | Comma-separated `key` or `key=value` pairs added to POST payloads |
-| `CONTENT_RANGE_OFFSET_BASE` | `1`                          | `0` or `1` -- base for Content-Range offset calculation           |
-| `KEYCLOAK_CONFIG`           | `/config/keycloak-mock.json` | Path to Keycloak mock configuration JSON                          |
-| `ENFORCE_TOKEN`             | `false`                      | `true` to require valid Bearer JWT on all dynamic callbacks       |
-| `TOKEN_ISSUER`              | --                           | Expected `iss` claim; also enables OIDC auto-discovery            |
-| `JWKS_URI`                  | --                           | Explicit JWKS endpoint URL (takes precedence over discovery)      |
+| Variable                              | Default                      | Description                                                       |
+|---------------------------------------|------------------------------|-------------------------------------------------------------------|
+| `SERVER_PORT`                         | `1080`                       | MockServer listen port                                            |
+| `CACHE_DURATION_MILLIS`               | `7200000` (2h)               | Payload cache TTL in milliseconds                                 |
+| `ADDITIONAL_FIELDS`                   | --                           | Comma-separated `key` or `key=value` pairs added to POST payloads |
+| `CONTENT_RANGE_OFFSET_BASE`           | `1`                          | `0` or `1` -- base for Content-Range offset calculation           |
+| `MOCKSERVER_INITIALIZATION_JSON_PATH` | --                           | Path (or glob) to a JSON file with an array of expectations to load on startup |
+| `MOCKSERVER_WATCH_INITIALIZATION_JSON`| `false`                      | `true` to hot-reload the initialization file when it changes      |
+| `KEYCLOAK_CONFIG`                     | `/config/keycloak-mock.json` | Path to Keycloak mock configuration JSON                          |
+| `ENFORCE_TOKEN`                       | `false`                      | `true` to require valid Bearer JWT on all dynamic callbacks       |
+| `TOKEN_ISSUER`                        | --                           | Expected `iss` claim; also enables OIDC auto-discovery            |
+| `JWKS_URI`                            | --                           | Explicit JWKS endpoint URL (takes precedence over discovery)      |
 
 ## Content-Range Calculations
 

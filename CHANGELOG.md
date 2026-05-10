@@ -9,10 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **TMF630 §6.2 bulk-create endpoint**: New `DynamicJsonPatchCollectionCallback` implements
+  TMF630 Part 1 §6.2 "Creating Multiple Resources". Bound to `PATCH /{basePath}` (the collection
+  URL, no id segment) with `Content-Type: application/json-patch+json`. Body is a non-empty JSON
+  array of `{"op":"add", "path":"/", "value":{...}}` operations; each value goes through the same
+  flow as a single POST (id generation, `href`, initial state, audit fields, `ADDITIONAL_FIELDS`).
+  Atomic per RFC 5789: a duplicate id within the batch or against the cache returns 409 Conflict
+  with no resources committed. Response is 200 with the array of created resources, honoring
+  `?fields=` (including the `fields=none` sentinel).
 - **`fields=none` support on GET callbacks**: `DynamicGetCallback` and `DynamicGetListCallback`
   now recognize `?fields=none` (case-insensitive) as a TMF630 sentinel that projects each
   returned resource to only `id` and `href`. Mixed lists like `fields=none,description` continue
   to be treated as literal field names.
+
+### Changed
+
+- `DynamicPostCallback` extracts a public static helper `prepareForCache(ctx, parsedBody)` so the
+  bulk-create callback can reuse the per-item POST flow without going through the cache.
+- Bumped runtime dependencies: Jackson 3.1.3, Netty 4.2.13.Final, netty-tcnative 2.0.77.Final,
+  BouncyCastle 1.84, nimbus-jose-jwt 10.9, json-schema-validator 3.0.2, Commons Codec 1.22.0,
+  Guava 33.6.0-jre.
 
 ## [2.1.2] - 2026-03-25
 
@@ -195,7 +211,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release.
 
-[Unreleased]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.2...HEAD
+[2.1.3]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.2...2.1.3
 
 [2.1.2]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.1...2.1.2
 

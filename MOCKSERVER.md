@@ -162,6 +162,14 @@ curl -s -X PUT http://localhost:1080/mockserver/expectation \
   "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPostCallback" }
 }'
 
+# Bulk Create (TMF630 §6.2) — create multiple resources atomically
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder",
+                   "headers": { "Content-Type": ["application/json-patch+json"] } },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCollectionCallback" }
+}'
+
 # GET by ID — retrieve a single resource
 curl -s -X PUT http://localhost:1080/mockserver/expectation \
   -H "Content-Type: application/json" -d '{
@@ -199,6 +207,63 @@ curl -s -X PUT http://localhost:1080/mockserver/expectation \
   "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicDeleteCallback" }
 }'
 ```
+
+#### Initializing Expectations from a JSON File
+
+Instead of registering each expectation with `PUT /mockserver/expectation` after startup, you
+can pre-load a batch from a JSON file. Set `MOCKSERVER_INITIALIZATION_JSON_PATH` to the path
+(or glob) of a file whose contents are a JSON array of expectation objects -- the same shape
+the `PUT /mockserver/expectation` API accepts. The server reads them at startup before serving
+any traffic.
+
+```shell
+docker run -p 1080:1080 \
+  -e MOCKSERVER_INITIALIZATION_JSON_PATH=/config/expectations.json \
+  -v /path/to/expectations.json:/config/expectations.json \
+  local/opentmf-mockserver:2.1.0-SNAPSHOT
+```
+
+Example `expectations.json` registering the full TMF callback set for one domain:
+
+```json
+[
+  {
+    "httpRequest": { "method": "POST", "path": "/tmf-api/serviceOrdering/v4/serviceOrder" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPostCallback" }
+  },
+  {
+    "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder",
+                     "headers": { "Content-Type": ["application/json-patch+json"] } },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCollectionCallback" }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetCallback" }
+  },
+  {
+    "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicGetListCallback" }
+  },
+  {
+    "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
+                     "headers": { "Content-Type": ["application/json-patch+json"] } },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCallback" }
+  },
+  {
+    "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*",
+                     "headers": { "Content-Type": ["application/merge-patch+json"] } },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicMergePatchCallback" }
+  },
+  {
+    "httpRequest": { "method": "DELETE", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicDeleteCallback" }
+  }
+]
+```
+
+The path supports globs (e.g. `/config/expectations-*.json`), so you can split bundles across
+multiple files. Set `MOCKSERVER_WATCH_INITIALIZATION_JSON=true` to hot-reload the file on change
+without restarting the server.
 
 ### 4. Create a Resource
 

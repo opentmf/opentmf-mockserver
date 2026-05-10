@@ -120,28 +120,7 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
           HttpStatusCode.BAD_REQUEST_400, "[" + ctx.getId() + "] already exists.");
     }
 
-    // Generate a new ID if not already present in the payload
-    ctx.generateNewIdIfNecessary();
-    parsedBody.put(ID, ctx.getId().getId());
-    if (ctx.isVersioned()) {
-      parsedBody.put(VERSION, ctx.getId().getVersion());
-    }
-    parsedBody.put(HREF, ctx.toHref());
-
-    // Set the initial state if not already present in the payload
-    if (!parsedBody.has(ctx.getTmfStatePath().getVariableName())) {
-      parsedBody.put(
-          ctx.getTmfStatePath().getVariableName(), ctx.getTmfStatePath().getInitialState());
-    }
-
-    // Remove 'updatedBy' and 'updatedDate' fields from the payload
-    removeUpdateFieldIfExist(parsedBody);
-
-    // Set create fields using AuditFieldUtil
-    setCreateFields(parsedBody);
-
-    // add additional fields if configured through the system property: ADDITIONAL_FIELDS
-    addAdditionalFields(parsedBody);
+    prepareForCache(ctx, parsedBody);
 
     // Generate response JSON
     String responseJson = JacksonUtil.writeAsString(parsedBody);
@@ -153,12 +132,37 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
         .withBody(responseJson);
   }
 
-  private void removeUpdateFieldIfExist(ObjectNode objectNode) {
+  /**
+   * Mutates {@code parsedBody} in place with everything DynamicPostCallback adds to a posted
+   * payload before caching: generates an id and version (when applicable), sets {@code href},
+   * defaults the state/status field, drops any {@code updatedBy}/{@code updatedDate}, sets create
+   * audit fields, and applies {@code ADDITIONAL_FIELDS}. Does not touch the cache or check for
+   * existing ids; the caller is responsible for both.
+   */
+  public static void prepareForCache(RequestContext ctx, ObjectNode parsedBody) {
+    ctx.generateNewIdIfNecessary();
+    parsedBody.put(ID, ctx.getId().getId());
+    if (ctx.isVersioned()) {
+      parsedBody.put(VERSION, ctx.getId().getVersion());
+    }
+    parsedBody.put(HREF, ctx.toHref());
+
+    if (!parsedBody.has(ctx.getTmfStatePath().getVariableName())) {
+      parsedBody.put(
+          ctx.getTmfStatePath().getVariableName(), ctx.getTmfStatePath().getInitialState());
+    }
+
+    removeUpdateFieldIfExist(parsedBody);
+    setCreateFields(parsedBody);
+    addAdditionalFields(parsedBody);
+  }
+
+  private static void removeUpdateFieldIfExist(ObjectNode objectNode) {
     objectNode.remove(UPDATED_BY);
     objectNode.remove(UPDATED_DATE);
   }
 
-  private void addAdditionalFields(ObjectNode node) {
+  private static void addAdditionalFields(ObjectNode node) {
     String additionalFields = System.getenv(ADDITIONAL_FIELDS);
     if (additionalFields == null) {
       return;
