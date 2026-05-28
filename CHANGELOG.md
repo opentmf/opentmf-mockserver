@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.4] - 2026-05-28
+
+### Added
+
+- **HTTP PUT endpoint**: New `DynamicPutCallback` implements RFC 9110 §9.3.4 PUT semantics on
+  `PUT /{basePath}/{id}`. The request body is the complete desired state of the resource; the
+  operation is idempotent. Creates the resource (**201**) when not yet cached and replaces it
+  wholesale (**200**) when it exists. The URI's id (and optional `:(version=XYZ)`) is
+  authoritative — a conflicting body `id`/`version` returns **400**. On replace, `id`, `version`,
+  `href`, `createdBy`, and `createdDate` are carried over from the existing entry, `revision` is
+  incremented, and `updatedBy`/`updatedDate` are stamped.
+
+### Changed
+
+- `DynamicPostCallback` exposes a new public static helper `prepareForCacheWithHref(ctx, body,
+  href)` so callers whose request path already contains the resource id (e.g. PUT) can reuse the
+  same prep flow without the doubled-id `href` that `ctx.toHref()` would produce.
+
 ## [2.1.3] - 2026-05-10
 
 ### Added
@@ -210,6 +228,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release.
+
+[2.1.4]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.3...2.1.4
 
 [2.1.3]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.2...2.1.3
 

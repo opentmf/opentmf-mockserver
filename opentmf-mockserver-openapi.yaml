@@ -1021,6 +1021,68 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    put:
+      tags: [ TMF Resources ]
+      operationId: putResource
+      summary: Create or replace a resource by ID
+      description: |
+        HTTP PUT semantics (RFC 9110 §9.3.4). The request body is the complete desired state of
+        the resource identified by the URI; the operation is idempotent. The id (and optional
+        `:(version=XYZ)`) in the URI are authoritative — a body `id`/`version` that conflicts with
+        the URI is rejected with **400**.
+
+        - When no cached payload matches the URI, the resource is **created** (201). Server-managed
+          fields are populated: `id`, `version` (defaulting to `"0"` for versioned entities), `href`,
+          the initial state field, `createdBy`/`createdDate`/`revision=0`, and any
+          `ADDITIONAL_FIELDS`.
+        - When a cached payload exists, it is **replaced** (200). `id`, `version`, `href`,
+          `createdBy`, and `createdDate` are carried over from the existing entry; `revision` is
+          incremented; `updatedBy`/`updatedDate` are stamped.
+
+        **Callback:** `DynamicPutCallback`
+      parameters:
+        - $ref: "#/components/parameters/basePath"
+        - $ref: "#/components/parameters/resourceId"
+        - name: version
+          in: query
+          description: Version identifier for versioned entities
+          schema:
+            type: string
+      security:
+        - bearer: [ ]
+        - { }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TmfResource"
+            example:
+              description: Install fibre to building 7
+              priority: "1"
+      responses:
+        "200":
+          description: Resource replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TmfResource"
+        "201":
+          description: Resource created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TmfResource"
+        "400":
+          description: Invalid body, or body `id`/`version` conflicts with the URI
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
     patch:
       tags: [ TMF Resources ]
       operationId: patchResource

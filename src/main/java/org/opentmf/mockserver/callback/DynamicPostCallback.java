@@ -141,11 +141,23 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
    */
   public static void prepareForCache(RequestContext ctx, ObjectNode parsedBody) {
     ctx.generateNewIdIfNecessary();
+    prepareForCacheWithHref(ctx, parsedBody, ctx.toHref());
+  }
+
+  /**
+   * Same as {@link #prepareForCache(RequestContext, ObjectNode)} but uses a caller-supplied {@code
+   * href} instead of {@link RequestContext#toHref()}. Useful when the request path already contains
+   * the resource id (e.g. PUT {basePath}/{id}), where {@code toHref()} would produce a doubled id.
+   * The caller is expected to have already populated {@code ctx.getId()} (id and, when versioned,
+   * version).
+   */
+  public static void prepareForCacheWithHref(
+      RequestContext ctx, ObjectNode parsedBody, String href) {
     parsedBody.put(ID, ctx.getId().getId());
     if (ctx.isVersioned()) {
       parsedBody.put(VERSION, ctx.getId().getVersion());
     }
-    parsedBody.put(HREF, ctx.toHref());
+    parsedBody.put(HREF, href);
 
     if (!parsedBody.has(ctx.getTmfStatePath().getVariableName())) {
       parsedBody.put(
@@ -157,12 +169,12 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
     addAdditionalFields(parsedBody);
   }
 
-  private static void removeUpdateFieldIfExist(ObjectNode objectNode) {
+  static void removeUpdateFieldIfExist(ObjectNode objectNode) {
     objectNode.remove(UPDATED_BY);
     objectNode.remove(UPDATED_DATE);
   }
 
-  private static void addAdditionalFields(ObjectNode node) {
+  static void addAdditionalFields(ObjectNode node) {
     String additionalFields = System.getenv(ADDITIONAL_FIELDS);
     if (additionalFields == null) {
       return;

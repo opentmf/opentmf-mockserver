@@ -19,6 +19,7 @@ enforcement are all included without any external dependencies.
     * [Dynamic Callbacks](#dynamic-callbacks)
         * [POST (DynamicPostCallback)](#post-dynamicpostcallback)
         * [Bulk Create (DynamicJsonPatchCollectionCallback)](#bulk-create-dynamicjsonpatchcollectioncallback)
+        * [PUT (DynamicPutCallback)](#put-dynamicputcallback)
         * [GET by ID (DynamicGetCallback)](#get-by-id-dynamicgetcallback)
         * [GET List (DynamicGetListCallback)](#get-list-dynamicgetlistcallback)
         * [JSON Patch (DynamicJsonPatchCallback)](#json-patch-dynamicjsonpatchcallback)
@@ -219,6 +220,85 @@ curl -s -X PATCH http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
     "description": "Activate VPN tunnel"
   }
 ]
+```
+
+### PUT (DynamicPutCallback)
+
+Implements [RFC 9110 §9.3.4](https://www.rfc-editor.org/rfc/rfc9110.html#name-put) PUT semantics:
+the request body is the complete desired state of the resource at the URI, and the operation is
+idempotent.
+
+**Register the expectation:**
+
+```shell
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+    "httpRequest": { "method": "PUT", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPutCallback" }
+  }'
+```
+
+**Behavior:**
+
+- The id (and optional `:(version=XYZ)`) in the URI are authoritative. If the body contains an
+  `id` or `version` that conflicts with the URI, returns **400**.
+- If no cached payload matches the URI, the resource is **created**: `id`, `version` (defaulting
+  to `"0"` for versioned entities when not supplied), `href`, the initial state field,
+  `createdBy`/`createdDate`/`revision=0`, and any `ADDITIONAL_FIELDS` are populated. Returns
+  **201 Created**.
+- If a cached payload exists, it is **replaced** wholesale by the request body. `id`, `version`,
+  `href`, `createdBy`, and `createdDate` are carried over from the existing entry; `revision` is
+  incremented; `updatedBy`/`updatedDate` are stamped. Returns **200 OK**.
+- Idempotent: replaying the same PUT converges to the same observable resource state (modulo
+  `updatedDate`/`updatedBy`/`revision`, which by design record the update event).
+- Non-object body or invalid JSON returns **400**.
+
+**Example request** *(create — id not yet in cache)*:
+
+```shell
+curl -s -X PUT http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Install fibre to building 7","priority":"1"}'
+```
+
+**Example response** *(HTTP 201)*:
+
+```json
+{
+  "id": "0QB98VRNHGM4G",
+  "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+  "state": "acknowledged",
+  "revision": 0,
+  "createdDate": "2026-05-10T18:00:00.000Z",
+  "createdBy": "anonymous",
+  "description": "Install fibre to building 7",
+  "priority": "1"
+}
+```
+
+**Example request** *(replace — same URI, new body)*:
+
+```shell
+curl -s -X PUT http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Install fibre to building 8","priority":"2","state":"completed"}'
+```
+
+**Example response** *(HTTP 200)*:
+
+```json
+{
+  "id": "0QB98VRNHGM4G",
+  "href": "/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G",
+  "state": "completed",
+  "revision": 1,
+  "createdDate": "2026-05-10T18:00:00.000Z",
+  "createdBy": "anonymous",
+  "updatedDate": "2026-05-10T18:00:05.000Z",
+  "updatedBy": "anonymous",
+  "description": "Install fibre to building 8",
+  "priority": "2"
+}
 ```
 
 ### GET by ID (DynamicGetCallback)

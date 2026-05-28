@@ -170,6 +170,13 @@ curl -s -X PUT http://localhost:1080/mockserver/expectation \
   "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCollectionCallback" }
 }'
 
+# PUT — create or replace a resource by ID (RFC 9110 §9.3.4, idempotent)
+curl -s -X PUT http://localhost:1080/mockserver/expectation \
+  -H "Content-Type: application/json" -d '{
+  "httpRequest": { "method": "PUT", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+  "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPutCallback" }
+}'
+
 # GET by ID — retrieve a single resource
 curl -s -X PUT http://localhost:1080/mockserver/expectation \
   -H "Content-Type: application/json" -d '{
@@ -235,6 +242,10 @@ Example `expectations.json` registering the full TMF callback set for one domain
     "httpRequest": { "method": "PATCH", "path": "/tmf-api/serviceOrdering/v4/serviceOrder",
                      "headers": { "Content-Type": ["application/json-patch+json"] } },
     "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicJsonPatchCollectionCallback" }
+  },
+  {
+    "httpRequest": { "method": "PUT", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
+    "httpResponseClassCallback": { "callbackClass": "org.opentmf.mockserver.callback.DynamicPutCallback" }
   },
   {
     "httpRequest": { "method": "GET", "path": "/tmf-api/serviceOrdering/v4/serviceOrder/.*" },
