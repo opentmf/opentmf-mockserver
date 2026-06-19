@@ -356,6 +356,34 @@ X-Result-Count: 1
 Content-Range: items 1-1/1
 ```
 
+### 8. Retry with `Idempotency-Key`
+
+All mutating callbacks (POST, PUT, PATCH, DELETE) honour an `Idempotency-Key` request header.
+A retry with the same key on the same `(method, path)` replays the original 2xx response with an
+`X-Idempotent-Replay: true` marker, and the resource's TTL counter is reset on every replay so it
+survives as long as the client keeps retrying. See the
+[Idempotency-Key Handling](README.md#idempotency-key-handling) section in the README for the full
+behaviour matrix.
+
+```shell
+KEY=$(uuidgen)
+
+curl -s -X POST http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $KEY" \
+  -d '{"description": "Install fibre"}' | jq .id
+
+curl -s -i -X POST http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $KEY" \
+  -d '{"description": "Install fibre"}' | grep -iE "x-idempotent-replay|HTTP/"
+```
+
+```
+HTTP/1.1 201 Created
+X-Idempotent-Replay: true
+```
+
 ### 8. Verify a Request Was Received
 
 ```shell

@@ -10,6 +10,7 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
+import org.opentmf.mockserver.util.IdempotencyGuard;
 import org.opentmf.mockserver.util.PayloadCache;
 import tools.jackson.databind.JsonNode;
 
@@ -41,6 +42,11 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
       return authError;
     }
 
+    HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
+    if (replay != null) {
+      return replay;
+    }
+
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
     // Retrieve the cached data associated with the domain and ID
@@ -52,7 +58,13 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
     }
 
     ctx.obtainVersionFromPayloadIfNecessary(cachedData);
+    HttpResponse response =
+        HttpResponse.response().withStatusCode(HttpStatusCode.NO_CONTENT_204.code());
+    // Record before clearing so the idempotency record stays linked to a still-present resource;
+    // PayloadCache#clear is a manual removal and does NOT trigger Option A eviction, so the
+    // record outlives the delete (until its own TTL) and lets retries reply 204 instead of 404.
+    IdempotencyGuard.record(httpRequest, response, ctx);
     CACHE.clear(ctx);
-    return HttpResponse.response().withStatusCode(HttpStatusCode.NO_CONTENT_204.code());
+    return response;
   }
 }

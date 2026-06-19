@@ -110,6 +110,22 @@ public class PayloadCache {
         .replaceAll((k, v) -> System.currentTimeMillis());
   }
 
+  /**
+   * Resets the TTL counter for the exact {@code (domain, id)} entry if it is still cached.
+   * No-op when the domain or entry is absent. Used by idempotency-key replay to "touch" the
+   * resource a prior request created or updated.
+   */
+  public synchronized void touchByResource(String domain, Id id) {
+    if (domain == null || id == null) {
+      return;
+    }
+    TreeMap<Id, Long> domainTimes = timeCache.get(domain);
+    if (domainTimes == null || !domainTimes.containsKey(id)) {
+      return;
+    }
+    domainTimes.put(id, System.currentTimeMillis());
+  }
+
   public synchronized JsonNode getLatestOf(RequestContext ctx) {
     if (dataCache.get(ctx.getDomain()) == null) {
       LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, ctx.getDomain());
@@ -166,6 +182,7 @@ public class PayloadCache {
   private synchronized void evictOldItems() {
     LOG.info(START_EVICTING_OLD_CACHE_ITEMS);
     long now = System.currentTimeMillis();
+    IdempotencyCache idempotencyCache = IdempotencyCache.getInstance();
     for (String domain : new ArrayList<>(timeCache.keySet())) {
       List<Id> expiredKeys = new ArrayList<>();
       for (Map.Entry<Id, Long> entry : timeCache.get(domain).entrySet()) {
@@ -176,6 +193,7 @@ public class PayloadCache {
       for (Id key : expiredKeys) {
         timeCache.get(domain).remove(key);
         dataCache.get(domain).remove(key);
+        idempotencyCache.evictForResource(domain, key);
         LOG.info("Old cache entry for " + DOMAIN_WITH + " is removed", domain, key);
       }
     }
