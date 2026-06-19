@@ -16,6 +16,7 @@ import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
+import org.opentmf.mockserver.util.IdempotencyGuard;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 import tools.jackson.databind.JsonNode;
@@ -62,6 +63,11 @@ public class DynamicPutCallback implements ExpectationResponseCallback {
       return authError;
     }
 
+    HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
+    if (replay != null) {
+      return replay;
+    }
+
     ObjectNode parsedBody;
     try {
       JsonNode node = JacksonUtil.readAsTree(httpRequest.getBodyAsString());
@@ -100,11 +106,15 @@ public class DynamicPutCallback implements ExpectationResponseCallback {
     }
 
     JsonNode existing = ctx.usePointQuery() ? CACHE.get(ctx) : CACHE.getLatestOf(ctx);
+    HttpResponse response;
     if (existing == null) {
-      return create(ctx, parsedBody);
+      response = create(ctx, parsedBody);
+    } else {
+      ctx.obtainVersionFromPayloadIfNecessary(existing);
+      response = replace(ctx, parsedBody, existing);
     }
-    ctx.obtainVersionFromPayloadIfNecessary(existing);
-    return replace(ctx, parsedBody, existing);
+    IdempotencyGuard.record(httpRequest, response, ctx);
+    return response;
   }
 
   private HttpResponse create(RequestContext ctx, ObjectNode parsedBody) {

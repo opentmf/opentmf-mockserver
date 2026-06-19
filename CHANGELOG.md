@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.5] - 2026-06-19
+
+### Added
+
+- **`Idempotency-Key` request header** is now recognised on every mutating callback (POST, PUT,
+  PATCH `application/merge-patch+json`, PATCH `application/json-patch+json` on a single resource,
+  PATCH `application/json-patch+json` on a collection, DELETE). When a client retries with the same
+  key on the same `(method, path)`, the server replays the original 2xx response verbatim with an
+  `X-Idempotent-Replay: true` marker and resets the underlying resource's cache TTL counter — a
+  "touch" — so the resource lives at least as long as clients keep retrying. Missing/blank keys are
+  ignored (clients without idempotency awareness behave exactly as before). Same key reused on a
+  different `(method, path)` returns **422 Unprocessable Entity**; keys longer than 255 characters
+  return **400**. Idempotency records expire on the same TTL as `PayloadCache`
+  (`CACHE_DURATION_MILLIS`, default 2 h) and are also evicted eagerly when the underlying resource
+  is removed by TTL, so a same-key retry after eviction is treated as a fresh request.
+
+### Changed
+
+- `PayloadCache#evictOldItems` now notifies `IdempotencyCache` for each evicted `(domain, id)` so
+  stale replays cannot survive their underlying resource.
+- New public helper `PayloadCache#touchByResource(domain, id)` performs a point-touch (the existing
+  `touch(ctx)` does a range-touch); used by the idempotency replay path.
+
 ## [2.1.4] - 2026-05-28
 
 ### Added
@@ -228,6 +251,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release.
+
+[2.1.5]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.4...2.1.5
 
 [2.1.4]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.3...2.1.4
 

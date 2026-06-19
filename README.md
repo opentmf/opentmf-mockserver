@@ -25,6 +25,7 @@ enforcement are all included without any external dependencies.
         * [JSON Patch (DynamicJsonPatchCallback)](#json-patch-dynamicjsonpatchcallback)
         * [Merge Patch (DynamicMergePatchCallback)](#merge-patch-dynamicmergepatchcallback)
         * [DELETE (DynamicDeleteCallback)](#delete-dynamicdeletecallback)
+        * [Idempotency-Key Handling](#idempotency-key-handling)
     * [Keycloak Mock](#keycloak-mock)
         * [What You Get for Free](#what-you-get-for-free)
         * [Default Configuration](#default-configuration)
@@ -510,6 +511,67 @@ curl -s -X DELETE -i http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrd
 
 ```
 HTTP/1.1 204 No Content
+```
+
+### Idempotency-Key Handling
+
+Every mutating callback (POST, PUT, PATCH, DELETE) recognises the
+[`Idempotency-Key` request header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/).
+Clients opt in by sending an opaque key (up to **255** characters); clients that don't send the
+header behave exactly as before.
+
+**Behavior:**
+
+- On a successful (2xx) mutation, the server stashes the response under the request's
+  `Idempotency-Key`. A retry of the **same `(HTTP method, request path)`** with the same key
+  replays the original response verbatim, adds an **`X-Idempotent-Replay: true`** marker header,
+  and resets ("touches") the underlying resource's cache TTL.
+- A POST replay returns the original generated `id` and body — even though the second call would
+  otherwise produce a fresh `id`.
+- A DELETE replay still returns **204** even after the resource is gone (the recorded response
+  outlives the deletion).
+- A same key reused on a **different** `(method, path)` returns **422 Unprocessable Entity**.
+- Keys longer than 255 characters return **400 Bad Request**.
+- Records expire on the same TTL as `PayloadCache` (`CACHE_DURATION_MILLIS`, default 2 h) and are
+  also dropped eagerly when the underlying resource is evicted by TTL — so a same-key retry after
+  eviction is treated as a fresh request rather than replaying a stale 2xx for a resource that no
+  longer exists.
+
+**Example — POST retry replays the original 201:**
+
+```shell
+KEY=$(uuidgen)
+
+# First call: creates the resource.
+curl -s -X POST http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $KEY" \
+  -d '{"description":"Install fibre"}'
+
+# Retry with the same key: server replays the same body and id.
+curl -s -i -X POST http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $KEY" \
+  -d '{"description":"Install fibre"}'
+# HTTP/1.1 201 Created
+# X-Idempotent-Replay: true
+# Content-Type: application/json
+# {"id":"0QB98VRNHGM4G","href":"/tmf-api/.../0QB98VRNHGM4G",...}
+```
+
+**Example — DELETE retry replays 204:**
+
+```shell
+KEY=$(uuidgen)
+
+curl -s -X DELETE -H "Idempotency-Key: $KEY" \
+  http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G
+# 204 No Content
+
+curl -s -i -X DELETE -H "Idempotency-Key: $KEY" \
+  http://localhost:1080/tmf-api/serviceOrdering/v4/serviceOrder/0QB98VRNHGM4G
+# HTTP/1.1 204 No Content
+# X-Idempotent-Replay: true
 ```
 
 ## Keycloak Mock

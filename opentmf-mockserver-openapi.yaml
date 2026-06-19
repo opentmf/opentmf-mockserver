@@ -808,6 +808,7 @@ paths:
         **Callback:** `DynamicPostCallback`
       parameters:
         - $ref: "#/components/parameters/basePath"
+        - $ref: "#/components/parameters/idempotencyKey"
       security:
         - bearer: [ ]
         - { }
@@ -821,7 +822,7 @@ paths:
               description: My new order
       responses:
         "201":
-          description: Resource created
+          description: Resource created (or replayed when retrying with the same `Idempotency-Key`)
           content:
             application/json:
               schema:
@@ -831,8 +832,13 @@ paths:
               schema:
                 type: string
                 example: application/json
+            X-Idempotent-Replay:
+              description: Present and `true` when the response is a replay of a previously recorded request.
+              schema:
+                type: string
+                enum: [ "true" ]
         "400":
-          description: Duplicate ID or invalid payload
+          description: Duplicate ID, invalid payload, or `Idempotency-Key` longer than 255 characters
           content:
             application/json:
               schema:
@@ -841,6 +847,12 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "422":
+          description: "`Idempotency-Key` was previously used on a different `(method, path)`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     get:
       tags: [ TMF Resources ]
       operationId: listResources
@@ -928,6 +940,7 @@ paths:
         **Callback:** `DynamicJsonPatchCollectionCallback`
       parameters:
         - $ref: "#/components/parameters/basePath"
+        - $ref: "#/components/parameters/idempotencyKey"
         - name: fields
           in: query
           description: |
@@ -959,15 +972,21 @@ paths:
                   description: Activate VPN tunnel
       responses:
         "200":
-          description: Resources created
+          description: Resources created (or replayed when retrying with the same `Idempotency-Key`)
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/TmfResource"
+          headers:
+            X-Idempotent-Replay:
+              description: Present and `true` when the response is a replay of a previously recorded request.
+              schema:
+                type: string
+                enum: [ "true" ]
         "400":
-          description: Invalid patch document, unsupported op, or non-root path
+          description: Invalid patch document, unsupported op, non-root path, or `Idempotency-Key` longer than 255 characters
           content:
             application/json:
               schema:
@@ -978,6 +997,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           description: Duplicate id within the batch or against the cache
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: "`Idempotency-Key` was previously used on a different `(method, path)`"
           content:
             application/json:
               schema:
@@ -1043,6 +1068,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/basePath"
         - $ref: "#/components/parameters/resourceId"
+        - $ref: "#/components/parameters/idempotencyKey"
         - name: version
           in: query
           description: Version identifier for versioned entities
@@ -1062,19 +1088,31 @@ paths:
               priority: "1"
       responses:
         "200":
-          description: Resource replaced
+          description: Resource replaced (or replayed when retrying with the same `Idempotency-Key`)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TmfResource"
+          headers:
+            X-Idempotent-Replay:
+              description: Present and `true` when the response is a replay of a previously recorded request.
+              schema:
+                type: string
+                enum: [ "true" ]
         "201":
-          description: Resource created
+          description: Resource created (or replayed when retrying with the same `Idempotency-Key`)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TmfResource"
+          headers:
+            X-Idempotent-Replay:
+              description: Present and `true` when the response is a replay of a previously recorded request.
+              schema:
+                type: string
+                enum: [ "true" ]
         "400":
-          description: Invalid body, or body `id`/`version` conflicts with the URI
+          description: Invalid body, body `id`/`version` conflicts with the URI, or `Idempotency-Key` longer than 255 characters
           content:
             application/json:
               schema:
@@ -1083,6 +1121,12 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "422":
+          description: "`Idempotency-Key` was previously used on a different `(method, path)`"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     patch:
       tags: [ TMF Resources ]
       operationId: patchResource
@@ -1096,6 +1140,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/basePath"
         - $ref: "#/components/parameters/resourceId"
+        - $ref: "#/components/parameters/idempotencyKey"
         - name: version
           in: query
           description: Version identifier for versioned entities
@@ -1124,13 +1169,19 @@ paths:
               description: Updated description
       responses:
         "200":
-          description: Resource patched
+          description: Resource patched (or replayed when retrying with the same `Idempotency-Key`)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TmfResource"
+          headers:
+            X-Idempotent-Replay:
+              description: Present and `true` when the response is a replay of a previously recorded request.
+              schema:
+                type: string
+                enum: [ "true" ]
         "400":
-          description: Invalid patch
+          description: Invalid patch, or `Idempotency-Key` longer than 255 characters
           content:
             application/json:
               schema:
@@ -1141,6 +1192,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: "`Idempotency-Key` was previously used on a different `(method, path)`"
           content:
             application/json:
               schema:
@@ -1156,6 +1213,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/basePath"
         - $ref: "#/components/parameters/resourceId"
+        - $ref: "#/components/parameters/idempotencyKey"
         - name: version
           in: query
           description: Version identifier for versioned entities
@@ -1166,13 +1224,31 @@ paths:
         - { }
       responses:
         "204":
-          description: Resource deleted
+          description: Resource deleted (or replayed when retrying with the same `Idempotency-Key`)
+          headers:
+            X-Idempotent-Replay:
+              description: Present and `true` when the response is a replay of a previously recorded request.
+              schema:
+                type: string
+                enum: [ "true" ]
+        "400":
+          description: "`Idempotency-Key` longer than 255 characters"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: "`Idempotency-Key` was previously used on a different `(method, path)`"
           content:
             application/json:
               schema:
@@ -1214,6 +1290,21 @@ components:
         type: string
         format: uuid
       example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+    idempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Opaque client-supplied key (up to 255 characters) that makes the mutation idempotent.
+        Replays of the same `(method, path)` carrying the same key return the original 2xx
+        response verbatim with an `X-Idempotent-Replay: true` marker, and the underlying
+        resource's cache TTL is reset on every replay. The same key reused on a different
+        `(method, path)` returns **422 Unprocessable Entity**. Keys exceeding 255 characters
+        return **400 Bad Request**. Missing/blank keys disable the feature.
+      schema:
+        type: string
+        maxLength: 255
+      example: 9f8b8a44-3a7f-4f5e-9d65-1c0d8e8b9b6a
 
   responses:
     Unauthorized:

@@ -17,6 +17,7 @@ import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.Id;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
+import org.opentmf.mockserver.util.IdempotencyGuard;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 import tools.jackson.databind.JsonNode;
@@ -58,6 +59,11 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
         TokenEnforcer.getInstance().validateWithRoles(httpRequest, "writer", "admin");
     if (authError != null) {
       return authError;
+    }
+
+    HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
+    if (replay != null) {
+      return replay;
     }
 
     JsonNode body;
@@ -110,10 +116,13 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
     for (PreparedItem item : plan) {
       result.add(filterFields(item.body, fields));
     }
-    return HttpResponse.response()
-        .withStatusCode(HttpStatusCode.OK_200.code())
-        .withContentType(MediaType.APPLICATION_JSON)
-        .withBody(JacksonUtil.writeAsString(result));
+    HttpResponse response =
+        HttpResponse.response()
+            .withStatusCode(HttpStatusCode.OK_200.code())
+            .withContentType(MediaType.APPLICATION_JSON)
+            .withBody(JacksonUtil.writeAsString(result));
+    IdempotencyGuard.record(httpRequest, response, null);
+    return response;
   }
 
   private HttpResponse validateOp(JsonNode op, int index) {

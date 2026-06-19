@@ -17,6 +17,7 @@ import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
+import org.opentmf.mockserver.util.IdempotencyGuard;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 import tools.jackson.databind.node.ObjectNode;
@@ -108,6 +109,11 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
       return authError;
     }
 
+    HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
+    if (replay != null) {
+      return replay;
+    }
+
     // Parse the request body
     String body = httpRequest.getBodyAsString();
     ObjectNode parsedBody = (ObjectNode) JacksonUtil.readAsTree(body);
@@ -126,10 +132,13 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
     String responseJson = JacksonUtil.writeAsString(parsedBody);
 
     CACHE.put(ctx, parsedBody);
-    return HttpResponse.response()
-        .withStatusCode(HttpStatusCode.CREATED_201.code())
-        .withContentType(MediaType.APPLICATION_JSON)
-        .withBody(responseJson);
+    HttpResponse response =
+        HttpResponse.response()
+            .withStatusCode(HttpStatusCode.CREATED_201.code())
+            .withContentType(MediaType.APPLICATION_JSON)
+            .withBody(responseJson);
+    IdempotencyGuard.record(httpRequest, response, ctx);
+    return response;
   }
 
   /**

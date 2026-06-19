@@ -13,6 +13,7 @@ import org.mockserver.model.MediaType;
 import org.opentmf.commons.patch.JsonMergePatch;
 import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.token.TokenEnforcer;
+import org.opentmf.mockserver.util.IdempotencyGuard;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
 import tools.jackson.databind.JsonNode;
@@ -50,6 +51,11 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
       return authError;
     }
 
+    HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
+    if (replay != null) {
+      return replay;
+    }
+
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
     JsonNode cachedData = ctx.usePointQuery() ? CACHE.get(ctx) : CACHE.getLatestOf(ctx);
@@ -74,9 +80,12 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
 
     CACHE.update(ctx, patchedNode);
 
-    return HttpResponse.response()
-        .withStatusCode(HttpStatusCode.OK_200.code())
-        .withContentType(MediaType.APPLICATION_JSON)
-        .withBody(JacksonUtil.writeAsString(patchedNode));
+    HttpResponse response =
+        HttpResponse.response()
+            .withStatusCode(HttpStatusCode.OK_200.code())
+            .withContentType(MediaType.APPLICATION_JSON)
+            .withBody(JacksonUtil.writeAsString(patchedNode));
+    IdempotencyGuard.record(httpRequest, response, ctx);
+    return response;
   }
 }
