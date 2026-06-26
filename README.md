@@ -38,6 +38,8 @@ enforcement are all included without any external dependencies.
     * [Token Enforcement and Role-Based Access](#token-enforcement-and-role-based-access)
         * [Validating Against an External Keycloak](#validating-against-an-external-keycloak)
         * [Role Matrix](#role-matrix)
+        * [Customizing Required Roles per HTTP Method](#customizing-required-roles-per-http-method)
+        * [Customizing the Roles Claim Path](#customizing-the-roles-claim-path)
     * [Environment Variables](#environment-variables)
     * [Content-Range Calculations](#content-range-calculations)
     * [API Reference](#api-reference)
@@ -809,15 +811,70 @@ When `TOKEN_ISSUER` is set, the `iss` claim in the token is also validated again
 
 ### Role Matrix
 
-Roles are extracted from the JWT's `realm_access.roles` claim (Keycloak standard).
+By default, roles are extracted from the JWT's `realm_access.roles` claim (Keycloak standard); when
+that claim is absent, a top-level `roles` claim is used as a fallback.
 
-| Operation                     | Required Role (any of)      |
-|-------------------------------|-----------------------------|
-| GET, GET List                 | `reader`, `writer`, `admin` |
-| POST, JSON Patch, Merge Patch | `writer`, `admin`           |
-| DELETE                        | `admin`                     |
+| HTTP Method | Default Required Role (any of) | Configurable via |
+|-------------|--------------------------------|------------------|
+| GET         | `reader`, `writer`, `admin`    | `ROLES_GET`      |
+| POST        | `writer`, `admin`              | `ROLES_POST`     |
+| PUT         | `writer`, `admin`              | `ROLES_PUT`      |
+| PATCH       | `writer`, `admin`              | `ROLES_PATCH`    |
+| DELETE      | `admin`                        | `ROLES_DELETE`   |
 
-Insufficient roles return **403 Forbidden**; missing/invalid tokens return **401 Unauthorized**.
+The GET List endpoint shares `ROLES_GET` with single-resource GET. Insufficient roles return
+**403 Forbidden**; missing/invalid tokens return **401 Unauthorized**.
+
+### Customizing Required Roles per HTTP Method
+
+Each method's required roles can be overridden with the matching env var. The value is a
+comma-separated list -- a request whose token carries **any one** of the listed roles passes.
+
+```shell
+docker run -p 1080:1080 \
+  -e ENFORCE_TOKEN=true \
+  -e TOKEN_ISSUER=https://keycloak.example.com/realms/myrealm \
+  -e ROLES_GET=service-reader,service-admin \
+  -e ROLES_POST=service-writer,service-admin \
+  -e ROLES_DELETE=service-admin \
+  local/opentmf-mockserver:latest
+```
+
+Setting an env var to the **empty string** disables the role check for that method, keeping only
+signature/expiry/issuer validation:
+
+```shell
+# Anyone with a signature-valid token can GET; writes still require the default writer/admin
+-e ROLES_GET=
+```
+
+The internal Keycloak Admin REST API endpoints (`/admin/realms/...`) always require `admin` and
+are not affected by these variables.
+
+### Customizing the Roles Claim Path
+
+If your Keycloak (or other IdP) emits roles at a different location than `realm_access.roles`, set
+`ROLES_CLAIM_PATH` to a dotted JSON path into the token payload. The leaf must resolve to a JSON
+array of strings.
+
+```shell
+# Keycloak client roles for a specific client
+-e ROLES_CLAIM_PATH=resource_access.my-client.roles
+
+# Flat list at top level
+-e ROLES_CLAIM_PATH=groups
+
+# Auth0-style namespaced custom claim
+-e ROLES_CLAIM_PATH=https://example.com/roles
+```
+
+When `ROLES_CLAIM_PATH` is set, the default `realm_access.roles` / top-level `roles` fallback chain
+is **not** consulted -- the configured path is the single source of truth. If any segment of the
+path is missing in the token, or the leaf is not an array of strings, the token is treated as
+having no roles (which means **403** for any method whose `ROLES_*` list is non-empty).
+
+Note: client IDs that contain dots (e.g. `resource_access.foo.bar.com.roles`) are not supported by
+the dotted-path parser; the dots would be interpreted as path separators.
 
 ## Environment Variables
 
@@ -833,6 +890,12 @@ Insufficient roles return **403 Forbidden**; missing/invalid tokens return **401
 | `ENFORCE_TOKEN`                       | `false`                      | `true` to require valid Bearer JWT on all dynamic callbacks       |
 | `TOKEN_ISSUER`                        | --                           | Expected `iss` claim; also enables OIDC auto-discovery            |
 | `JWKS_URI`                            | --                           | Explicit JWKS endpoint URL (takes precedence over discovery)      |
+| `ROLES_CLAIM_PATH`                    | --                           | Dotted path to the roles array in the token (e.g. `resource_access.my-client.roles`). Unset = `realm_access.roles` with top-level `roles` fallback |
+| `ROLES_GET`                           | `reader,writer,admin`        | Comma-separated roles accepted on GET (single and list). Empty = skip role check |
+| `ROLES_POST`                          | `writer,admin`               | Comma-separated roles accepted on POST. Empty = skip role check   |
+| `ROLES_PUT`                           | `writer,admin`               | Comma-separated roles accepted on PUT. Empty = skip role check    |
+| `ROLES_PATCH`                         | `writer,admin`               | Comma-separated roles accepted on PATCH (merge / JSON Patch / collection). Empty = skip role check |
+| `ROLES_DELETE`                        | `admin`                      | Comma-separated roles accepted on DELETE. Empty = skip role check |
 
 ## Content-Range Calculations
 

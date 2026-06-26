@@ -61,8 +61,7 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError =
-        TokenEnforcer.getInstance().validateWithRoles(httpRequest, "reader", "writer", "admin");
+    HttpResponse authError = TokenEnforcer.getInstance().validateForRequest(httpRequest);
     if (authError != null) {
       return authError;
     }

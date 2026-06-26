@@ -37,7 +37,7 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(httpRequest, "admin");
+    HttpResponse authError = TokenEnforcer.getInstance().validateForRequest(httpRequest);
     if (authError != null) {
       return authError;
     }
