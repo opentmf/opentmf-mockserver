@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.6] - 2026-06-26
+
+### Added
+
+- **Configurable required roles per HTTP method.** Five new env vars `ROLES_GET`, `ROLES_POST`,
+  `ROLES_PUT`, `ROLES_PATCH`, `ROLES_DELETE` accept a comma-separated list of role names; a request
+  whose token carries any one of the listed roles passes. Defaults preserve the historical
+  behaviour (`reader,writer,admin` for GET; `writer,admin` for POST/PUT/PATCH; `admin` for DELETE).
+  Setting a variable to the empty string disables the role check for that method while still
+  validating signature, expiry, and issuer. The Keycloak Admin REST API endpoints remain hard-coded
+  to require `admin`.
+- **Configurable roles claim path.** New env var `ROLES_CLAIM_PATH` accepts a dotted JSON path into
+  the token payload (e.g. `resource_access.my-client.roles`, `groups`, or a namespaced claim like
+  `https://example.com/roles`). The leaf must resolve to a JSON array of strings. When unset, the
+  enforcer keeps its previous fallback chain (`realm_access.roles`, then top-level `roles`); when
+  set, the configured path is the single source of truth and the default fallback is not consulted.
+
+### Changed
+
+- `TokenEnforcer` gains a `validateForRequest(HttpRequest)` helper that resolves the required
+  roles for the request's HTTP method from the configured per-method map. All eight TMF dynamic
+  callbacks (`DynamicGetCallback`, `DynamicGetListCallback`, `DynamicPostCallback`,
+  `DynamicPutCallback`, `DynamicJsonPatchCallback`, `DynamicMergePatchCallback`,
+  `DynamicJsonPatchCollectionCallback`, `DynamicDeleteCallback`) now route through it instead of
+  passing a hard-coded role list.
+
 ## [2.1.5] - 2026-06-19
 
 ### Added
@@ -251,6 +277,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release.
+
+[2.1.6]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.5...2.1.6
 
 [2.1.5]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.4...2.1.5
 

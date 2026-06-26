@@ -24,7 +24,9 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.mockserver.model.HttpRequest;
@@ -39,7 +41,8 @@ import tools.jackson.databind.JsonNode;
 /**
  * Validates Bearer JWT tokens on incoming requests.
  *
- * <p>Controlled by three configuration knobs (env var or system property):
+ * <p>Controlled by these configuration knobs (env var or system property, env wins when both
+ * present):
  *
  * <ul>
  *   <li>{@code ENFORCE_TOKEN} / {@code enforce.token} -- {@code true} to enable (default {@code
@@ -48,6 +51,16 @@ import tools.jackson.databind.JsonNode;
  *       OIDC auto-discovery of the JWKS URI when {@code JWKS_URI} is not set
  *   <li>{@code JWKS_URI} / {@code jwks.uri} -- explicit JWKS endpoint (takes precedence over
  *       discovery)
+ *   <li>{@code ROLES_CLAIM_PATH} / {@code roles.claim.path} -- dotted JSON path to the roles array
+ *       inside the token (e.g. {@code realm_access.roles}, {@code resource_access.my-client.roles},
+ *       {@code groups}). When unset, the enforcer tries {@code realm_access.roles} and falls back
+ *       to a top-level {@code roles} claim.
+ *   <li>{@code ROLES_GET} / {@code ROLES_POST} / {@code ROLES_PUT} / {@code ROLES_PATCH} /
+ *       {@code ROLES_DELETE} -- comma-separated list of roles required for each HTTP method.
+ *       Defaults preserve the historical behaviour ({@code reader,writer,admin} for GET;
+ *       {@code writer,admin} for POST/PUT/PATCH; {@code admin} for DELETE). An empty value
+ *       (e.g. {@code ROLES_GET=}) disables the role check for that method while still validating
+ *       signature and expiry.
  * </ul>
  *
  * <p>When neither {@code JWKS_URI} nor {@code TOKEN_ISSUER} is set, the built-in mock keys from
@@ -57,10 +70,18 @@ public final class TokenEnforcer {
 
   private static final Logger LOG = LoggerFactory.getLogger(TokenEnforcer.class);
 
+  private static final String DEFAULT_ROLES_GET = "reader,writer,admin";
+  private static final String DEFAULT_ROLES_POST = "writer,admin";
+  private static final String DEFAULT_ROLES_PUT = "writer,admin";
+  private static final String DEFAULT_ROLES_PATCH = "writer,admin";
+  private static final String DEFAULT_ROLES_DELETE = "admin";
+
   private static volatile TokenEnforcer instance;
 
   private final boolean enabled;
   private final String expectedIssuer;
+  private final String rolesClaimPath;
+  private final Map<String, String[]> rolesByMethod;
   private final ConfigurableJWTProcessor<SecurityContext> jwtProcessor;
   private final String initError;
 
@@ -80,7 +101,34 @@ public final class TokenEnforcer {
     this(
         Boolean.parseBoolean(resolve("ENFORCE_TOKEN", "enforce.token", "false")),
         resolve("TOKEN_ISSUER", "token.issuer", ""),
-        resolve("JWKS_URI", "jwks.uri", ""));
+        resolve("JWKS_URI", "jwks.uri", ""),
+        resolve("ROLES_CLAIM_PATH", "roles.claim.path", ""),
+        rolesByMethodFromEnv());
+  }
+
+  private static Map<String, String[]> rolesByMethodFromEnv() {
+    Map<String, String[]> map = new LinkedHashMap<>();
+    map.put("GET", parseRoles(resolve("ROLES_GET", "roles.get", DEFAULT_ROLES_GET)));
+    map.put("POST", parseRoles(resolve("ROLES_POST", "roles.post", DEFAULT_ROLES_POST)));
+    map.put("PUT", parseRoles(resolve("ROLES_PUT", "roles.put", DEFAULT_ROLES_PUT)));
+    map.put("PATCH", parseRoles(resolve("ROLES_PATCH", "roles.patch", DEFAULT_ROLES_PATCH)));
+    map.put("DELETE", parseRoles(resolve("ROLES_DELETE", "roles.delete", DEFAULT_ROLES_DELETE)));
+    return map;
+  }
+
+  private static String[] parseRoles(String csv) {
+    if (csv == null || csv.isEmpty()) {
+      return new String[0];
+    }
+    String[] parts = csv.split(",");
+    List<String> out = new java.util.ArrayList<>(parts.length);
+    for (String part : parts) {
+      String trimmed = part.trim();
+      if (!trimmed.isEmpty()) {
+        out.add(trimmed);
+      }
+    }
+    return out.toArray(new String[0]);
   }
 
   /**
@@ -93,9 +141,27 @@ public final class TokenEnforcer {
    *     keys)
    */
   public TokenEnforcer(boolean enabled, String issuerConfig, String jwksUriConfig) {
+    this(enabled, issuerConfig, jwksUriConfig, "", rolesByMethodFromEnv());
+  }
+
+  /**
+   * Full-control constructor used by the no-arg variant. Tests should prefer the JWKSource-backed
+   * constructor below.
+   */
+  public TokenEnforcer(
+      boolean enabled,
+      String issuerConfig,
+      String jwksUriConfig,
+      String rolesClaimPathConfig,
+      Map<String, String[]> rolesByMethod) {
     this.enabled = enabled;
     if (issuerConfig == null) issuerConfig = "";
     if (jwksUriConfig == null) jwksUriConfig = "";
+    this.rolesClaimPath =
+        (rolesClaimPathConfig == null || rolesClaimPathConfig.isEmpty())
+            ? null
+            : rolesClaimPathConfig;
+    this.rolesByMethod = Collections.unmodifiableMap(rolesByMethod);
 
     if (!enabled) {
       LOG.info("Token enforcement is DISABLED");
@@ -120,11 +186,13 @@ public final class TokenEnforcer {
     this.initError = error;
 
     LOG.info(
-        "Token enforcement is ENABLED (issuer={}, jwks={})",
+        "Token enforcement is ENABLED (issuer={}, jwks={}, rolesClaimPath={}, rolesByMethod={})",
         expectedIssuer != null ? expectedIssuer : "<any>",
         jwksUriConfig.isEmpty()
             ? (issuerConfig.isEmpty() ? "<built-in>" : "<discovered>")
-            : jwksUriConfig);
+            : jwksUriConfig,
+        rolesClaimPath != null ? rolesClaimPath : "<default: realm_access.roles | roles>",
+        describeRolesByMethod());
   }
 
   /**
@@ -132,9 +200,27 @@ public final class TokenEnforcer {
    * entirely.
    */
   TokenEnforcer(boolean enabled, String expectedIssuer, JWKSource<SecurityContext> keySource) {
+    this(enabled, expectedIssuer, keySource, "", rolesByMethodFromEnv());
+  }
+
+  /**
+   * Package-private constructor for testing with an explicit key source plus role config. Bypasses
+   * OIDC discovery entirely.
+   */
+  TokenEnforcer(
+      boolean enabled,
+      String expectedIssuer,
+      JWKSource<SecurityContext> keySource,
+      String rolesClaimPathConfig,
+      Map<String, String[]> rolesByMethod) {
     this.enabled = enabled;
     this.expectedIssuer =
         (expectedIssuer == null || expectedIssuer.isEmpty()) ? null : expectedIssuer;
+    this.rolesClaimPath =
+        (rolesClaimPathConfig == null || rolesClaimPathConfig.isEmpty())
+            ? null
+            : rolesClaimPathConfig;
+    this.rolesByMethod = Collections.unmodifiableMap(rolesByMethod);
 
     if (!enabled) {
       this.jwtProcessor = null;
@@ -167,9 +253,26 @@ public final class TokenEnforcer {
   }
 
   /**
+   * Validates the Bearer token and resolves the required roles from the configured per-method map
+   * ({@code ROLES_GET}, {@code ROLES_POST}, ...) based on {@link HttpRequest#getMethod()}. An empty
+   * configured list for the method means signature/expiry/issuer are still checked but no role
+   * check is performed.
+   *
+   * @return {@code null} if validation passes (or enforcement is disabled); an HTTP 401 or 403
+   *     response otherwise.
+   */
+  public HttpResponse validateForRequest(HttpRequest request) {
+    String method = request.getMethod().getValue();
+    String[] required =
+        rolesByMethod.getOrDefault(method.toUpperCase(Locale.ROOT), new String[0]);
+    return validateWithRoles(request, required);
+  }
+
+  /**
    * Validates the Bearer token and optionally checks that the token carries at least one of the
-   * specified roles. Roles are extracted from the Keycloak {@code realm_access.roles} claim first,
-   * falling back to a top-level {@code roles} claim.
+   * specified roles. Roles are extracted from {@code ROLES_CLAIM_PATH} when configured, otherwise
+   * from the Keycloak {@code realm_access.roles} claim first, falling back to a top-level
+   * {@code roles} claim.
    *
    * @param request the incoming HTTP request
    * @param requiredRoles roles of which the token must contain at least one; if empty, role
@@ -294,7 +397,11 @@ public final class TokenEnforcer {
   // ---- role extraction ----
 
   @SuppressWarnings("unchecked")
-  private static Set<String> extractRoles(JWTClaimsSet claims) {
+  private Set<String> extractRoles(JWTClaimsSet claims) {
+    if (rolesClaimPath != null) {
+      return extractRolesAtPath(claims, rolesClaimPath);
+    }
+
     Set<String> roles = new HashSet<>();
     try {
       Map<String, Object> realmAccess = claims.getJSONObjectClaim("realm_access");
@@ -309,7 +416,7 @@ public final class TokenEnforcer {
         }
       }
     } catch (ParseException ignored) {
-      /* claim absent or wrong type */
+      // claim absent or wrong type
     }
 
     if (roles.isEmpty()) {
@@ -319,10 +426,40 @@ public final class TokenEnforcer {
           roles.addAll(topLevel);
         }
       } catch (ParseException ignored) {
-        /* claim absent or wrong type */
+        // claim absent or wrong type
       }
     }
 
+    return Collections.unmodifiableSet(roles);
+  }
+
+  /**
+   * Traverses the dotted path against the token's claims. Each segment indexes into a JSON object;
+   * the final segment must resolve to a JSON array of strings. Returns an empty set if any segment
+   * is missing or the leaf is the wrong shape.
+   */
+  @SuppressWarnings("unchecked")
+  private static Set<String> extractRolesAtPath(JWTClaimsSet claims, String path) {
+    String[] segments = path.split("\\.");
+    Object cursor = claims.toJSONObject();
+    for (int i = 0; i < segments.length; i++) {
+      if (!(cursor instanceof Map<?, ?> m)) {
+        return Collections.emptySet();
+      }
+      cursor = ((Map<String, Object>) m).get(segments[i]);
+      if (cursor == null) {
+        return Collections.emptySet();
+      }
+    }
+    if (!(cursor instanceof List<?> list)) {
+      return Collections.emptySet();
+    }
+    Set<String> roles = new HashSet<>();
+    for (Object o : list) {
+      if (o instanceof String s) {
+        roles.add(s);
+      }
+    }
     return Collections.unmodifiableSet(roles);
   }
 
@@ -350,13 +487,26 @@ public final class TokenEnforcer {
         .withBody(writeAsString(error));
   }
 
+  private String describeRolesByMethod() {
+    StringBuilder sb = new StringBuilder("{");
+    boolean first = true;
+    for (Map.Entry<String, String[]> e : rolesByMethod.entrySet()) {
+      if (!first) {
+        sb.append(", ");
+      }
+      first = false;
+      sb.append(e.getKey()).append('=').append(Arrays.toString(e.getValue()));
+    }
+    return sb.append('}').toString();
+  }
+
   private static String resolve(String envVar, String sysProp, String defaultVal) {
     String val = System.getProperty(sysProp);
-    if (val != null && !val.isEmpty()) {
+    if (val != null) {
       return val;
     }
     val = System.getenv(envVar);
-    if (val != null && !val.isEmpty()) {
+    if (val != null) {
       return val;
     }
     return defaultVal;

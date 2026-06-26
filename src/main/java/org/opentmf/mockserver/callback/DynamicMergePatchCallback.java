@@ -45,8 +45,7 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError =
-        TokenEnforcer.getInstance().validateWithRoles(httpRequest, "writer", "admin");
+    HttpResponse authError = TokenEnforcer.getInstance().validateForRequest(httpRequest);
     if (authError != null) {
       return authError;
     }
