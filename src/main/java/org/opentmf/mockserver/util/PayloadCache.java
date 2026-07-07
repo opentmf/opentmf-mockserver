@@ -160,6 +160,14 @@ public class PayloadCache {
     return dataCache.get(ctx.getDomain()).get(ctx.getId());
   }
 
+  /**
+   * Returns a <b>snapshot</b> of the domain's entries, taken under the cache lock. Callers
+   * (the list-GET callback) iterate and filter the result outside the lock, concurrently with
+   * writers — returning the live {@code TreeMap} here let that iteration race concurrent
+   * {@code put()}s and intermittently miss entries that were already 201-created (~1% of
+   * filtered list GETs under parallel load). The shallow copy is the fix; the {@code JsonNode}
+   * values are shared but the write paths replace them, never mutate them in place.
+   */
   public synchronized SortedMap<Id, JsonNode> getAll(String domain) {
     LOG.info(
         "Getting cache entries for domain = \"{}\". Existing domain list: {}",
@@ -170,7 +178,7 @@ public class PayloadCache {
       LOG.info(NO_CACHE_ENTRY_FOUND_FOR_DOMAIN, domain);
       return Collections.emptySortedMap();
     }
-    return dataCache.get(domain);
+    return new TreeMap<>(dataCache.get(domain));
   }
 
   public synchronized void clear(RequestContext ctx) {

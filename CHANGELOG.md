@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.7] - 2026-07-07
+
+### Fixed
+
+- **Filtered list GETs no longer intermittently miss freshly created entities under concurrent
+  load.** `PayloadCache.getAll()` was `synchronized` but returned the <em>live</em> internal
+  `TreeMap`; `DynamicGetListCallback` then iterated and filtered that map outside the cache lock,
+  concurrently with `put()`s mutating the same tree. Under parallel clients this raced the tree's
+  structural changes and intermittently skipped entries that had already been created and
+  acknowledged with 201 — observed as ~1% `404 Not Found` on `GET ?id=…&version=…` list queries
+  seconds after the entity's creation (dsync parallel rehearsal, 2026-07-07: 26 of 2,385 such
+  queries failed; two orchestrated updates exhausted their retries against these phantom 404s).
+  Sequential clients could never hit this, which is why the defect survived every serial test.
+  `getAll()` now returns a shallow snapshot taken under the lock. The `JsonNode` values remain
+  shared: the write paths replace nodes and never mutate them in place, so a snapshot reader
+  always sees a consistent entity. Regression tests pin the snapshot semantics
+  (`PayloadCacheTests`).
+
 ## [2.1.6] - 2026-06-26
 
 ### Added
