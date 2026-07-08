@@ -90,6 +90,33 @@ public class PayloadCache {
     LOG.info("Cache entry for " + DOMAIN_WITH + " added", ctx.getDomain(), ctx.getId());
   }
 
+  /**
+   * Atomically inserts {@code value} under {@code ctx.getId()} in {@code ctx.getDomain()} only
+   * when no entry already exists for that key. Returns {@code true} on insert, {@code false}
+   * when the id was already present (no cache change is made).
+   *
+   * <p>Prefer this over {@link #get(RequestContext)} → {@link #put(RequestContext, JsonNode)}
+   * for uniqueness-enforcing create paths (POST, PUT-create, batch collection PATCH). The
+   * two-call idiom leaves a check-then-act window: two concurrent creates with the same
+   * client-supplied id both see "not present" and the second reaches {@code put()}, which
+   * throws {@link IllegalArgumentException} and surfaces to the client as {@code 500}.
+   * {@code putIfAbsent} closes that window under the cache lock and lets callers translate the
+   * {@code false} return into their intended {@code 400}/{@code 409}.
+   */
+  public synchronized boolean putIfAbsent(RequestContext ctx, JsonNode value) {
+    dataCache.putIfAbsent(ctx.getDomain(), new TreeMap<>());
+    timeCache.putIfAbsent(ctx.getDomain(), new TreeMap<>());
+
+    if (dataCache.get(ctx.getDomain()).containsKey(ctx.getId())) {
+      return false;
+    }
+
+    dataCache.get(ctx.getDomain()).put(ctx.getId(), value);
+    timeCache.get(ctx.getDomain()).put(ctx.getId(), System.currentTimeMillis());
+    LOG.info("Cache entry for " + DOMAIN_WITH + " added", ctx.getDomain(), ctx.getId());
+    return true;
+  }
+
   public synchronized void update(RequestContext ctx, JsonNode value) {
     if (!dataCache.get(ctx.getDomain()).containsKey(ctx.getId())) {
       throw new IllegalArgumentException();

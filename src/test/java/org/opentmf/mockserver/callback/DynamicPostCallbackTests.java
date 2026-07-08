@@ -3,6 +3,7 @@ package org.opentmf.mockserver.callback;
 import static org.apache.commons.lang3.RandomStringUtils.randomNumeric;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.opentmf.mockserver.model.TmfConstants.VERSION;
@@ -11,7 +12,15 @@ import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
 import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.SortedMap;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -202,6 +211,52 @@ class DynamicPostCallbackTests {
     post(new HttpRequest().withPath("/" + path + "?version=1.0"), randomNumeric(10), null);
     post(new HttpRequest().withPath("/" + path + ":(version=1.0)"), randomNumeric(10), null);
     Assertions.assertEquals(before.size() + 6, CACHE.getAll(path).size());
+  }
+
+  /**
+   * Under sustained concurrent load with re-used client-supplied ids, the historical
+   * check-then-put race in {@code DynamicPostCallback} let two POSTs pass the "not present"
+   * check and both reach {@code CACHE.put}, throwing {@link IllegalArgumentException} and
+   * surfacing as {@code 500} for the loser. With {@code CACHE.putIfAbsent} atomicity the loser
+   * now cleanly gets the intended {@code 400 "already exists"}.
+   */
+  @Test
+  void concurrentPostSameId_exactlyOneReturns201_othersReturn400_noneReturn500()
+      throws Exception {
+    int nThreads = 20;
+    String domain = "racedPost-" + UUID.randomUUID();
+    String sharedId = "raced-" + UUID.randomUUID();
+    String body = "{\"id\":\"" + sharedId + "\"}";
+
+    ExecutorService pool = Executors.newFixedThreadPool(nThreads);
+    try {
+      CountDownLatch start = new CountDownLatch(1);
+      List<Future<Integer>> futures = new ArrayList<>();
+      for (int i = 0; i < nThreads; i++) {
+        futures.add(
+            pool.submit(
+                () -> {
+                  start.await();
+                  return new DynamicPostCallback()
+                      .handle(new HttpRequest().withPath("/" + domain).withBody(body))
+                      .getStatusCode();
+                }));
+      }
+      start.countDown();
+
+      int count201 = 0;
+      int count400 = 0;
+      for (Future<Integer> f : futures) {
+        int status = f.get(5, TimeUnit.SECONDS);
+        assertNotEquals(500, status, "Concurrent duplicate POST must not leak a 500");
+        if (status == 201) count201++;
+        if (status == 400) count400++;
+      }
+      assertEquals(1, count201, "Exactly one concurrent creator must succeed with 201");
+      assertEquals(nThreads - 1, count400, "All losing racers must return 400 (already exists)");
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   void post(HttpRequest httpRequest, String id, String version) {

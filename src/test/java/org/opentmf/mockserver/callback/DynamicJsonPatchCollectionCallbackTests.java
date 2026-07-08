@@ -2,6 +2,7 @@ package org.opentmf.mockserver.callback;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,7 +10,17 @@ import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
 import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.opentmf.mockserver.model.Id;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockserver.model.HttpRequest;
@@ -211,6 +222,69 @@ class DynamicJsonPatchCollectionCallbackTests {
     HttpResponse resp = callback.handle(patchRequest(domain, "not json"));
 
     assertEquals(400, resp.getStatusCode());
+  }
+
+  /**
+   * Two concurrent batch collection-PATCH requests carrying an item with the same client-supplied
+   * id used to hit a check-then-put race (both saw the id absent in the pre-loop; the second
+   * batch reached {@code CACHE.put} and threw {@link IllegalArgumentException} → 500).
+   * {@code putIfAbsent} plus per-item rollback closes it: exactly one batch inserts, the loser
+   * returns {@code 409} and every item it had already inserted is rolled back so the batch stays
+   * atomic per RFC 5789.
+   */
+  @Test
+  void concurrentBatchSameId_oneBatchWins_othersReturn409_noneReturn500_rollbackKeepsAtomicity()
+      throws Exception {
+    int nThreads = 8;
+    String domain = "racedBatch-" + UUID.randomUUID();
+    String sharedId = "raced-" + UUID.randomUUID();
+    // Each batch inserts one item WITH the shared id plus one item WITHOUT (a fresh id per
+    // batch); a losing batch's fresh-id item must be rolled back so the domain is left with
+    // exactly the winning batch's two items.
+    ExecutorService pool = Executors.newFixedThreadPool(nThreads);
+    try {
+      CountDownLatch start = new CountDownLatch(1);
+      List<Future<Integer>> futures = new ArrayList<>();
+      for (int i = 0; i < nThreads; i++) {
+        String uniqueId = "unique-" + UUID.randomUUID();
+        String body =
+            "["
+                + addOp("{\"id\":\"" + sharedId + "\",\"description\":\"shared\"}")
+                + ","
+                + addOp("{\"id\":\"" + uniqueId + "\",\"description\":\"unique\"}")
+                + "]";
+        futures.add(
+            pool.submit(
+                () -> {
+                  start.await();
+                  return new DynamicJsonPatchCollectionCallback()
+                      .handle(patchRequest(domain, body))
+                      .getStatusCode();
+                }));
+      }
+      start.countDown();
+
+      int count200 = 0;
+      int count409 = 0;
+      for (Future<Integer> f : futures) {
+        int status = f.get(5, TimeUnit.SECONDS);
+        assertNotEquals(500, status, "Concurrent duplicate batch PATCH must not leak a 500");
+        if (status == 200) count200++;
+        if (status == 409) count409++;
+      }
+      assertEquals(1, count200, "Exactly one batch must succeed");
+      assertEquals(nThreads - 1, count409, "All losing batches must return 409 (already exists)");
+
+      // Rollback proof: only the winning batch's two items are in the cache — every losing
+      // batch's first-inserted unique item was rolled back.
+      SortedMap<Id, JsonNode> domainSnapshot = PayloadCache.getInstance().getAll(domain);
+      assertEquals(
+          2,
+          domainSnapshot.size(),
+          "Losing batches' partial inserts must be rolled back for atomicity");
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   private static HttpRequest patchRequest(String domain, String body) {

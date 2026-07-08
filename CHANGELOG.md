@@ -7,8 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.8] - 2026-07-08
 
+### Added
+
+- **`PayloadCache.putIfAbsent`** — atomic insert-if-absent under the cache lock. Returns `true`
+  on insert, `false` when the id was already present. Used by every create callback (POST,
+  PUT-create, batch collection PATCH) in place of the historical `CACHE.get` → `CACHE.put`
+  idiom, which had a check-then-act window that surfaced as spurious `500`s under concurrent
+  duplicate-id creates.
+
 ### Fixed
 
+- **Concurrent creates with the same client-supplied id no longer leak a `500`.**
+  `DynamicPostCallback`, `DynamicPutCallback`'s create branch, and
+  `DynamicJsonPatchCollectionCallback` used a `CACHE.get(...) != null` uniqueness check
+  followed by a separate `CACHE.put(...)`. Two callbacks racing on the same id both saw "not
+  present," both reached `put()`, and the second raised
+  `IllegalArgumentException("Key: [...] already exists in cache for domain ")` — surfaced by
+  MockServer as `500 Internal Server Error`, not the intended `400`/`409`. All three paths now
+  use `PayloadCache.putIfAbsent` under the cache lock. POST losers get their intended
+  `400 "already exists"`. PUT losers degrade to an idempotent replace (`200`) on the winning
+  creator's resource — PUT is idempotent, so the two paths converge to the same observable
+  state. Batch collection PATCH losers get `409` and every item the losing batch had already
+  inserted is rolled back so the batch stays atomic per RFC 5789. Regression tests fire 8–20
+  concurrent racers per callback and assert exactly one winner, correct loser status, and zero
+  `500`s.
 - **`DynamicGetCallback` no longer mutates the cached `JsonNode` in place on first-observation
   state transition.** When a GET landed on an entity still in its initial state (e.g.
   `status: "created"`), the callback cast the live cached node to `ObjectNode` and directly

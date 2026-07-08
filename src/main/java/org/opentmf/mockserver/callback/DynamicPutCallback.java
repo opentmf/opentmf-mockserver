@@ -119,11 +119,23 @@ public class DynamicPutCallback implements ExpectationResponseCallback {
   private HttpResponse create(RequestContext ctx, ObjectNode parsedBody) {
     ctx.generateNewIdIfNecessary();
     DynamicPostCallback.prepareForCacheWithHref(ctx, parsedBody, buildHref(ctx));
-    CACHE.put(ctx, parsedBody);
-    return HttpResponse.response()
-        .withStatusCode(HttpStatusCode.CREATED_201.code())
-        .withContentType(MediaType.APPLICATION_JSON)
-        .withBody(JacksonUtil.writeAsString(parsedBody));
+    if (CACHE.putIfAbsent(ctx, parsedBody)) {
+      return HttpResponse.response()
+          .withStatusCode(HttpStatusCode.CREATED_201.code())
+          .withContentType(MediaType.APPLICATION_JSON)
+          .withBody(JacksonUtil.writeAsString(parsedBody));
+    }
+    // Raced with a concurrent PUT-create on the same URL. PUT is idempotent, so degrade to a
+    // replace on the winning creator's resource — the two paths converge to the same
+    // observable state (audit fields aside).
+    JsonNode raced = ctx.usePointQuery() ? CACHE.get(ctx) : CACHE.getLatestOf(ctx);
+    if (raced == null) {
+      return getErrorResponse(
+          HttpStatusCode.CONFLICT_409,
+          "[" + ctx.getId() + "] concurrently created and evicted; retry.");
+    }
+    ctx.obtainVersionFromPayloadIfNecessary(raced);
+    return replace(ctx, parsedBody, raced);
   }
 
   private HttpResponse replace(RequestContext ctx, ObjectNode parsedBody, JsonNode existing) {

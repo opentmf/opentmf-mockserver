@@ -1,7 +1,9 @@
 package org.opentmf.mockserver.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.SortedMap;
@@ -74,5 +76,41 @@ class PayloadCacheTests {
   @Test
   void getAll_unknownDomain_returnsEmpty() {
     assertTrue(CACHE.getAll("no-such-domain-" + UUID.randomUUID()).isEmpty());
+  }
+
+  /**
+   * putIfAbsent must insert when the key is absent, returning true. This is the fast path used
+   * by every create callback (POST, PUT-create, batch collection PATCH) to close the
+   * check-then-put race that used to raise IllegalArgumentException → 500 under concurrent
+   * duplicate ids.
+   */
+  @Test
+  void putIfAbsent_absentKey_insertsAndReturnsTrue() {
+    String domain = "putifabsent-" + UUID.randomUUID();
+    String id = UUID.randomUUID().toString();
+    RequestContext ctx = contextOf(domain, id, "1");
+    JsonNode value = entity(id, "1");
+
+    assertTrue(CACHE.putIfAbsent(ctx, value));
+    assertSame(value, CACHE.get(ctx));
+  }
+
+  /**
+   * putIfAbsent must NOT overwrite an existing entry — it returns false and leaves the cache
+   * untouched. This is what the create callbacks translate into their intended 400/409.
+   */
+  @Test
+  void putIfAbsent_presentKey_returnsFalse_doesNotOverwrite() {
+    String domain = "putifabsent-existing-" + UUID.randomUUID();
+    String id = UUID.randomUUID().toString();
+    RequestContext ctx = contextOf(domain, id, "1");
+    JsonNode original = entity(id, "1");
+    CACHE.put(ctx, original);
+
+    JsonNode replacement = JacksonUtil.readAsTree("{\"id\":\"" + id + "\",\"marker\":\"new\"}");
+    assertFalse(CACHE.putIfAbsent(ctx, replacement));
+
+    // Original reference must still be what get() returns.
+    assertSame(original, CACHE.get(ctx));
   }
 }
