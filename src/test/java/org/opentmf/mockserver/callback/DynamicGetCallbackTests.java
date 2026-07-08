@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
+import org.opentmf.mockserver.model.RequestContext;
 import org.opentmf.mockserver.util.JacksonUtil;
+import org.opentmf.mockserver.util.PayloadCache;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
@@ -195,6 +197,52 @@ class DynamicGetCallbackTests {
     assertEquals(
         "{\"code\":400,\"message\":\"[id='testId', version=null] already exists.\",\"status\":\"BAD_REQUEST_400\"}",
         httpResponseSameId.getBodyAsString());
+  }
+
+  /**
+   * The state transition on a first GET must NOT mutate the cached JsonNode in place. Concurrent
+   * list-GET readers iterate the snapshot returned by {@link PayloadCache#getAll} outside the
+   * cache lock and share the same JsonNode references — an in-place put/increment here would
+   * race Jackson's non-thread-safe internal LinkedHashMap iteration on those readers. The write
+   * must land on a deep-copy and replace the cached reference atomically.
+   */
+  @Test
+  void stateTransitionOnGet_replacesCachedReference_neverMutatesInPlace() {
+    // Given: an entity in the initial ("created") state.
+    String domain = "serviceInventory";
+    String id = TSID.Factory.getTsid().toString();
+    addDataToCache(domain, id, "created");
+
+    HttpRequest lookupRequest = new HttpRequest().withPath("/" + domain + "/" + id);
+    RequestContext lookupCtx = RequestContext.initialize(lookupRequest, true, null);
+    JsonNode preTransitionReference = PayloadCache.getInstance().get(lookupCtx);
+    assertNotNull(preTransitionReference);
+    assertEquals("created", preTransitionReference.get("status").asText());
+
+    // When: a GET triggers the state transition (created → active).
+    HttpResponse httpResponse = dynamicGetCallback.handle(lookupRequest);
+
+    // Then: the response reflects the transition (existing behaviour preserved).
+    assertEquals(200, httpResponse.getStatusCode());
+    JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
+    assertEquals("active", responseJson.get("status").asText());
+
+    // And: the reference we captured BEFORE the transition must still read "created" — no
+    // in-place mutation happened on the shared cached node. This is what makes the 2.1.7
+    // snapshot fix safe.
+    assertEquals(
+        "created",
+        preTransitionReference.get("status").asText(),
+        "Cached JsonNode was mutated in place; concurrent list-GET readers holding a snapshot "
+            + "would race Jackson's internal LinkedHashMap iteration");
+
+    // And: the cache now holds a fresh reference with the transitioned state.
+    JsonNode postTransitionReference = PayloadCache.getInstance().get(lookupCtx);
+    assertNotSame(
+        preTransitionReference,
+        postTransitionReference,
+        "Cache should have been updated by reference replacement, not in-place mutation");
+    assertEquals("active", postTransitionReference.get("status").asText());
   }
 
   private void addDataToCache(String domain, String id, String status) {

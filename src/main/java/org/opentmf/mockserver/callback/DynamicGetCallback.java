@@ -66,16 +66,20 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
 
     ctx.obtainVersionFromPayloadIfNecessary(cachedData);
 
-    // Check if state transition is required based on TmfStatePath, and update cached data if
-    // necessary
+    // State transition on first observation. Do it on a deep-copy and replace the cached
+    // reference atomically via CACHE.update — never mutate the live cached JsonNode in place.
+    // Concurrent list-GET readers iterate the snapshot returned by CACHE.getAll outside the
+    // cache lock and share the same JsonNode references; an in-place put/increment here races
+    // Jackson's non-thread-safe internal LinkedHashMap iteration on those readers.
     if (needToChangeState(ctx, cachedData)) {
-      ObjectNode o = ((ObjectNode) cachedData);
-      o.put(ctx.getTmfStatePath().getVariableName(), ctx.getTmfStatePath().getFinalState());
-      setUpdateFields((ObjectNode) cachedData);
+      ObjectNode mutated = (ObjectNode) cachedData.deepCopy();
+      mutated.put(ctx.getTmfStatePath().getVariableName(), ctx.getTmfStatePath().getFinalState());
+      setUpdateFields(mutated);
+      CACHE.update(ctx, mutated);
+      cachedData = mutated;
+    } else {
+      CACHE.touch(ctx);
     }
-
-    // Update the last access time of cached data in the cache
-    CACHE.touch(ctx);
 
     // Extract specified fields from the request
     Set<String> fields = extractFields(httpRequest);

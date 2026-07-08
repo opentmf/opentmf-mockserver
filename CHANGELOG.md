@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.8] - 2026-07-08
+
+### Fixed
+
+- **`DynamicGetCallback` no longer mutates the cached `JsonNode` in place on first-observation
+  state transition.** When a GET landed on an entity still in its initial state (e.g.
+  `status: "created"`), the callback cast the live cached node to `ObjectNode` and directly
+  `put`'d the final state plus `updatedDate` / `updatedBy` / `revision++` on it — outside any
+  cache lock. The 2.1.7 snapshot fix rests on the invariant "write paths replace nodes, never
+  mutate them in place," which is what makes it safe for the list-GET path to iterate
+  `PayloadCache.getAll()`'s snapshot outside the cache lock: readers keep sharing the same
+  `JsonNode` references, so those nodes must be effectively immutable. GET breaking that
+  invariant meant a concurrent single-GET's transition could race a list-GET's iteration or
+  serialization of the same node — Jackson's `ObjectNode` is backed by a plain
+  `LinkedHashMap`, so concurrent mutation during another thread's walk is undefined
+  (`ConcurrentModificationException`, or a serialised payload with `revision` bumped but
+  `updatedDate` not yet stamped). The transition now runs on a deep-copy, and the cache
+  reference is swapped atomically via `PayloadCache.update`; readers holding the old reference
+  see a stable, pre-transition node. Regression test in `DynamicGetCallbackTests` pins the
+  reference-replacement semantics.
+
 ## [2.1.7] - 2026-07-07
 
 ### Fixed
@@ -295,6 +316,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release.
+
+[2.1.8]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.7...2.1.8
+
+[2.1.7]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.6...2.1.7
 
 [2.1.6]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.5...2.1.6
 
