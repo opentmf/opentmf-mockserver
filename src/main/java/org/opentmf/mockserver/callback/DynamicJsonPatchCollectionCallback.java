@@ -101,13 +101,22 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
         return getErrorResponse(
             HttpStatusCode.CONFLICT_409, "Duplicate id within batch: [" + id + "]");
       }
-      if (CACHE.get(item.ctx) != null) {
-        return getErrorResponse(HttpStatusCode.CONFLICT_409, "[" + id + "] already exists.");
-      }
     }
 
+    // Atomic insert-if-absent per item. On the first collision (which used to be a race window
+    // between the get-then-put loops and could raise IllegalArgumentException → 500 under
+    // concurrent batches), roll back already-inserted items so the batch stays atomic per
+    // RFC 5789.
+    List<PreparedItem> inserted = new ArrayList<>(plan.size());
     for (PreparedItem item : plan) {
-      CACHE.put(item.ctx, item.body);
+      if (!CACHE.putIfAbsent(item.ctx, item.body)) {
+        for (PreparedItem toRollback : inserted) {
+          CACHE.clear(toRollback.ctx);
+        }
+        return getErrorResponse(
+            HttpStatusCode.CONFLICT_409, "[" + item.ctx.getId() + "] already exists.");
+      }
+      inserted.add(item);
     }
 
     Set<String> fields = extractFields(httpRequest);

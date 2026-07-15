@@ -119,18 +119,17 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
 
     RequestContext ctx = RequestContext.initialize(httpRequest, false, parsedBody);
 
-    // Check if the payload contains an ID that already exists in the cache
-    if (ctx.hasId() && CACHE.get(ctx) != null) {
+    prepareForCache(ctx, parsedBody);
+
+    // Atomic insert-if-absent closes the check-then-put race two concurrent POSTs with the
+    // same client-supplied id used to hit (both saw the id absent, both reached CACHE.put,
+    // and the second raised IllegalArgumentException surfacing as 500).
+    if (!CACHE.putIfAbsent(ctx, parsedBody)) {
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400, "[" + ctx.getId() + "] already exists.");
     }
 
-    prepareForCache(ctx, parsedBody);
-
-    // Generate response JSON
     String responseJson = JacksonUtil.writeAsString(parsedBody);
-
-    CACHE.put(ctx, parsedBody);
     HttpResponse response =
         HttpResponse.response()
             .withStatusCode(HttpStatusCode.CREATED_201.code())

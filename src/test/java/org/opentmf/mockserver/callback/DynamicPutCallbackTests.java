@@ -12,6 +12,14 @@ import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
 import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
 import io.hypersistence.tsid.TSID;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -328,6 +336,55 @@ class DynamicPutCallbackTests {
     assertNotEquals(
         created.get("createdBy").asText(), replaced.get("updatedBy").asText(),
         "different random user is generated for update vs. create");
+  }
+
+  /**
+   * Under sustained concurrent PUT to the same yet-unknown URL, the historical check-then-put
+   * race let two callbacks both see "not present" and both call {@code CACHE.put}, throwing
+   * {@link IllegalArgumentException} and surfacing as {@code 500}. With {@code putIfAbsent},
+   * exactly one creator wins with {@code 201} and the losers degrade to an idempotent replace
+   * ({@code 200}) on the winning creator's resource — PUT is idempotent, so this convergence
+   * is the correct semantic.
+   */
+  @Test
+  void concurrentPutSameNewResource_exactlyOneReturns201_othersReturn200_noneReturn500()
+      throws Exception {
+    int nThreads = 20;
+    String domain = "racedPut-" + UUID.randomUUID();
+    String sharedId = "raced-" + UUID.randomUUID();
+    String path = "/" + domain + "/" + sharedId;
+    String body = "{\"description\":\"hello\"}";
+
+    ExecutorService pool = Executors.newFixedThreadPool(nThreads);
+    try {
+      CountDownLatch start = new CountDownLatch(1);
+      List<Future<Integer>> futures = new ArrayList<>();
+      for (int i = 0; i < nThreads; i++) {
+        futures.add(
+            pool.submit(
+                () -> {
+                  start.await();
+                  return new DynamicPutCallback().handle(putRequest(path, body)).getStatusCode();
+                }));
+      }
+      start.countDown();
+
+      int count201 = 0;
+      int count200 = 0;
+      for (Future<Integer> f : futures) {
+        int status = f.get(5, TimeUnit.SECONDS);
+        assertNotEquals(500, status, "Concurrent PUT-create must not leak a 500");
+        if (status == 201) count201++;
+        if (status == 200) count200++;
+      }
+      assertEquals(1, count201, "Exactly one concurrent PUT-create must win with 201");
+      assertEquals(
+          nThreads - 1,
+          count200,
+          "All losing racers must degrade to replace (200); PUT is idempotent");
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   private static HttpRequest putRequest(String path, String body) {
