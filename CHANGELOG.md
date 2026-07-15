@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.8] - 2026-07-08
+## [2.1.8] - 2026-07-15
 
 ### Added
 
@@ -47,6 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reference is swapped atomically via `PayloadCache.update`; readers holding the old reference
   see a stable, pre-transition node. Regression test in `DynamicGetCallbackTests` pins the
   reference-replacement semantics.
+
+### Changed
+
+- Bumped runtime dependencies: Netty 4.2.16.Final, netty-tcnative 2.0.80.Final,
+  json-schema-validator 3.0.6.
 
 ## [2.1.7] - 2026-07-07
 
