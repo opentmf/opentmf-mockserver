@@ -68,7 +68,7 @@ public final class JacksonUtil {
     @Override
     public OffsetDateTime deserialize(
         tools.jackson.core.JsonParser p, tools.jackson.databind.DeserializationContext context) {
-      String text = p.getText();
+      String text = p.getString();
       try {
         return OffsetDateTime.parse(text);
       } catch (Exception e) {

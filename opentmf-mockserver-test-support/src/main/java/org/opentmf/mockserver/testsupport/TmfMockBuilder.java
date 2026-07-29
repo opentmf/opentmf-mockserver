@@ -24,6 +24,11 @@ import org.opentmf.mockserver.callback.DynamicPutCallback;
  */
 public class TmfMockBuilder {
 
+  private static final String PATCH = "PATCH";
+  private static final String CONTENT_TYPE = "Content-Type";
+  private static final String JSON_PATCH_CT = "application/json-patch\\+json.*";
+  private static final String MERGE_PATCH_CT = "application/merge-patch\\+json.*";
+
   private final MockServerClient client;
   private final String apiClientId;
 
@@ -80,9 +85,9 @@ public class TmfMockBuilder {
     client
         .when(
             request()
-                .withMethod("PATCH")
+                .withMethod(PATCH)
                 .withPath(withId(path))
-                .withHeader("Content-Type", "application/json-patch\\+json.*"))
+                .withHeader(CONTENT_TYPE, JSON_PATCH_CT))
         .respond(new DynamicJsonPatchCallback());
     return this;
   }
@@ -95,9 +100,9 @@ public class TmfMockBuilder {
     client
         .when(
             request()
-                .withMethod("PATCH")
+                .withMethod(PATCH)
                 .withPath(withId(path))
-                .withHeader("Content-Type", "application/merge-patch\\+json.*"))
+                .withHeader(CONTENT_TYPE, MERGE_PATCH_CT))
         .respond(new DynamicMergePatchCallback());
     return this;
   }
@@ -110,9 +115,9 @@ public class TmfMockBuilder {
     client
         .when(
             request()
-                .withMethod("PATCH")
+                .withMethod(PATCH)
                 .withPath(path)
-                .withHeader("Content-Type", "application/json-patch\\+json.*"))
+                .withHeader(CONTENT_TYPE, JSON_PATCH_CT))
         .respond(new DynamicJsonPatchCollectionCallback());
     return this;
   }

@@ -41,7 +41,7 @@ class DynamicDeleteCallbackTests {
   void shouldDeleteFromCache() {
     // Given
     String id = TSID.Factory.getTsid().toString();
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, id, "created");
 
     httpRequest.withPath(domain + "/" + id);
@@ -58,7 +58,7 @@ class DynamicDeleteCallbackTests {
   void shouldReturnNotFoundIfNotInCache() {
     // Given
     String id = "456";
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     httpRequest.withPath(domain + "/" + id);
 
     // When

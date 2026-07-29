@@ -9,6 +9,7 @@ import org.mockserver.model.HttpResponse;
 import org.opentmf.mockserver.util.JacksonUtil;
 import tools.jackson.databind.JsonNode;
 
+@SuppressWarnings("java:S5976") // parameterized-vs-separate is a style preference; separate cases keep failure messages self-documenting
 class KeycloakAdminCallbackTests {
 
   private final KeycloakAdminCallback callback = new KeycloakAdminCallback();
@@ -24,7 +25,7 @@ class KeycloakAdminCallbackTests {
     assertEquals(200, resp.getStatusCode());
 
     JsonNode body = parse(resp);
-    assertEquals(REALM, body.get("realm").asText());
+    assertEquals(REALM, body.get("realm").asString());
     assertTrue(body.get("enabled").asBoolean());
     assertNotNull(body.get("id"));
     assertTrue(body.get("defaultRoles").isArray());
@@ -61,7 +62,7 @@ class KeycloakAdminCallbackTests {
 
     JsonNode body = parse(resp);
     assertEquals(1, body.size());
-    assertEquals("admin_usr", body.get(0).get("username").asText());
+    assertEquals("admin_usr", body.get(0).get("username").asString());
   }
 
   @Test
@@ -72,7 +73,7 @@ class KeycloakAdminCallbackTests {
 
     JsonNode body = parse(resp);
     assertEquals(1, body.size());
-    assertEquals("writer_usr", body.get(0).get("username").asText());
+    assertEquals("writer_usr", body.get(0).get("username").asString());
   }
 
   @Test
@@ -99,13 +100,13 @@ class KeycloakAdminCallbackTests {
   @Test
   void getUserById_returnsUser() {
     JsonNode users = parse(callback.handle(adminGet(BASE + "/users")));
-    String userId = users.get(0).get("id").asText();
+    String userId = users.get(0).get("id").asString();
 
     HttpResponse resp = callback.handle(adminGet(BASE + "/users/" + userId));
     assertEquals(200, resp.getStatusCode());
 
     JsonNode body = parse(resp);
-    assertEquals(userId, body.get("id").asText());
+    assertEquals(userId, body.get("id").asString());
     assertNotNull(body.get("username"));
     assertNotNull(body.get("email"));
     assertNotNull(body.get("firstName"));
@@ -122,7 +123,7 @@ class KeycloakAdminCallbackTests {
   @Test
   void userRealmRoles_returnsRoles() {
     JsonNode users = parse(callback.handle(adminGet(BASE + "/users")));
-    String adminUserId = users.get(0).get("id").asText();
+    String adminUserId = users.get(0).get("id").asString();
 
     HttpResponse resp = callback.handle(
         adminGet(BASE + "/users/" + adminUserId + "/role-mappings/realm"));
@@ -138,7 +139,7 @@ class KeycloakAdminCallbackTests {
   @Test
   void userGroups_returnsGroups() {
     JsonNode users = parse(callback.handle(adminGet(BASE + "/users")));
-    String adminUserId = users.get(0).get("id").asText();
+    String adminUserId = users.get(0).get("id").asString();
 
     HttpResponse resp = callback.handle(
         adminGet(BASE + "/users/" + adminUserId + "/groups"));
@@ -147,7 +148,7 @@ class KeycloakAdminCallbackTests {
     JsonNode body = parse(resp);
     assertTrue(body.isArray());
     assertEquals(1, body.size());
-    assertEquals("admins", body.get(0).get("name").asText());
+    assertEquals("admins", body.get(0).get("name").asString());
   }
 
   // ── Groups ────────────────────────────────────────────────────────────
@@ -174,7 +175,7 @@ class KeycloakAdminCallbackTests {
 
     JsonNode body = parse(resp);
     assertEquals(1, body.size());
-    assertEquals("developers", body.get(0).get("name").asText());
+    assertEquals("developers", body.get(0).get("name").asString());
   }
 
   @Test
@@ -191,8 +192,8 @@ class KeycloakAdminCallbackTests {
     JsonNode groups = parse(callback.handle(adminGet(BASE + "/groups")));
     String devGroupId = null;
     for (JsonNode g : groups) {
-      if ("developers".equals(g.get("name").asText())) {
-        devGroupId = g.get("id").asText();
+      if ("developers".equals(g.get("name").asString())) {
+        devGroupId = g.get("id").asString();
         break;
       }
     }
@@ -202,7 +203,7 @@ class KeycloakAdminCallbackTests {
     assertEquals(200, resp.getStatusCode());
 
     JsonNode body = parse(resp);
-    assertEquals("developers", body.get("name").asText());
+    assertEquals("developers", body.get("name").asString());
     assertEquals(2, body.get("subGroups").size());
   }
 
@@ -218,8 +219,8 @@ class KeycloakAdminCallbackTests {
     JsonNode groups = parse(callback.handle(adminGet(BASE + "/groups")));
     String adminsGroupId = null;
     for (JsonNode g : groups) {
-      if ("admins".equals(g.get("name").asText())) {
-        adminsGroupId = g.get("id").asText();
+      if ("admins".equals(g.get("name").asString())) {
+        adminsGroupId = g.get("id").asString();
         break;
       }
     }
@@ -232,7 +233,7 @@ class KeycloakAdminCallbackTests {
     JsonNode body = parse(resp);
     assertTrue(body.isArray());
     assertEquals(1, body.size());
-    assertEquals("admin_usr", body.get(0).get("username").asText());
+    assertEquals("admin_usr", body.get(0).get("username").asString());
   }
 
   // ── Roles ─────────────────────────────────────────────────────────────
@@ -256,7 +257,7 @@ class KeycloakAdminCallbackTests {
     assertEquals(200, resp.getStatusCode());
 
     JsonNode body = parse(resp);
-    assertEquals("admin", body.get("name").asText());
+    assertEquals("admin", body.get("name").asString());
     assertNotNull(body.get("id"));
     assertFalse(body.get("clientRole").asBoolean());
   }
@@ -275,7 +276,7 @@ class KeycloakAdminCallbackTests {
     JsonNode body = parse(resp);
     assertTrue(body.isArray());
     assertEquals(1, body.size());
-    assertEquals("admin_usr", body.get(0).get("username").asText());
+    assertEquals("admin_usr", body.get(0).get("username").asString());
   }
 
   @Test
@@ -299,7 +300,7 @@ class KeycloakAdminCallbackTests {
     assertEquals(4, body.size());
     assertNotNull(body.get(0).get("id"));
     assertNotNull(body.get(0).get("clientId"));
-    assertEquals("openid-connect", body.get(0).get("protocol").asText());
+    assertEquals("openid-connect", body.get(0).get("protocol").asString());
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
@@ -315,7 +316,7 @@ class KeycloakAdminCallbackTests {
   void stableIds_areDeterministic() {
     JsonNode users1 = parse(callback.handle(adminGet(BASE + "/users")));
     JsonNode users2 = parse(callback.handle(adminGet(BASE + "/users")));
-    assertEquals(users1.get(0).get("id").asText(), users2.get(0).get("id").asText());
+    assertEquals(users1.get(0).get("id").asString(), users2.get(0).get("id").asString());
   }
 
   @Test

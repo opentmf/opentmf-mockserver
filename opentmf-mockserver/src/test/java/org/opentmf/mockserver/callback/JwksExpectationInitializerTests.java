@@ -65,9 +65,9 @@ class JwksExpectationInitializerTests {
     assertNotNull(json.get("grant_types_supported"));
     assertNotNull(json.get("token_endpoint_auth_methods_supported"));
 
-    assertTrue(json.get("issuer").asText().contains("/realms/realm1"));
-    assertTrue(json.get("token_endpoint").asText().contains("/token"));
-    assertTrue(json.get("jwks_uri").asText().contains("/certs"));
+    assertTrue(json.get("issuer").asString().contains("/realms/realm1"));
+    assertTrue(json.get("token_endpoint").asString().contains("/token"));
+    assertTrue(json.get("jwks_uri").asString().contains("/certs"));
   }
 
   @Test

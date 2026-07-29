@@ -82,11 +82,11 @@ public class DynamicPutCallback implements ExpectationResponseCallback {
     RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
 
     String urlId = ctx.getId().getId();
-    if (parsedBody.has(ID) && !urlId.equals(parsedBody.get(ID).asText())) {
+    if (parsedBody.has(ID) && !urlId.equals(parsedBody.get(ID).asString())) {
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400,
           "Body 'id' ["
-              + parsedBody.get(ID).asText()
+              + parsedBody.get(ID).asString()
               + "] does not match URL id ["
               + urlId
               + "].");
@@ -94,11 +94,11 @@ public class DynamicPutCallback implements ExpectationResponseCallback {
     String urlVersion = ctx.getId().getVersion();
     if (urlVersion != null
         && parsedBody.has(VERSION)
-        && !urlVersion.equals(parsedBody.get(VERSION).asText())) {
+        && !urlVersion.equals(parsedBody.get(VERSION).asString())) {
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400,
           "Body 'version' ["
-              + parsedBody.get(VERSION).asText()
+              + parsedBody.get(VERSION).asString()
               + "] does not match URL version ["
               + urlVersion
               + "].");
@@ -112,7 +112,7 @@ public class DynamicPutCallback implements ExpectationResponseCallback {
       ctx.obtainVersionFromPayloadIfNecessary(existing);
       response = replace(ctx, parsedBody, existing);
     }
-    IdempotencyGuard.record(httpRequest, response, ctx);
+    IdempotencyGuard.store(httpRequest, response, ctx);
     return response;
   }
 

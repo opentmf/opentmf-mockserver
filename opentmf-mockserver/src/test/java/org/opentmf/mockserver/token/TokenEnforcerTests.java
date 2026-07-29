@@ -20,23 +20,24 @@ import org.junit.jupiter.api.Test;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 
+@SuppressWarnings("java:S5976") // parameterized-vs-separate is a style preference; separate cases keep failure messages self-documenting
 class TokenEnforcerTests {
 
   private static final String ISSUER = "https://mockserver/test";
-  private static JWKSource<SecurityContext> LOCAL_KEY_SOURCE;
+  private static JWKSource<SecurityContext> localKeySource;
 
   @BeforeAll
   static void initKeySource() throws ParseException {
     JWKSet keys = JWKSet.parse(JwtKeyProvider.getInstance().getJwksJson());
-    LOCAL_KEY_SOURCE = new ImmutableJWKSet<>(keys);
+    localKeySource = new ImmutableJWKSet<>(keys);
   }
 
   private TokenEnforcer enabledEnforcer(String expectedIssuer) {
-    return new TokenEnforcer(true, expectedIssuer, LOCAL_KEY_SOURCE);
+    return new TokenEnforcer(true, expectedIssuer, localKeySource);
   }
 
   private TokenEnforcer disabledEnforcer() {
-    return new TokenEnforcer(false, "", LOCAL_KEY_SOURCE);
+    return new TokenEnforcer(false, "", localKeySource);
   }
 
   /**
@@ -375,7 +376,7 @@ class TokenEnforcerTests {
   // ---- configurable roles-claim path ----
 
   private TokenEnforcer enforcerWithClaimPath(String claimPath) {
-    return new TokenEnforcer(true, "", LOCAL_KEY_SOURCE, claimPath, defaultRolesByMethod());
+    return new TokenEnforcer(true, "", localKeySource, claimPath, defaultRolesByMethod());
   }
 
   private static Map<String, String[]> defaultRolesByMethod() {
@@ -502,7 +503,7 @@ class TokenEnforcerTests {
   // ---- per-method ROLES_* ----
 
   private TokenEnforcer enforcerWithRolesByMethod(Map<String, String[]> rolesByMethod) {
-    return new TokenEnforcer(true, "", LOCAL_KEY_SOURCE, "", rolesByMethod);
+    return new TokenEnforcer(true, "", localKeySource, "", rolesByMethod);
   }
 
   @Test

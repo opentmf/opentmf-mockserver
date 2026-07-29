@@ -40,6 +40,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Sonar cleanup — 276 findings driven to zero.** First run of the new `sonar` profile
+  against local SonarQube surfaced 276 open findings (0 BUGs after triage; the initial
+  BUG-typed volatile-singleton warnings were confirmed as false positives for the DCL
+  pattern and suppressed with a comment). Bulk-fixed classes:
+  Jackson 3 API migrations (`asText` → `asString`, `isTextual` → `isString`, `getText` →
+  `getString`, `new URL(...)` → `URI.create(...).toURL()`),
+  `Stream.collect(Collectors.toList())` → `Stream.toList()`,
+  `RandomStringUtils.random*` → `.insecure().next*`. Structural changes:
+  `CacheQuery.Criterion` promoted to a `record`; `CacheQuery.matchesGrouped`,
+  `CacheQuery.readPath`, `DurationUtil.formatDuration`,
+  `TokenEnforcer.validateWithRoles`, `TokenEnforcer.extractRoles`,
+  `DynamicJsonPatchCollectionCallback.handle` all extracted into smaller helpers to
+  clear the cognitive-complexity gate. Renamed:
+  `IdempotencyGuard.record(request, response, ctx)` → `IdempotencyGuard.store(...)` to
+  stop shadowing the `record` restricted identifier — call-sites updated. Constants
+  extracted for duplicated string literals across the Keycloak/JWKS callbacks. Log-arg
+  computation guarded with `isInfoEnabled()` where args required work. Suppressions were
+  used only where the finding conflicted with an intentional pattern (DCL singletons,
+  the `Id` JavaBean field, the well-known `/realms/` OIDC path constant,
+  parameterized-vs-separate test style). **No behavioural change:** all 227 server unit
+  tests and 25 test-support tests still pass.
 - **Repository is now a multi-module Maven build.** A new aggregator pom
   `org.opentmf.mockserver:opentmf-mockserver-parent` (packaging=pom) sits at the repository
   root and reactor-builds the existing `org.opentmf.mockserver:opentmf-mockserver` jar under

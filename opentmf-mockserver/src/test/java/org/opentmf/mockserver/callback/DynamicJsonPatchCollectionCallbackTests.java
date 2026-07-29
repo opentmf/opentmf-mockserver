@@ -45,7 +45,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_returnsArrayOfFullResources() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp =
         callback.handle(patchRequest(domain, "["
             + addOp("{\"description\":\"first\"}") + ","
@@ -59,7 +59,7 @@ class DynamicJsonPatchCollectionCallbackTests {
     assertEquals(2, array.size());
     for (JsonNode item : array) {
       assertNotNull(item.get("id"));
-      assertFalse(item.get("id").asText().isEmpty());
+      assertFalse(item.get("id").asString().isEmpty());
       assertNotNull(item.get("href"));
       assertNotNull(item.get("state"));
       assertNotNull(item.get("createdBy"));
@@ -67,14 +67,14 @@ class DynamicJsonPatchCollectionCallbackTests {
       assertNotNull(item.get("revision"));
       assertNotNull(item.get("project"));
     }
-    assertEquals("first", array.get(0).get("description").asText());
-    assertEquals("second", array.get(1).get("description").asText());
+    assertEquals("first", array.get(0).get("description").asString());
+    assertEquals("second", array.get(1).get("description").asString());
     assertEquals(2, PayloadCache.getInstance().getAll(domain).size());
   }
 
   @Test
   void bulkCreate_withFieldsNone_returnsIdAndHrefOnly() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpRequest req = patchRequest(domain, "["
         + addOp("{\"description\":\"a\"}") + ","
         + addOp("{\"description\":\"b\"}")
@@ -98,7 +98,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withFieldsList_returnsProjectedFieldsPlusIdAndHref() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpRequest req = patchRequest(domain, "["
         + addOp("{\"description\":\"a\",\"name\":\"alpha\"}")
         + "]");
@@ -111,14 +111,14 @@ class DynamicJsonPatchCollectionCallbackTests {
     JsonNode item = array.get(0);
     assertNotNull(item.get("id"));
     assertNotNull(item.get("href"));
-    assertEquals("a", item.get("description").asText());
+    assertEquals("a", item.get("description").asString());
     assertNull(item.get("name"));
     assertNull(item.get("createdBy"));
   }
 
   @Test
   void bulkCreate_withExplicitId_honorsId() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp =
         callback.handle(patchRequest(domain, "["
             + addOp("{\"id\":\"item-1\",\"description\":\"a\"}")
@@ -126,13 +126,13 @@ class DynamicJsonPatchCollectionCallbackTests {
 
     assertEquals(200, resp.getStatusCode());
     ArrayNode array = (ArrayNode) JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("item-1", array.get(0).get("id").asText());
-    assertTrue(array.get(0).get("href").asText().endsWith("/" + domain + "/item-1"));
+    assertEquals("item-1", array.get(0).get("id").asString());
+    assertTrue(array.get(0).get("href").asString().endsWith("/" + domain + "/item-1"));
   }
 
   @Test
   void bulkCreate_withDuplicateIdInBatch_returns409_andNothingCached() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp =
         callback.handle(patchRequest(domain, "["
             + addOp("{\"id\":\"dup\"}") + ","
@@ -146,7 +146,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withIdAlreadyInCache_returns409_atomicAbort() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     // pre-populate the cache via the bulk callback itself
     callback.handle(patchRequest(domain, "[" + addOp("{\"id\":\"existing\"}") + "]"));
     int sizeBefore = PayloadCache.getInstance().getAll(domain).size();
@@ -165,7 +165,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withNonAddOp_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp =
         callback.handle(patchRequest(domain, "[{\"op\":\"remove\",\"path\":\"/foo\"}]"));
 
@@ -176,7 +176,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withNonRootPath_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp =
         callback.handle(patchRequest(domain, "["
             + "{\"op\":\"add\",\"path\":\"/-\",\"value\":{}}"
@@ -188,7 +188,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withBodyNotArray_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp = callback.handle(patchRequest(domain, "{\"not\":\"an array\"}"));
 
     assertEquals(400, resp.getStatusCode());
@@ -197,7 +197,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withEmptyArray_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp = callback.handle(patchRequest(domain, "[]"));
 
     assertEquals(400, resp.getStatusCode());
@@ -206,7 +206,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withValueNotObject_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp =
         callback.handle(patchRequest(domain, "["
             + "{\"op\":\"add\",\"path\":\"/\",\"value\":\"not-an-object\"}"
@@ -218,7 +218,7 @@ class DynamicJsonPatchCollectionCallbackTests {
 
   @Test
   void bulkCreate_withInvalidJson_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp = callback.handle(patchRequest(domain, "not json"));
 
     assertEquals(400, resp.getStatusCode());

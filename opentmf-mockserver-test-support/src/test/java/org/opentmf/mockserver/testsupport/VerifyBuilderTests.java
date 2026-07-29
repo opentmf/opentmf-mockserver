@@ -1,6 +1,5 @@
 package org.opentmf.mockserver.testsupport;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
@@ -43,7 +42,8 @@ class VerifyBuilderTests {
     HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/actual-1-call")).GET().build(),
         HttpResponse.BodyHandlers.discarding());
 
-    assertThatThrownBy(() -> mock.verify().get("/actual-1-call").times(5))
+    VerifyBuilder verifier = mock.verify().get("/actual-1-call");
+    assertThatThrownBy(() -> verifier.times(5))
         .isInstanceOf(AssertionError.class);
   }
 
@@ -65,6 +65,6 @@ class VerifyBuilderTests {
   @Test
   void terminalWithoutStart_throws() {
     VerifyBuilder vb = mock.verify();
-    assertThatThrownBy(() -> vb.once()).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(vb::once).isInstanceOf(IllegalStateException.class);
   }
 }

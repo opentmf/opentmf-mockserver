@@ -82,7 +82,7 @@ public class DynamicJsonPatchCallback implements ExpectationResponseCallback {
             .withStatusCode(HttpStatusCode.OK_200.code())
             .withContentType(MediaType.APPLICATION_JSON)
             .withBody(JacksonUtil.writeAsString(patchedNode));
-    IdempotencyGuard.record(httpRequest, response, ctx);
+    IdempotencyGuard.store(httpRequest, response, ctx);
     return response;
   }
 

@@ -52,6 +52,7 @@ import tools.jackson.databind.node.ObjectNode;
 public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCallback {
 
   private static final PayloadCache CACHE = PayloadCache.getInstance();
+  private static final String VALUE = "value";
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
@@ -59,20 +60,51 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
     if (authError != null) {
       return authError;
     }
-
     HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
     if (replay != null) {
       return replay;
     }
 
-    JsonNode body;
-    try {
-      body = JacksonUtil.readAsTree(httpRequest.getBodyAsString());
-    } catch (Exception e) {
-      return getErrorResponse(
-          HttpStatusCode.BAD_REQUEST_400, "Body is not valid JSON: " + e.getMessage());
+    JsonNode body = parseBody(httpRequest);
+    HttpResponse bodyError = validateBody(body);
+    if (bodyError != null) {
+      return bodyError;
     }
-    if (body == null || !body.isArray()) {
+    // validateBody guarantees body is non-null past this point
+    assert body != null;
+
+    List<PreparedItem> plan = new ArrayList<>(body.size());
+    HttpResponse planError = buildPlan(httpRequest, body, plan);
+    if (planError != null) {
+      return planError;
+    }
+
+    HttpResponse dupError = rejectDuplicateIds(plan);
+    if (dupError != null) {
+      return dupError;
+    }
+
+    HttpResponse insertError = insertAtomically(plan);
+    if (insertError != null) {
+      return insertError;
+    }
+
+    return buildSuccess(httpRequest, plan);
+  }
+
+  private static JsonNode parseBody(HttpRequest httpRequest) {
+    try {
+      return JacksonUtil.readAsTree(httpRequest.getBodyAsString());
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private HttpResponse validateBody(JsonNode body) {
+    if (body == null) {
+      return getErrorResponse(HttpStatusCode.BAD_REQUEST_400, "Body is not valid JSON.");
+    }
+    if (!body.isArray()) {
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400, "Body must be a JSON array of patch operations.");
     }
@@ -80,20 +112,25 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400, "Body must contain at least one patch operation.");
     }
+    return null;
+  }
 
-    List<PreparedItem> plan = new ArrayList<>(body.size());
+  private HttpResponse buildPlan(HttpRequest httpRequest, JsonNode body, List<PreparedItem> plan) {
     for (int i = 0; i < body.size(); i++) {
       JsonNode op = body.get(i);
       HttpResponse opError = validateOp(op, i);
       if (opError != null) {
         return opError;
       }
-      ObjectNode value = (ObjectNode) op.get("value").deepCopy();
+      ObjectNode value = (ObjectNode) op.get(VALUE).deepCopy();
       RequestContext ctx = RequestContext.initialize(httpRequest, false, value);
       DynamicPostCallback.prepareForCache(ctx, value);
       plan.add(new PreparedItem(ctx, value));
     }
+    return null;
+  }
 
+  private static HttpResponse rejectDuplicateIds(List<PreparedItem> plan) {
     Set<Id> seen = new HashSet<>();
     for (PreparedItem item : plan) {
       Id id = item.ctx.getId();
@@ -102,11 +139,15 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
             HttpStatusCode.CONFLICT_409, "Duplicate id within batch: [" + id + "]");
       }
     }
+    return null;
+  }
 
-    // Atomic insert-if-absent per item. On the first collision (which used to be a race window
-    // between the get-then-put loops and could raise IllegalArgumentException → 500 under
-    // concurrent batches), roll back already-inserted items so the batch stays atomic per
-    // RFC 5789.
+  /**
+   * Atomic insert-if-absent per item. On the first collision (which used to be a race window
+   * between the get-then-put loops and could raise IllegalArgumentException → 500 under
+   * concurrent batches), roll back already-inserted items so the batch stays atomic per RFC 5789.
+   */
+  private static HttpResponse insertAtomically(List<PreparedItem> plan) {
     List<PreparedItem> inserted = new ArrayList<>(plan.size());
     for (PreparedItem item : plan) {
       if (!CACHE.putIfAbsent(item.ctx, item.body)) {
@@ -118,7 +159,10 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
       }
       inserted.add(item);
     }
+    return null;
+  }
 
+  private HttpResponse buildSuccess(HttpRequest httpRequest, List<PreparedItem> plan) {
     Set<String> fields = extractFields(httpRequest);
     ArrayNode result = JacksonUtil.createArrayNode();
     for (PreparedItem item : plan) {
@@ -129,7 +173,7 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
             .withStatusCode(HttpStatusCode.OK_200.code())
             .withContentType(MediaType.APPLICATION_JSON)
             .withBody(JacksonUtil.writeAsString(result));
-    IdempotencyGuard.record(httpRequest, response, null);
+    IdempotencyGuard.store(httpRequest, response, null);
     return response;
   }
 
@@ -139,18 +183,18 @@ public class DynamicJsonPatchCollectionCallback implements ExpectationResponseCa
           HttpStatusCode.BAD_REQUEST_400,
           "Op " + index + ": each operation must be a JSON object.");
     }
-    String opName = op.has("op") ? op.get("op").asText() : null;
+    String opName = op.has("op") ? op.get("op").asString() : null;
     if (!"add".equals(opName)) {
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400,
           "Op " + index + ": only 'add' is supported, got '" + opName + "'.");
     }
-    String path = op.has("path") ? op.get("path").asText() : null;
+    String path = op.has("path") ? op.get("path").asString() : null;
     if (!"/".equals(path)) {
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400, "Op " + index + ": path must be '/', got '" + path + "'.");
     }
-    if (!op.has("value") || !op.get("value").isObject()) {
+    if (!op.has(VALUE) || !op.get(VALUE).isObject()) {
       return getErrorResponse(
           HttpStatusCode.BAD_REQUEST_400, "Op " + index + ": 'value' must be a JSON object.");
     }

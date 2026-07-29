@@ -24,12 +24,14 @@ import tools.jackson.databind.json.JsonMapper;
  *   <li>Classpath resource {@code default-keycloak-config.json}
  * </ol>
  */
+@SuppressWarnings("java:S6548") // singleton is deliberate — Keycloak mock state must be process-global
 public class KeycloakConfig {
 
   private static final Logger LOG = LoggerFactory.getLogger(KeycloakConfig.class);
   private static final String DEFAULT_FILE_PATH = "/config/keycloak-mock.json";
   private static final String CLASSPATH_RESOURCE = "default-keycloak-config.json";
 
+  @SuppressWarnings({"java:S3077", "java:S6548"}) // DCL singleton — intentional pattern.
   private static volatile KeycloakConfig instance;
 
   private String baseUrl = "http://localhost:1080";
@@ -83,9 +85,8 @@ public class KeycloakConfig {
         LOG.info("Loaded Keycloak mock config from file: {}", file.getAbsolutePath());
         return cfg;
       } catch (Exception e) {
-        LOG.error(
-            "Failed to parse Keycloak config from {}: {}", file.getAbsolutePath(), e.getMessage());
-        throw new IllegalStateException("Bad Keycloak config file", e);
+        throw new IllegalStateException(
+            "Failed to parse Keycloak config from " + file.getAbsolutePath(), e);
       }
     }
 

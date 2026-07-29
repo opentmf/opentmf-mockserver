@@ -45,7 +45,7 @@ class DynamicPutCallbackTests {
 
   @Test
   void put_whenNotInCache_createsAndReturns201() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
 
     HttpResponse resp =
@@ -54,14 +54,14 @@ class DynamicPutCallbackTests {
 
     assertEquals(201, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals(id, body.get("id").asText());
-    assertEquals("/" + domain + "/" + id, body.get("href").asText());
-    assertEquals("hello", body.get("description").asText());
+    assertEquals(id, body.get("id").asString());
+    assertEquals("/" + domain + "/" + id, body.get("href").asString());
+    assertEquals("hello", body.get("description").asString());
     assertNotNull(body.get("createdBy"));
     assertNotNull(body.get("createdDate"));
     assertEquals(0L, body.get("revision").asLong());
     assertNotNull(body.get("project"));
-    assertEquals("acknowledged", body.get("state").asText());
+    assertEquals("acknowledged", body.get("state").asString());
     assertNull(body.get("updatedBy"));
     assertNull(body.get("updatedDate"));
     assertNotNull(CACHE.get(ctxFor(domain, id, null)));
@@ -69,15 +69,15 @@ class DynamicPutCallbackTests {
 
   @Test
   void put_whenInCache_replacesAndReturns200() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
     JsonNode created =
         JacksonUtil.readAsTree(
             callback
                 .handle(putRequest("/" + domain + "/" + id, "{\"description\":\"v1\"}"))
                 .getBodyAsString());
-    String createdBy = created.get("createdBy").asText();
-    String createdDate = created.get("createdDate").asText();
+    String createdBy = created.get("createdBy").asString();
+    String createdDate = created.get("createdDate").asString();
 
     HttpResponse resp =
         callback.handle(
@@ -87,13 +87,13 @@ class DynamicPutCallbackTests {
 
     assertEquals(200, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals(id, body.get("id").asText());
-    assertEquals("/" + domain + "/" + id, body.get("href").asText());
-    assertEquals("v2", body.get("description").asText());
-    assertEquals("new", body.get("extra").asText());
-    assertEquals("completed", body.get("state").asText());
-    assertEquals(createdBy, body.get("createdBy").asText());
-    assertEquals(createdDate, body.get("createdDate").asText());
+    assertEquals(id, body.get("id").asString());
+    assertEquals("/" + domain + "/" + id, body.get("href").asString());
+    assertEquals("v2", body.get("description").asString());
+    assertEquals("new", body.get("extra").asString());
+    assertEquals("completed", body.get("state").asString());
+    assertEquals(createdBy, body.get("createdBy").asString());
+    assertEquals(createdDate, body.get("createdDate").asString());
     assertNotNull(body.get("updatedBy"));
     assertNotNull(body.get("updatedDate"));
     assertEquals(1L, body.get("revision").asLong());
@@ -101,7 +101,7 @@ class DynamicPutCallbackTests {
 
   @Test
   void put_isIdempotent_revisionsIncrementButContentStable() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
     String payload = "{\"description\":\"stable\",\"state\":\"completed\"}";
 
@@ -117,23 +117,23 @@ class DynamicPutCallbackTests {
     JsonNode secondBody = JacksonUtil.readAsTree(second.getBodyAsString());
     JsonNode thirdBody = JacksonUtil.readAsTree(third.getBodyAsString());
 
-    assertEquals("stable", firstBody.get("description").asText());
-    assertEquals("stable", secondBody.get("description").asText());
-    assertEquals("stable", thirdBody.get("description").asText());
+    assertEquals("stable", firstBody.get("description").asString());
+    assertEquals("stable", secondBody.get("description").asString());
+    assertEquals("stable", thirdBody.get("description").asString());
 
     assertEquals(0L, firstBody.get("revision").asLong());
     assertEquals(1L, secondBody.get("revision").asLong());
     assertEquals(2L, thirdBody.get("revision").asLong());
 
     assertEquals(
-        firstBody.get("createdBy").asText(), thirdBody.get("createdBy").asText());
+        firstBody.get("createdBy").asString(), thirdBody.get("createdBy").asString());
     assertEquals(
-        firstBody.get("createdDate").asText(), thirdBody.get("createdDate").asText());
+        firstBody.get("createdDate").asString(), thirdBody.get("createdDate").asString());
   }
 
   @Test
   void put_withMatchingBodyId_succeeds() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
 
     HttpResponse resp =
@@ -143,12 +143,12 @@ class DynamicPutCallbackTests {
                 "{\"id\":\"" + id + "\",\"description\":\"matches\"}"));
 
     assertEquals(201, resp.getStatusCode());
-    assertEquals(id, JacksonUtil.readAsTree(resp.getBodyAsString()).get("id").asText());
+    assertEquals(id, JacksonUtil.readAsTree(resp.getBodyAsString()).get("id").asString());
   }
 
   @Test
   void put_withMismatchedBodyId_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String urlId = TSID.Factory.getTsid().toString();
     String bodyId = TSID.Factory.getTsid().toString();
 
@@ -165,7 +165,7 @@ class DynamicPutCallbackTests {
 
   @Test
   void put_withInvalidJson_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp =
         callback.handle(putRequest("/" + domain + "/abc", "not-a-json"));
     assertEquals(400, resp.getStatusCode());
@@ -173,7 +173,7 @@ class DynamicPutCallbackTests {
 
   @Test
   void put_withNonObjectBody_returns400() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     HttpResponse resp = callback.handle(putRequest("/" + domain + "/abc", "[\"array\"]"));
     assertEquals(400, resp.getStatusCode());
     assertTrue(resp.getBodyAsString().contains("must be a JSON object"));
@@ -189,9 +189,9 @@ class DynamicPutCallbackTests {
 
     assertEquals(201, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals(id, body.get("id").asText());
-    assertEquals("0", body.get("version").asText());
-    assertEquals("/" + path + "/" + id + ":(version=0)", body.get("href").asText());
+    assertEquals(id, body.get("id").asString());
+    assertEquals("0", body.get("version").asString());
+    assertEquals("/" + path + "/" + id + ":(version=0)", body.get("href").asString());
   }
 
   @Test
@@ -207,9 +207,9 @@ class DynamicPutCallbackTests {
 
     assertEquals(201, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals(id, body.get("id").asText());
-    assertEquals("2.0", body.get("version").asText());
-    assertEquals("/" + path + "/" + id + ":(version=2.0)", body.get("href").asText());
+    assertEquals(id, body.get("id").asString());
+    assertEquals("2.0", body.get("version").asString());
+    assertEquals("/" + path + "/" + id + ":(version=2.0)", body.get("href").asString());
   }
 
   @Test
@@ -229,8 +229,8 @@ class DynamicPutCallbackTests {
 
     assertEquals(200, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("replaced", body.get("description").asText());
-    assertEquals("1.0", body.get("version").asText());
+    assertEquals("replaced", body.get("description").asString());
+    assertEquals("1.0", body.get("version").asString());
     assertEquals(1L, body.get("revision").asLong());
   }
 
@@ -251,7 +251,7 @@ class DynamicPutCallbackTests {
 
   @Test
   void put_replace_dropsFieldsNotInBody() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
     callback.handle(
         putRequest(
@@ -264,13 +264,13 @@ class DynamicPutCallbackTests {
 
     assertEquals(200, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("second", body.get("description").asText());
+    assertEquals("second", body.get("description").asString());
     assertNull(body.get("keepMe"));
   }
 
   @Test
   void put_create_persistsToCache() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
 
     callback.handle(
@@ -278,25 +278,25 @@ class DynamicPutCallbackTests {
 
     JsonNode cached = CACHE.get(ctxFor(domain, id, null));
     assertNotNull(cached);
-    assertEquals("cached", cached.get("description").asText());
+    assertEquals("cached", cached.get("description").asString());
   }
 
   @Test
   void put_create_returnedHrefIsRequestPath() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
 
     HttpResponse resp =
         callback.handle(putRequest("/" + domain + "/" + id, "{}"));
 
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("/" + domain + "/" + id, body.get("href").asText());
-    assertFalse(body.get("href").asText().contains(id + "/" + id));
+    assertEquals("/" + domain + "/" + id, body.get("href").asString());
+    assertFalse(body.get("href").asString().contains(id + "/" + id));
   }
 
   @Test
   void put_replace_doesNotChangeHref() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
     String originalHref =
         JacksonUtil.readAsTree(
@@ -304,7 +304,7 @@ class DynamicPutCallbackTests {
                     .handle(putRequest("/" + domain + "/" + id, "{\"description\":\"a\"}"))
                     .getBodyAsString())
             .get("href")
-            .asText();
+            .asString();
 
     JsonNode replaced =
         JacksonUtil.readAsTree(
@@ -312,12 +312,12 @@ class DynamicPutCallbackTests {
                 .handle(putRequest("/" + domain + "/" + id, "{\"description\":\"b\"}"))
                 .getBodyAsString());
 
-    assertEquals(originalHref, replaced.get("href").asText());
+    assertEquals(originalHref, replaced.get("href").asString());
   }
 
   @Test
   void put_replace_updatedFieldsDifferFromCreated() {
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     String id = TSID.Factory.getTsid().toString();
     JsonNode created =
         JacksonUtil.readAsTree(
@@ -334,7 +334,7 @@ class DynamicPutCallbackTests {
     assertNotNull(replaced.get("updatedBy"));
     assertNotNull(replaced.get("updatedDate"));
     assertNotEquals(
-        created.get("createdBy").asText(), replaced.get("updatedBy").asText(),
+        created.get("createdBy").asString(), replaced.get("updatedBy").asString(),
         "different random user is generated for update vs. create");
   }
 

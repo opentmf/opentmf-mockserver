@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * Unprocessable Entity}. Missing/blank keys make every hook a no-op so non-idempotency-aware
  * clients are unaffected.
  *
- * <p>On exit, {@link #record} stashes successful (2xx) responses keyed by the request's
+ * <p>On exit, {@link #store} stashes successful (2xx) responses keyed by the request's
  * Idempotency-Key so the next retry can be replayed.
  *
  * @author Gokhan Demir
@@ -59,38 +59,38 @@ public final class IdempotencyGuard {
           HttpStatusCode.BAD_REQUEST_400,
           "Idempotency-Key length exceeds " + MAX_KEY_LENGTH + " characters.");
     }
-    IdempotencyCache.Record record = CACHE.get(key);
-    if (record == null) {
+    IdempotencyCache.Record entry = CACHE.get(key);
+    if (entry == null) {
       return null;
     }
     String method = methodOf(request);
     String path = pathOf(request);
-    if (!method.equals(record.getMethod()) || !path.equals(record.getPath())) {
+    if (!method.equals(entry.getMethod()) || !path.equals(entry.getPath())) {
       return unprocessableEntity(
           "Idempotency-Key was previously used on "
-              + record.getMethod()
+              + entry.getMethod()
               + " "
-              + record.getPath()
+              + entry.getPath()
               + "; cannot be reused on "
               + method
               + " "
               + path
               + ".");
     }
-    PAYLOAD_CACHE.touchByResource(record.getDomain(), record.getResourceId());
+    PAYLOAD_CACHE.touchByResource(entry.getDomain(), entry.getResourceId());
     CACHE.put(
         key,
         new IdempotencyCache.Record(
-            record.getMethod(),
-            record.getPath(),
-            record.getStatusCode(),
-            record.getContentType(),
-            record.getBody(),
-            record.getDomain(),
-            record.getResourceId(),
+            entry.getMethod(),
+            entry.getPath(),
+            entry.getStatusCode(),
+            entry.getContentType(),
+            entry.getBody(),
+            entry.getDomain(),
+            entry.getResourceId(),
             System.currentTimeMillis()));
     LOG.info("Idempotent replay for key=\"{}\" {} {}", key, method, path);
-    return rebuild(record);
+    return rebuild(entry);
   }
 
   /**
@@ -99,7 +99,7 @@ public final class IdempotencyGuard {
    * ctx} provides the (domain, resourceId) used to eagerly evict the record if the underlying
    * resource is later evicted by TTL.
    */
-  public static void record(HttpRequest request, HttpResponse response, RequestContext ctx) {
+  public static void store(HttpRequest request, HttpResponse response, RequestContext ctx) {
     String key = readKey(request);
     if (key == null) {
       return;
@@ -124,15 +124,15 @@ public final class IdempotencyGuard {
             System.currentTimeMillis()));
   }
 
-  private static HttpResponse rebuild(IdempotencyCache.Record record) {
+  private static HttpResponse rebuild(IdempotencyCache.Record entry) {
     HttpResponse response =
         HttpResponse.response()
-            .withStatusCode(record.getStatusCode())
+            .withStatusCode(entry.getStatusCode())
             .withHeader(REPLAY_HEADER, "true");
-    if (record.getBody() != null && !record.getBody().isEmpty()) {
-      response.withBody(record.getBody());
-      if (record.getContentType() != null && !record.getContentType().isEmpty()) {
-        response.withHeader("Content-Type", record.getContentType());
+    if (entry.getBody() != null && !entry.getBody().isEmpty()) {
+      response.withBody(entry.getBody());
+      if (entry.getContentType() != null && !entry.getContentType().isEmpty()) {
+        response.withHeader("Content-Type", entry.getContentType());
       } else {
         response.withContentType(MediaType.APPLICATION_JSON);
       }

@@ -60,11 +60,12 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
     ctx.obtainVersionFromPayloadIfNecessary(cachedData);
     HttpResponse response =
         HttpResponse.response().withStatusCode(HttpStatusCode.NO_CONTENT_204.code());
-    // Record before clearing so the idempotency record stays linked to a still-present resource;
-    // PayloadCache#clear is a manual removal and does NOT trigger Option A eviction, so the
-    // record outlives the delete (until its own TTL) and lets retries reply 204 instead of 404.
-    IdempotencyGuard.record(httpRequest, response, ctx);
+    // Store the idempotency record before clearing so it stays linked to a still-present
+    // resource; PayloadCache.clear is a manual removal and does not trigger Option A eviction,
+    // so the record outlives the delete and lets retries reply 204 instead of 404.
+    IdempotencyGuard.store(httpRequest, response, ctx);
     CACHE.clear(ctx);
     return response;
   }
 }
+

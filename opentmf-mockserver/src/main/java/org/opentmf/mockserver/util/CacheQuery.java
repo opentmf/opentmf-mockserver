@@ -3,7 +3,12 @@ package org.opentmf.mockserver.util;
 import java.math.BigDecimal;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
 import java.util.stream.Collectors;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.NottableString;
@@ -15,31 +20,23 @@ import tools.jackson.databind.node.MissingNode;
 import tools.jackson.databind.node.NullNode;
 
 public final class CacheQuery {
+
   private static final ObjectMapper MAPPER = JsonMapper.builder().build();
+
+  private static final Set<String> IGNORED_KEYS =
+      Set.of("limit", "offset", "sort", "fields", "filter");
+
+  private CacheQuery() {}
 
   /**
    * One field==value condition. Path may be dot notation, [index], or a JSON Pointer if it starts
    * with '/'.
    */
-  public static final class Criterion {
-    private final String path;
-    private final Object expected;
-
-    public Criterion(String path, Object expected) {
-      this.path = path;
-      this.expected = expected;
-    }
-
-    public String path() {
-      return path;
-    }
-
-    public Object expected() {
-      return expected;
-    }
-
+  public record Criterion(String path, Object expected) {
     JsonNode expectedNode() {
-      return toJsonNode(expected);
+      if (expected == null) return NullNode.getInstance();
+      if (expected instanceof JsonNode node) return node;
+      return MAPPER.valueToTree(expected);
     }
   }
 
@@ -53,7 +50,6 @@ public final class CacheQuery {
       return new LinkedHashMap<>(cache);
     }
 
-    // Group by path → list of expected values (OR within group)
     Map<String, List<JsonNode>> grouped = new LinkedHashMap<>();
     for (Criterion c : criteria) {
       grouped.computeIfAbsent(c.path(), k -> new ArrayList<>()).add(c.expectedNode());
@@ -65,9 +61,6 @@ public final class CacheQuery {
             Collectors.toMap(
                 Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
   }
-
-  private static final Set<String> IGNORED_KEYS =
-      Set.of("limit", "offset", "sort", "fields", "filter");
 
   public static <K> Map<K, JsonNode> filter(SortedMap<K, JsonNode> cache, HttpRequest httpRequest) {
     List<Criterion> list = new ArrayList<>();
@@ -89,93 +82,96 @@ public final class CacheQuery {
   /** AND across groups (paths), OR within each group's expected values. */
   private static boolean matchesGrouped(JsonNode doc, Map<String, List<JsonNode>> grouped) {
     for (Map.Entry<String, List<JsonNode>> entry : grouped.entrySet()) {
-      String path = entry.getKey();
-      List<JsonNode> expectedList = entry.getValue();
-
-      JsonNode actual = readPath(doc, path);
-
-      if (actual.isMissingNode()) {
-        // Missing only matches if any expected is null
-        if (!containsNull(expectedList)) return false;
-        continue; // this path satisfied (null-or-missing)
+      if (!matchesPath(doc, entry.getKey(), entry.getValue())) {
+        return false;
       }
-
-      boolean matchedAny = false;
-      for (JsonNode expected : expectedList) {
-        if (expected.isNull()) {
-          if (actual.isNull()) {
-            matchedAny = true;
-            break;
-          }
-          // if actual present & non-null, null doesn't match; keep checking others
-        } else if (jsonEquals(actual, expected)) {
-          matchedAny = true;
-          break;
-        }
-      }
-      if (!matchedAny) return false; // AND fails
     }
     return true;
   }
 
+  /** OR across the list of expected values at a single path. */
+  private static boolean matchesPath(JsonNode doc, String path, List<JsonNode> expectedList) {
+    JsonNode actual = readPath(doc, path);
+    if (actual.isMissingNode()) {
+      return containsNull(expectedList);
+    }
+    for (JsonNode expected : expectedList) {
+      if (matchesValue(actual, expected)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean matchesValue(JsonNode actual, JsonNode expected) {
+    if (expected.isNull()) {
+      return actual.isNull();
+    }
+    return jsonEquals(actual, expected);
+  }
+
   private static boolean containsNull(List<JsonNode> list) {
-    for (JsonNode n : list) if (n.isNull()) return true;
+    for (JsonNode n : list) {
+      if (n.isNull()) return true;
+    }
     return false;
   }
 
   /** Read a value by dot/bracket path or JSON Pointer. */
   private static JsonNode readPath(JsonNode root, String path) {
-    if (path.startsWith("/")) { // JSON Pointer
+    if (path.startsWith("/")) {
       return root.at(path);
     }
     JsonNode cur = root;
-    String[] tokens = path.split("\\.");
-    for (String token : tokens) {
-      if (token.isEmpty()) return MissingNode.getInstance();
-
-      int idxStart = token.indexOf('[');
-      if (idxStart >= 0) {
-        String field = token.substring(0, idxStart);
-        cur = cur.path(field);
-        while (idxStart >= 0) {
-          int idxEnd = token.indexOf(']', idxStart);
-          if (idxEnd < 0) return MissingNode.getInstance();
-          String idxStr = token.substring(idxStart + 1, idxEnd);
-          int idx;
-          try {
-            idx = Integer.parseInt(idxStr);
-          } catch (NumberFormatException ex) {
-            return MissingNode.getInstance();
-          }
-          if (!cur.isArray() || idx < 0 || idx >= cur.size()) return MissingNode.getInstance();
-          cur = cur.get(idx);
-          idxStart = token.indexOf('[', idxEnd + 1);
-        }
-      } else {
-        cur = cur.path(token);
+    for (String token : path.split("\\.")) {
+      if (token.isEmpty()) {
+        return MissingNode.getInstance();
       }
-      if (cur.isMissingNode()) return cur;
+      cur = resolveToken(cur, token);
+      if (cur.isMissingNode()) {
+        return cur;
+      }
     }
     return cur;
+  }
+
+  private static JsonNode resolveToken(JsonNode cur, String token) {
+    int idxStart = token.indexOf('[');
+    if (idxStart < 0) {
+      return cur.path(token);
+    }
+    JsonNode node = cur.path(token.substring(0, idxStart));
+    while (idxStart >= 0) {
+      int idxEnd = token.indexOf(']', idxStart);
+      if (idxEnd < 0) {
+        return MissingNode.getInstance();
+      }
+      node = resolveIndex(node, token.substring(idxStart + 1, idxEnd));
+      if (node.isMissingNode()) {
+        return node;
+      }
+      idxStart = token.indexOf('[', idxEnd + 1);
+    }
+    return node;
+  }
+
+  private static JsonNode resolveIndex(JsonNode node, String idxStr) {
+    int idx;
+    try {
+      idx = Integer.parseInt(idxStr);
+    } catch (NumberFormatException ex) {
+      return MissingNode.getInstance();
+    }
+    if (!node.isArray() || idx < 0 || idx >= node.size()) {
+      return MissingNode.getInstance();
+    }
+    return node.get(idx);
   }
 
   /** Equality that is friendly to numbers (1 == 1.0) and otherwise uses JsonNode deep equality. */
   private static boolean jsonEquals(JsonNode a, JsonNode b) {
     if (a.getNodeType() != b.getNodeType()) {
-      // Coerce textual numbers ↔ numeric nodes when possible
-      if (a.isNumber() && b.isTextual()) {
-        try {
-          return new BigDecimal(b.asText()).compareTo(a.decimalValue()) == 0;
-        } catch (NumberFormatException ignore) {
-        }
-      }
-      if (b.isNumber() && a.isTextual()) {
-        try {
-          return new BigDecimal(a.asText()).compareTo(b.decimalValue()) == 0;
-        } catch (NumberFormatException ignore) {
-        }
-      }
-      return false;
+      return coercedNumberEquals(a, b);
     }
     if (a.isNumber()) {
       return a.decimalValue().compareTo(b.decimalValue()) == 0;
@@ -183,9 +179,22 @@ public final class CacheQuery {
     return a.equals(b);
   }
 
-  private static JsonNode toJsonNode(Object value) {
-    if (value == null) return NullNode.getInstance();
-    if (value instanceof JsonNode) return (JsonNode) value;
-    return MAPPER.valueToTree(value);
+  /** Coerce textual numbers ↔ numeric nodes when the two nodes differ in type. */
+  private static boolean coercedNumberEquals(JsonNode a, JsonNode b) {
+    if (a.isNumber() && b.isString()) {
+      return parseDecimalMatches(b.asString(), a);
+    }
+    if (b.isNumber() && a.isString()) {
+      return parseDecimalMatches(a.asString(), b);
+    }
+    return false;
+  }
+
+  private static boolean parseDecimalMatches(String text, JsonNode numeric) {
+    try {
+      return new BigDecimal(text).compareTo(numeric.decimalValue()) == 0;
+    } catch (NumberFormatException ignored) {
+      return false;
+    }
   }
 }

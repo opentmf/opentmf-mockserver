@@ -38,7 +38,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testResponseWithValidParameters() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 10);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -61,7 +61,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testResponseWithMissingParameters() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 30);
     HttpRequest httpRequest = new HttpRequest().withPath("/" + domain);
 
@@ -79,7 +79,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testResponseWithMultipleDataAndValidParameters() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 10);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -102,7 +102,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testResponseWithProvidedLimit() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 10);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -125,7 +125,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testResponseWithProvidedOffset() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 10);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -148,7 +148,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testResponseWithProvidedSort() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 30);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -179,7 +179,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testHandleWithFilter() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 10);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -200,7 +200,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testHandleWithFields() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 10);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -227,7 +227,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testHandleWithFieldsNone() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 5);
     HttpRequest httpRequest =
         new HttpRequest().withPath("/" + domain).withQueryStringParameter("fields", "none");
@@ -254,7 +254,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testHandleWithSort() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 10);
     HttpRequest httpRequest =
         new HttpRequest().withPath("/" + domain).withQueryStringParameter("sort", "-randomNumber");
@@ -281,7 +281,7 @@ class DynamicGetListCallbackTests {
   @Test
   void testHandleWithBooleanSort() {
     // Given
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, 11);
     HttpRequest httpRequest =
         new HttpRequest()
@@ -324,7 +324,7 @@ class DynamicGetListCallbackTests {
   void testGetList_withGivenContext_returnsAsExpected(
       int count, int offset, int limit, String contentRange, int statusCode) {
 
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, count);
     HttpRequest httpRequest =
         new HttpRequest()

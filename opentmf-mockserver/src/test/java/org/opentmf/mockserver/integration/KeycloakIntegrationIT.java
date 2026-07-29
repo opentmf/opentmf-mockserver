@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
@@ -208,7 +207,7 @@ class KeycloakIntegrationIT {
   // ---- helper ----
 
   private String obtainToken(String formBody) throws IOException {
-    HttpURLConnection conn = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
+    HttpURLConnection conn = (HttpURLConnection) java.net.URI.create(tokenEndpoint).toURL().openConnection();
     conn.setRequestMethod("POST");
     conn.setDoOutput(true);
     conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -226,7 +225,7 @@ class KeycloakIntegrationIT {
     }
 
     JsonNode json = JacksonUtil.readAsTree(responseBody);
-    return json.get("access_token").asText();
+    return json.get("access_token").asString();
   }
 
   private String readStream(InputStream is) {

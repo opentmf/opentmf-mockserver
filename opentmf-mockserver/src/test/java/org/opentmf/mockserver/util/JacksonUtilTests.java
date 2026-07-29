@@ -16,7 +16,7 @@ class JacksonUtilTests {
   void testReadAsTree() {
     String json = "{\"key\":\"value\"}";
     JsonNode node = JacksonUtil.readAsTree(json);
-    assertEquals("value", node.get("key").asText());
+    assertEquals("value", node.get("key").asString());
   }
 
   @Test
@@ -44,8 +44,8 @@ class JacksonUtilTests {
     List<Object> list = Arrays.asList(node1, node2);
     List<JsonNode> nodeList = JacksonUtil.convertToJsonNodeList(list);
     assertEquals(2, nodeList.size());
-    assertEquals("value1", nodeList.get(0).get("key").asText());
-    assertEquals("value2", nodeList.get(1).get("key").asText());
+    assertEquals("value1", nodeList.get(0).get("key").asString());
+    assertEquals("value2", nodeList.get(1).get("key").asString());
   }
 
   @Test

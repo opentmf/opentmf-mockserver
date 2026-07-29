@@ -1,17 +1,5 @@
 package org.opentmf.mockserver.callback;
 
-import static org.apache.commons.lang3.RandomStringUtils.randomNumeric;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.opentmf.mockserver.model.TmfConstants.VERSION;
-import static org.opentmf.mockserver.model.TmfStatePath.CATALOG;
-import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
-import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
-import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
@@ -22,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +27,17 @@ import tools.jackson.databind.node.ObjectNode;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.opentmf.mockserver.model.TmfConstants.VERSION;
+import static org.opentmf.mockserver.model.TmfStatePath.CATALOG;
+import static org.opentmf.mockserver.util.Constants.ADDITIONAL_FIELDS;
+import static org.opentmf.mockserver.util.Constants.CACHE_DURATION_MILLIS;
+import static org.opentmf.mockserver.util.Constants.THREE_SECONDS;
 
 @ExtendWith(SystemStubsExtension.class)
 class DynamicPostCallbackTests {
@@ -66,31 +66,32 @@ class DynamicPostCallbackTests {
   void shouldReturnAcknowledgedServiceOrder() {
     // Given
     String requestBody =
-        "{\n"
-            + "  \"category\": \"UNITY\",\n"
-            + "  \"@type\": \"ServiceOrder\",\n"
-            + "  \"serviceOrderItem\": [\n"
-            + "    {\n"
-            + "      \"id\": \"100\",\n"
-            + "      \"action\": \"add\",\n"
-            + "      \"service\": {\n"
-            + "        \"serviceType\": \"ucc.unity.license\",\n"
-            + "        \"serviceCharacteristic\": [\n"
-            + "          {\n"
-            + "            \"name\": \"Quantity\",\n"
-            + "            \"valueType\": \"integer\",\n"
-            + "            \"value\": 10\n"
-            + "          }\n"
-            + "        ],\n"
-            + "        \"supportingResource\": [\n"
-            + "          {\n"
-            + "            \"id\": \"LC_DL-UNL_50\"\n"
-            + "          }\n"
-            + "        ]\n"
-            + "      }\n"
-            + "    }\n"
-            + "  ]\n"
-            + "}";
+        """
+        {
+          "category": "UNITY",
+          "@type": "ServiceOrder",
+          "serviceOrderItem": [
+            {
+              "id": "100",
+              "action": "add",
+              "service": {
+                "serviceType": "ucc.unity.license",
+                "serviceCharacteristic": [
+                  {
+                    "name": "Quantity",
+                    "valueType": "integer",
+                    "value": 10
+                  }
+                ],
+                "supportingResource": [
+                  {
+                    "id": "LC_DL-UNL_50"
+                  }
+                ]
+              }
+            }
+          ]
+        }""";
 
     httpRequest.withBody(requestBody);
     httpRequest.withPath("domain");
@@ -107,59 +108,60 @@ class DynamicPostCallbackTests {
 
     assertEquals(201, httpResponse.getStatusCode());
     assertNotNull(expectedResponse.get("id"));
-    assertFalse(expectedResponse.get("id").asText().isEmpty());
+    assertFalse(expectedResponse.get("id").asString().isEmpty());
     assertNotNull(expectedResponse.get("state"));
-    assertEquals("acknowledged", expectedResponse.get("state").asText());
+    assertEquals("acknowledged", expectedResponse.get("state").asString());
 
     JsonNode responseCache = CACHE.get(ctx);
 
     assertNotNull(responseCache.get("id"));
-    assertFalse(responseCache.get("id").asText().isEmpty());
+    assertFalse(responseCache.get("id").asString().isEmpty());
     assertNotNull(responseCache.get("state"));
-    assertEquals("acknowledged", responseCache.get("state").asText());
+    assertEquals("acknowledged", responseCache.get("state").asString());
   }
 
   @Test
   void testPostServiceOrder_withTenantAdminInfo_returnWithIdAndStateAndCachedWithIsvId() {
     // Given
     String requestBody =
-        "{\n"
-            + "  \"category\": \"UNITY\",\n"
-            + "  \"serviceOrderItem\": [\n"
-            + "    {\n"
-            + "      \"id\": \"100\",\n"
-            + "      \"action\": \"add\",\n"
-            + "      \"service\": {\n"
-            + "        \"serviceType\": \"ucc.unity.tenant\",\n"
-            + "        \"serviceCharacteristic\": [\n"
-            + "          {\n"
-            + "            \"name\": \"TenantInfo\",\n"
-            + "            \"valueType\": \"object\",\n"
-            + "            \"value\": {\n"
-            + "              \"profile\": \"FULL_STACK_PREMIUM\",\n"
-            + "              \"currency\": \"GBP\",\n"
-            + "              \"name\": \"test 2\",\n"
-            + "              \"mainNumber\": \"+441234567890\",\n"
-            + "              \"@type\": \"UccTenantInfo\"\n"
-            + "            }\n"
-            + "          },\n"
-            + "          {\n"
-            + "            \"name\": \"TenantAdminInfo\",\n"
-            + "            \"valueType\": \"object\",\n"
-            + "            \"value\": {\n"
-            + "              \"firstName\": \"James\",\n"
-            + "              \"lastName\": \"Bond\",\n"
-            + "              \"email\": \"jamesbond007@gmail.com\",\n"
-            + "              \"phoneNumber\": \"07421738251\",\n"
-            + "              \"@type\": \"UccTenantAdminInfo\"\n"
-            + "            }\n"
-            + "          }\n"
-            + "        ]\n"
-            + "      }\n"
-            + "    }\n"
-            + "  ],\n"
-            + "  \"@type\": \"ServiceOrder\"\n"
-            + "}";
+        """
+        {
+          "category": "UNITY",
+          "serviceOrderItem": [
+            {
+              "id": "100",
+              "action": "add",
+              "service": {
+                "serviceType": "ucc.unity.tenant",
+                "serviceCharacteristic": [
+                  {
+                    "name": "TenantInfo",
+                    "valueType": "object",
+                    "value": {
+                      "profile": "FULL_STACK_PREMIUM",
+                      "currency": "GBP",
+                      "name": "test 2",
+                      "mainNumber": "+441234567890",
+                      "@type": "UccTenantInfo"
+                    }
+                  },
+                  {
+                    "name": "TenantAdminInfo",
+                    "valueType": "object",
+                    "value": {
+                      "firstName": "James",
+                      "lastName": "Bond",
+                      "email": "jamesbond007@gmail.com",
+                      "phoneNumber": "07421738251",
+                      "@type": "UccTenantAdminInfo"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "@type": "ServiceOrder"
+        }""";
 
     httpRequest.withBody(requestBody);
     httpRequest.withPath("domain");
@@ -178,9 +180,9 @@ class DynamicPostCallbackTests {
 
     assertEquals(201, httpResponse.getStatusCode());
     assertNotNull(expectedResponse.get("id"));
-    assertFalse(expectedResponse.get("id").asText().isEmpty());
+    assertFalse(expectedResponse.get("id").asString().isEmpty());
     assertNotNull(expectedResponse.get("state"));
-    assertEquals("acknowledged", expectedResponse.get("state").asText());
+    assertEquals("acknowledged", expectedResponse.get("state").asString());
 
     JsonNode responseTenantInfo = getTenantInfoValue(expectedResponse);
     assertNotNull(responseTenantInfo);
@@ -189,9 +191,9 @@ class DynamicPostCallbackTests {
     JsonNode responseCache = CACHE.get(ctx);
 
     assertNotNull(responseCache.get("id"));
-    assertFalse(responseCache.get("id").asText().isEmpty());
+    assertFalse(responseCache.get("id").asString().isEmpty());
     assertNotNull(responseCache.get("state"));
-    assertEquals("acknowledged", responseCache.get("state").asText());
+    assertEquals("acknowledged", responseCache.get("state").asString());
 
     JsonNode cachedTenantInfo = getTenantInfoValue(responseCache);
     assertNotNull(cachedTenantInfo);
@@ -202,14 +204,14 @@ class DynamicPostCallbackTests {
     String path = CATALOG.getPath();
     SortedMap<Id, JsonNode> before = CACHE.getAll(path);
     post(new HttpRequest().withPath("/" + path), null, null);
-    post(new HttpRequest().withPath("/" + path), randomNumeric(10), null);
-    post(new HttpRequest().withPath("/" + path), randomNumeric(10), "1.0");
+    post(new HttpRequest().withPath("/" + path), RandomStringUtils.insecure().nextNumeric(10), null);
+    post(new HttpRequest().withPath("/" + path), RandomStringUtils.insecure().nextNumeric(10), "1.0");
     post(
         new HttpRequest().withPath("/" + path).withQueryStringParameter("version", "1.0"),
-        randomNumeric(10),
+        RandomStringUtils.insecure().nextNumeric(10),
         null);
-    post(new HttpRequest().withPath("/" + path + "?version=1.0"), randomNumeric(10), null);
-    post(new HttpRequest().withPath("/" + path + ":(version=1.0)"), randomNumeric(10), null);
+    post(new HttpRequest().withPath("/" + path + "?version=1.0"), RandomStringUtils.insecure().nextNumeric(10), null);
+    post(new HttpRequest().withPath("/" + path + ":(version=1.0)"), RandomStringUtils.insecure().nextNumeric(10), null);
     Assertions.assertEquals(before.size() + 6, CACHE.getAll(path).size());
   }
 
@@ -290,9 +292,9 @@ class DynamicPostCallbackTests {
 
   private static void setIdFromResponse(ObjectNode expectedResponse, RequestContext ctx) {
     Id id = new Id();
-    id.setId(expectedResponse.get("id").asText());
+    id.setId(expectedResponse.get("id").asString());
     if (expectedResponse.has(VERSION)) {
-      id.setVersion(expectedResponse.get(VERSION).asText());
+      id.setVersion(expectedResponse.get(VERSION).asString());
     }
     ctx.setId(id);
   }
@@ -305,7 +307,7 @@ class DynamicPostCallbackTests {
     JsonNode serviceCharacteristics = service.path("serviceCharacteristic");
 
     return StreamSupport.stream(serviceCharacteristics.spliterator(), false)
-        .filter(sc -> "TenantInfo".equals(sc.path("name").asText()))
+        .filter(sc -> "TenantInfo".equals(sc.path("name").asString()))
         .map(sc -> sc.path("value"))
         .filter(ObjectNode.class::isInstance)
         .map(ObjectNode.class::cast)

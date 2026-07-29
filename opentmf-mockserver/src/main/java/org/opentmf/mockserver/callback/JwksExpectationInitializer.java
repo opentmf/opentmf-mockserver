@@ -39,6 +39,12 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
 
   private static final Logger LOG = LoggerFactory.getLogger(JwksExpectationInitializer.class);
 
+  private static final String CACHE_CONTROL = "Cache-Control";
+  private static final String CACHE_CONTROL_VALUE = "public, max-age=3600";
+  private static final String GET_LOG_FORMAT = "  GET {}";
+  @SuppressWarnings("java:S1075") // standard Keycloak OIDC path prefix — not a customizable URI
+  private static final String REALMS_PATH_PREFIX = "/realms/";
+
   @Override
   public Expectation[] initializeExpectations() {
     String jwksJson = JwtKeyProvider.getInstance().getJwksJson();
@@ -50,7 +56,7 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
     for (RealmConfig realm : config.getRealms()) {
       String realmName = realm.getName();
       String baseUrl = config.getBaseUrl();
-      String oidcBase = "/realms/" + realmName + "/protocol/openid-connect";
+      String oidcBase = REALMS_PATH_PREFIX + realmName + "/protocol/openid-connect";
 
       expectations.add(realmJwks(oidcBase, jwksJson));
       expectations.add(realmDiscovery(realmName, baseUrl));
@@ -80,7 +86,7 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
                 HttpResponse.response()
                     .withStatusCode(200)
                     .withContentType(MediaType.APPLICATION_JSON)
-                    .withHeader("Cache-Control", "public, max-age=3600")
+                    .withHeader(CACHE_CONTROL, CACHE_CONTROL_VALUE)
                     .withBody(jwksJson));
     LOG.info("  GET /.well-known/jwks.json");
     return e;
@@ -95,14 +101,14 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
                 HttpResponse.response()
                     .withStatusCode(200)
                     .withContentType(MediaType.APPLICATION_JSON)
-                    .withHeader("Cache-Control", "public, max-age=3600")
+                    .withHeader(CACHE_CONTROL, CACHE_CONTROL_VALUE)
                     .withBody(jwksJson));
-    LOG.info("  GET {}", path);
+    LOG.info(GET_LOG_FORMAT, path);
     return e;
   }
 
   private Expectation realmDiscovery(String realm, String baseUrl) {
-    String issuer = baseUrl + "/realms/" + realm;
+    String issuer = baseUrl + REALMS_PATH_PREFIX + realm;
     String oidc = issuer + "/protocol/openid-connect";
 
     Map<String, Object> discovery = new LinkedHashMap<>();
@@ -123,7 +129,7 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
         new String[] {"client_secret_post", "client_secret_basic"});
     discovery.put("scopes_supported", new String[] {"openid", "profile", "email"});
 
-    String path = "/realms/" + realm + "/.well-known/openid-configuration";
+    String path = REALMS_PATH_PREFIX + realm + "/.well-known/openid-configuration";
     Expectation e =
         Expectation.when(
                 HttpRequest.request().withMethod("GET").withPath(path), Times.unlimited(), null)
@@ -131,9 +137,9 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
                 HttpResponse.response()
                     .withStatusCode(200)
                     .withContentType(MediaType.APPLICATION_JSON)
-                    .withHeader("Cache-Control", "public, max-age=3600")
+                    .withHeader(CACHE_CONTROL, CACHE_CONTROL_VALUE)
                     .withBody(writeAsString(discovery)));
-    LOG.info("  GET {}", path);
+    LOG.info(GET_LOG_FORMAT, path);
     return e;
   }
 
@@ -176,9 +182,9 @@ public class JwksExpectationInitializer implements ExpectationInitializer {
                   HttpResponse.response()
                       .withStatusCode(200)
                       .withHeader("Content-Type", "application/yaml")
-                      .withHeader("Cache-Control", "public, max-age=3600")
+                      .withHeader(CACHE_CONTROL, CACHE_CONTROL_VALUE)
                       .withBody(yaml));
-      LOG.info("  GET {}", OPENAPI_PATH);
+      LOG.info(GET_LOG_FORMAT, OPENAPI_PATH);
       return e;
     } catch (IOException e) {
       LOG.warn("Failed to load OpenAPI spec: {}", e.getMessage());

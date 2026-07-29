@@ -23,7 +23,7 @@ public class AuditFieldUtil {
    */
   public static void setUpdateFields(ObjectNode objectNode) {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    String updatedUser = RandomStringUtils.randomAlphabetic(10);
+    String updatedUser = RandomStringUtils.insecure().nextAlphabetic(10);
     objectNode.put(UPDATED_DATE, now.toString());
     objectNode.put(UPDATED_BY, updatedUser);
 
@@ -41,7 +41,7 @@ public class AuditFieldUtil {
    */
   public static void setCreateFields(ObjectNode objectNode) {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    String updatedUser = RandomStringUtils.randomAlphabetic(10);
+    String updatedUser = RandomStringUtils.insecure().nextAlphabetic(10);
     objectNode.put(CREATED_DATE, now.toString());
     objectNode.put(CREATED_BY, updatedUser);
     objectNode.put(REVISION, 0L);

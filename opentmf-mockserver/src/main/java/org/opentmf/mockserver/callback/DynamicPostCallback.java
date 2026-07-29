@@ -135,7 +135,7 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
             .withStatusCode(HttpStatusCode.CREATED_201.code())
             .withContentType(MediaType.APPLICATION_JSON)
             .withBody(responseJson);
-    IdempotencyGuard.record(httpRequest, response, ctx);
+    IdempotencyGuard.store(httpRequest, response, ctx);
     return response;
   }
 
@@ -195,7 +195,7 @@ public class DynamicPostCallback implements ExpectationResponseCallback {
       if (fieldParts.length == 2) {
         node.put(fieldParts[0].trim(), fieldParts[1].trim());
       } else {
-        node.put(field.trim(), RandomStringUtils.randomAlphanumeric(10));
+        node.put(field.trim(), RandomStringUtils.insecure().nextAlphanumeric(10));
       }
     }
   }

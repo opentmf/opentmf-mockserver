@@ -76,6 +76,7 @@ public final class TokenEnforcer {
   private static final String DEFAULT_ROLES_PATCH = "writer,admin";
   private static final String DEFAULT_ROLES_DELETE = "admin";
 
+  @SuppressWarnings("java:S3077") // DCL singleton — volatile+synchronized is correct here.
   private static volatile TokenEnforcer instance;
 
   private final boolean enabled;
@@ -185,14 +186,22 @@ public final class TokenEnforcer {
     this.jwtProcessor = proc;
     this.initError = error;
 
-    LOG.info(
-        "Token enforcement is ENABLED (issuer={}, jwks={}, rolesClaimPath={}, rolesByMethod={})",
-        expectedIssuer != null ? expectedIssuer : "<any>",
-        jwksUriConfig.isEmpty()
-            ? (issuerConfig.isEmpty() ? "<built-in>" : "<discovered>")
-            : jwksUriConfig,
-        rolesClaimPath != null ? rolesClaimPath : "<default: realm_access.roles | roles>",
-        describeRolesByMethod());
+    String jwksDescription = jwksDescription(jwksUriConfig, issuerConfig);
+    if (LOG.isInfoEnabled()) {
+      LOG.info(
+          "Token enforcement is ENABLED (issuer={}, jwks={}, rolesClaimPath={}, rolesByMethod={})",
+          expectedIssuer != null ? expectedIssuer : "<any>",
+          jwksDescription,
+          rolesClaimPath != null ? rolesClaimPath : "<default: realm_access.roles | roles>",
+          describeRolesByMethod());
+    }
+  }
+
+  private static String jwksDescription(String jwksUriConfig, String issuerConfig) {
+    if (!jwksUriConfig.isEmpty()) {
+      return jwksUriConfig;
+    }
+    return issuerConfig.isEmpty() ? "<built-in>" : "<discovered>";
   }
 
   /**
@@ -287,57 +296,66 @@ public final class TokenEnforcer {
       return unauthorizedResponse("Token enforcer is misconfigured: " + initError);
     }
 
-    String authHeader = request.getFirstHeader("Authorization");
-    if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+    String token = extractBearerToken(request);
+    if (token == null) {
       return unauthorizedResponse("Missing or malformed Authorization header");
     }
-
-    String token = authHeader.substring(7).trim();
     if (token.isEmpty()) {
       return unauthorizedResponse("Empty bearer token");
     }
 
     try {
       JWTClaimsSet claims = jwtProcessor.process(token, null);
-
-      java.util.Date exp = claims.getExpirationTime();
-      if (exp != null && new java.util.Date().after(exp)) {
-        return unauthorizedResponse("Token has expired");
+      HttpResponse claimError = validateClaims(claims);
+      if (claimError != null) {
+        return claimError;
       }
-
-      if (expectedIssuer != null) {
-        String actualIssuer = claims.getIssuer();
-        if (!expectedIssuer.equals(actualIssuer)) {
-          return unauthorizedResponse(
-              "Issuer mismatch: expected \""
-                  + expectedIssuer
-                  + "\" but got \""
-                  + actualIssuer
-                  + "\"");
-        }
-      }
-
-      if (requiredRoles.length > 0) {
-        Set<String> tokenRoles = extractRoles(claims);
-        Set<String> allowed = new HashSet<>(Arrays.asList(requiredRoles));
-        boolean hasRole = false;
-        for (String r : tokenRoles) {
-          if (allowed.contains(r)) {
-            hasRole = true;
-            break;
-          }
-        }
-        if (!hasRole) {
-          return forbiddenResponse(
-              "Insufficient role. Required: " + Arrays.toString(requiredRoles));
-        }
-      }
-
-      return null;
+      return checkRoles(claims, requiredRoles);
     } catch (ParseException | BadJOSEException | JOSEException e) {
       LOG.debug("Token validation failed: {}", e.getMessage());
       return unauthorizedResponse(e.getMessage());
     }
+  }
+
+  private static String extractBearerToken(HttpRequest request) {
+    String authHeader = request.getFirstHeader("Authorization");
+    if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+      return null;
+    }
+    return authHeader.substring(7).trim();
+  }
+
+  private HttpResponse validateClaims(JWTClaimsSet claims) {
+    java.util.Date exp = claims.getExpirationTime();
+    if (exp != null && new java.util.Date().after(exp)) {
+      return unauthorizedResponse("Token has expired");
+    }
+    if (expectedIssuer != null) {
+      String actualIssuer = claims.getIssuer();
+      if (!expectedIssuer.equals(actualIssuer)) {
+        return unauthorizedResponse(
+            "Issuer mismatch: expected \""
+                + expectedIssuer
+                + "\" but got \""
+                + actualIssuer
+                + "\"");
+      }
+    }
+    return null;
+  }
+
+  private HttpResponse checkRoles(JWTClaimsSet claims, String... requiredRoles) {
+    if (requiredRoles.length == 0) {
+      return null;
+    }
+    Set<String> tokenRoles = extractRoles(claims);
+    Set<String> allowed = new HashSet<>(Arrays.asList(requiredRoles));
+    for (String r : tokenRoles) {
+      if (allowed.contains(r)) {
+        return null;
+      }
+    }
+    return forbiddenResponse("Insufficient role. Required: " + Arrays.toString(requiredRoles));
   }
 
   // ---- JWKS source resolution ----
@@ -371,7 +389,7 @@ public final class TokenEnforcer {
   private static String discoverJwksUri(String issuer) {
     String discoveryUrl = issuer + "/.well-known/openid-configuration";
     try {
-      HttpURLConnection conn = (HttpURLConnection) new URL(discoveryUrl).openConnection();
+      HttpURLConnection conn = (HttpURLConnection) java.net.URI.create(discoveryUrl).toURL().openConnection();
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
       conn.setRequestMethod("GET");
@@ -384,10 +402,10 @@ public final class TokenEnforcer {
         byte[] bytes = is.readAllBytes();
         JsonNode doc = JacksonUtil.readAsTree(new String(bytes, StandardCharsets.UTF_8));
         JsonNode jwksNode = doc.get("jwks_uri");
-        if (jwksNode == null || jwksNode.asText().isEmpty()) {
+        if (jwksNode == null || jwksNode.asString().isEmpty()) {
           throw new IOException("jwks_uri not found in discovery document at " + discoveryUrl);
         }
-        return jwksNode.asText();
+        return jwksNode.asString();
       }
     } catch (IOException e) {
       throw new IllegalStateException("OIDC discovery failed for " + discoveryUrl, e);
@@ -401,36 +419,40 @@ public final class TokenEnforcer {
     if (rolesClaimPath != null) {
       return extractRolesAtPath(claims, rolesClaimPath);
     }
+    Set<String> roles = readRealmAccessRoles(claims);
+    if (roles.isEmpty()) {
+      roles = readTopLevelRoles(claims);
+    }
+    return Collections.unmodifiableSet(roles);
+  }
 
+  private static Set<String> readRealmAccessRoles(JWTClaimsSet claims) {
     Set<String> roles = new HashSet<>();
     try {
       Map<String, Object> realmAccess = claims.getJSONObjectClaim("realm_access");
-      if (realmAccess != null) {
-        Object rolesObj = realmAccess.get("roles");
-        if (rolesObj instanceof List) {
-          for (Object r : (List<Object>) rolesObj) {
-            if (r instanceof String) {
-              roles.add((String) r);
-            }
+      if (realmAccess != null && realmAccess.get("roles") instanceof List<?> list) {
+        for (Object r : list) {
+          if (r instanceof String s) {
+            roles.add(s);
           }
         }
       }
     } catch (ParseException ignored) {
-      // claim absent or wrong type
+      // claim absent or wrong type — return empty
     }
+    return roles;
+  }
 
-    if (roles.isEmpty()) {
-      try {
-        List<String> topLevel = claims.getStringListClaim("roles");
-        if (topLevel != null) {
-          roles.addAll(topLevel);
-        }
-      } catch (ParseException ignored) {
-        // claim absent or wrong type
+  private static Set<String> readTopLevelRoles(JWTClaimsSet claims) {
+    try {
+      List<String> topLevel = claims.getStringListClaim("roles");
+      if (topLevel != null) {
+        return new HashSet<>(topLevel);
       }
+    } catch (ParseException ignored) {
+      // claim absent or wrong type — return empty
     }
-
-    return Collections.unmodifiableSet(roles);
+    return new HashSet<>();
   }
 
   /**

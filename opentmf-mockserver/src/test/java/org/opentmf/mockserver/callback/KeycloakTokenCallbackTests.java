@@ -18,6 +18,7 @@ import org.opentmf.mockserver.keycloak.RealmConfig;
 import org.opentmf.mockserver.util.JacksonUtil;
 import tools.jackson.databind.JsonNode;
 
+@SuppressWarnings("java:S5976") // parameterized-vs-separate is a style preference; separate cases keep failure messages self-documenting
 class KeycloakTokenCallbackTests {
 
   private static final String TOKEN_PATH = "/realms/realm1/protocol/openid-connect/token";
@@ -58,7 +59,7 @@ class KeycloakTokenCallbackTests {
 
     assertEquals(401, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("unauthorized_client", body.get("error").asText());
+    assertEquals("unauthorized_client", body.get("error").asString());
   }
 
   @Test
@@ -70,7 +71,7 @@ class KeycloakTokenCallbackTests {
 
     assertEquals(400, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("unauthorized_client", body.get("error").asText());
+    assertEquals("unauthorized_client", body.get("error").asString());
   }
 
   @Test
@@ -81,7 +82,7 @@ class KeycloakTokenCallbackTests {
 
     assertEquals(401, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("invalid_client", body.get("error").asText());
+    assertEquals("invalid_client", body.get("error").asString());
   }
 
   @Test
@@ -174,7 +175,7 @@ class KeycloakTokenCallbackTests {
 
     assertEquals(401, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("invalid_grant", body.get("error").asText());
+    assertEquals("invalid_grant", body.get("error").asString());
   }
 
   @Test
@@ -212,7 +213,7 @@ class KeycloakTokenCallbackTests {
 
     assertEquals(400, resp.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    assertEquals("unauthorized_client", body.get("error").asText());
+    assertEquals("unauthorized_client", body.get("error").asString());
   }
 
   // ---- refresh_token grant ----
@@ -228,7 +229,7 @@ class KeycloakTokenCallbackTests {
     assertEquals(200, initial.getStatusCode());
 
     JsonNode initialBody = JacksonUtil.readAsTree(initial.getBodyAsString());
-    String refreshToken = initialBody.get("refresh_token").asText();
+    String refreshToken = initialBody.get("refresh_token").asString();
     assertNotNull(refreshToken);
 
     // Use the refresh token
@@ -318,7 +319,7 @@ class KeycloakTokenCallbackTests {
     assertNotNull(body.get("token_type"));
     assertNotNull(body.get("expires_in"));
     assertNotNull(body.get("scope"));
-    assertEquals("Bearer", body.get("token_type").asText());
+    assertEquals("Bearer", body.get("token_type").asString());
   }
 
   @Test
@@ -380,6 +381,6 @@ class KeycloakTokenCallbackTests {
 
   private SignedJWT parseAccessToken(HttpResponse resp) throws ParseException {
     JsonNode body = JacksonUtil.readAsTree(resp.getBodyAsString());
-    return SignedJWT.parse(body.get("access_token").asText());
+    return SignedJWT.parse(body.get("access_token").asString());
   }
 }

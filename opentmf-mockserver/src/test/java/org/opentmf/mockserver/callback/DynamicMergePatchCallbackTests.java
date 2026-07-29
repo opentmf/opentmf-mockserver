@@ -33,24 +33,25 @@ class DynamicMergePatchCallbackTests {
     String id = TSID.Factory.getTsid().toString();
     String domain = "mockserver";
     String requestBody =
-        "{\n"
-            + "    \"relatedParty\": [\n"
-            + "        {\n"
-            + "            \"id\": \"customerId\",\n"
-            + "            \"href\": \"/tmf-api/customerManagement/v4/customer/customerId\",\n"
-            + "            \"name\": \"customerName\",\n"
-            + "            \"role\": \"customer\",\n"
-            + "            \"@referredType\": \"Customer\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"id\": \"VFUK\",\n"
-            + "            \"href\": \"/tmf-api/party/v4/organization/VFUK\",\n"
-            + "            \"name\": \"Vodafone UK2\",\n"
-            + "            \"role\": \"operator\",\n"
-            + "            \"@referredType\": \"Organization\"\n"
-            + "        }\n"
-            + "    ]\n"
-            + "}";
+        """
+        {
+            "relatedParty": [
+                {
+                    "id": "customerId",
+                    "href": "/tmf-api/customerManagement/v4/customer/customerId",
+                    "name": "customerName",
+                    "role": "customer",
+                    "@referredType": "Customer"
+                },
+                {
+                    "id": "VFUK",
+                    "href": "/tmf-api/party/v4/organization/VFUK",
+                    "name": "Vodafone UK2",
+                    "role": "operator",
+                    "@referredType": "Organization"
+                }
+            ]
+        }""";
 
     httpRequest.withPath(domain + "/" + id).withBody(requestBody);
     RequestContext ctx =
@@ -74,23 +75,23 @@ class DynamicMergePatchCallbackTests {
     JsonNode firstRelatedPartyNode = relatedPartyNode.get(0);
     assertNotNull(firstRelatedPartyNode);
 
-    assertEquals("customerId", firstRelatedPartyNode.path("id").asText());
+    assertEquals("customerId", firstRelatedPartyNode.path("id").asString());
     assertEquals(
         "/tmf-api/customerManagement/v4/customer/customerId",
-        firstRelatedPartyNode.path("href").asText());
-    assertEquals("customerName", firstRelatedPartyNode.path("name").asText());
-    assertEquals("customer", firstRelatedPartyNode.path("role").asText());
-    assertEquals("Customer", firstRelatedPartyNode.path("@referredType").asText());
+        firstRelatedPartyNode.path("href").asString());
+    assertEquals("customerName", firstRelatedPartyNode.path("name").asString());
+    assertEquals("customer", firstRelatedPartyNode.path("role").asString());
+    assertEquals("Customer", firstRelatedPartyNode.path("@referredType").asString());
 
     JsonNode secondRelatedPartyNode = relatedPartyNode.get(1);
     assertNotNull(secondRelatedPartyNode);
 
-    assertEquals("VFUK", secondRelatedPartyNode.path("id").asText());
+    assertEquals("VFUK", secondRelatedPartyNode.path("id").asString());
     assertEquals(
-        "/tmf-api/party/v4/organization/VFUK", secondRelatedPartyNode.path("href").asText());
-    assertEquals("Vodafone UK2", secondRelatedPartyNode.path("name").asText());
-    assertEquals("operator", secondRelatedPartyNode.path("role").asText());
-    assertEquals("Organization", secondRelatedPartyNode.path("@referredType").asText());
+        "/tmf-api/party/v4/organization/VFUK", secondRelatedPartyNode.path("href").asString());
+    assertEquals("Vodafone UK2", secondRelatedPartyNode.path("name").asString());
+    assertEquals("operator", secondRelatedPartyNode.path("role").asString());
+    assertEquals("Organization", secondRelatedPartyNode.path("@referredType").asString());
   }
 
   @Test
@@ -99,24 +100,25 @@ class DynamicMergePatchCallbackTests {
     String id = TSID.Factory.getTsid().toString();
     String domain = "mockserver";
     String requestBody =
-        "{\n"
-            + "    \"relatedParty\": [\n"
-            + "        {\n"
-            + "            \"id\": \"customerId\",\n"
-            + "            \"href\": \"/tmf-api/customerManagement/v4/customer/customerId\",\n"
-            + "            \"name\": \"customerName\",\n"
-            + "            \"role\": \"customer\",\n"
-            + "            \"@referredType\": \"Customer\"\n"
-            + "        },\n"
-            + "        {\n"
-            + "            \"id\": \"VFUK\",\n"
-            + "            \"href\": \"/tmf-api/party/v4/organization/VFUK\",\n"
-            + "            \"name\": \"Vodafone UK2\",\n"
-            + "            \"role\": \"operator\",\n"
-            + "            \"@referredType\": \"Organization\"\n"
-            + "        }\n"
-            + "    ]\n"
-            + "}";
+        """
+        {
+            "relatedParty": [
+                {
+                    "id": "customerId",
+                    "href": "/tmf-api/customerManagement/v4/customer/customerId",
+                    "name": "customerName",
+                    "role": "customer",
+                    "@referredType": "Customer"
+                },
+                {
+                    "id": "VFUK",
+                    "href": "/tmf-api/party/v4/organization/VFUK",
+                    "name": "Vodafone UK2",
+                    "role": "operator",
+                    "@referredType": "Organization"
+                }
+            ]
+        }""";
 
     httpRequest.withPath(domain + "/" + id).withBody(requestBody);
     // When

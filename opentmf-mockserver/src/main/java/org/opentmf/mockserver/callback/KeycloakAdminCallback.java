@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
@@ -35,6 +34,11 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
   private static final Logger LOG = LoggerFactory.getLogger(KeycloakAdminCallback.class);
   private static final long CREATED_TIMESTAMP = 1700000000000L;
 
+  private static final String ERROR = "error";
+  private static final String REALM = "realm";
+  private static final String ENABLED = "enabled";
+  private static final String GROUP_PREFIX = "group:";
+
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
     HttpResponse authError = TokenEnforcer.getInstance().validateWithRoles(httpRequest, "admin");
@@ -49,7 +53,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     Optional<RealmConfig> realmOpt = config.findRealm(realmName);
     if (realmOpt.isEmpty()) {
       LOG.warn("Admin API: unknown realm '{}'", realmName);
-      return jsonResponse(404, Map.of("error", "Realm not found"));
+      return jsonResponse(404, Map.of(ERROR, "Realm not found"));
     }
     RealmConfig realm = realmOpt.get();
 
@@ -94,17 +98,17 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
       return handleListClients(realm, realmName);
     }
 
-    return jsonResponse(404, Map.of("error", "Unknown admin endpoint: " + subPath));
+    return jsonResponse(404, Map.of(ERROR, "Unknown admin endpoint: " + subPath));
   }
 
   // ── Realm ─────────────────────────────────────────────────────────────────
 
   private HttpResponse handleGetRealm(RealmConfig realm, String realmName) {
     Map<String, Object> rep = new LinkedHashMap<>();
-    rep.put("id", stableId(realmName, "realm"));
-    rep.put("realm", realmName);
+    rep.put("id", stableId(realmName, REALM));
+    rep.put(REALM, realmName);
     rep.put("displayName", realmName);
-    rep.put("enabled", true);
+    rep.put(ENABLED, true);
     rep.put("registrationAllowed", false);
     rep.put("resetPasswordAllowed", false);
     rep.put("editUsernameAllowed", false);
@@ -137,7 +141,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
         .skip(first)
         .limit(max)
         .map(u -> userRepresentation(u, realmName))
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, results);
   }
 
@@ -152,7 +156,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
 
     Optional<UserConfig> userOpt = findUserById(realm, realmName, userId);
     if (userOpt.isEmpty()) {
-      return jsonResponse(404, Map.of("error", "User not found"));
+      return jsonResponse(404, Map.of(ERROR, "User not found"));
     }
     UserConfig user = userOpt.get();
 
@@ -165,13 +169,13 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     if (tail.equals("/groups")) {
       return handleUserGroups(user, realmName);
     }
-    return jsonResponse(404, Map.of("error", "Unknown user sub-resource: " + tail));
+    return jsonResponse(404, Map.of(ERROR, "Unknown user sub-resource: " + tail));
   }
 
   private HttpResponse handleUserRealmRoles(UserConfig user, String realmName) {
     List<Map<String, Object>> roles = user.getRoles().stream()
         .map(r -> roleRepresentation(r, realmName))
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, roles);
   }
 
@@ -179,12 +183,12 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     List<Map<String, Object>> groups = user.getGroups().stream()
         .map(g -> {
           Map<String, Object> rep = new LinkedHashMap<>();
-          rep.put("id", stableId(realmName, "group:" + g));
+          rep.put("id", stableId(realmName, GROUP_PREFIX + g));
           rep.put("name", g);
           rep.put("path", "/" + g);
           return rep;
         })
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, groups);
   }
 
@@ -201,7 +205,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
         .skip(first)
         .limit(max)
         .map(g -> groupRepresentation(g, realmName))
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, results);
   }
 
@@ -216,7 +220,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
 
     Optional<GroupConfig> groupOpt = findGroupById(realm, realmName, groupId);
     if (groupOpt.isEmpty()) {
-      return jsonResponse(404, Map.of("error", "Group not found"));
+      return jsonResponse(404, Map.of(ERROR, "Group not found"));
     }
     GroupConfig group = groupOpt.get();
 
@@ -226,14 +230,14 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     if (tail.equals("/members")) {
       return handleGroupMembers(realm, group, realmName);
     }
-    return jsonResponse(404, Map.of("error", "Unknown group sub-resource: " + tail));
+    return jsonResponse(404, Map.of(ERROR, "Unknown group sub-resource: " + tail));
   }
 
   private HttpResponse handleGroupMembers(RealmConfig realm, GroupConfig group, String realmName) {
     List<Map<String, Object>> members = realm.getUsers().stream()
         .filter(u -> u.getGroups().contains(group.getName()))
         .map(u -> userRepresentation(u, realmName))
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, members);
   }
 
@@ -242,7 +246,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
   private HttpResponse handleListRoles(RealmConfig realm, String realmName) {
     List<Map<String, Object>> roles = realm.getRoles().stream()
         .map(r -> roleRepresentation(r, realmName))
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, roles);
   }
 
@@ -252,7 +256,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     String tail = slash < 0 ? "" : rest.substring(slash);
 
     if (!realm.getRoles().contains(roleName)) {
-      return jsonResponse(404, Map.of("error", "Role not found: " + roleName));
+      return jsonResponse(404, Map.of(ERROR, "Role not found: " + roleName));
     }
 
     if (tail.isEmpty()) {
@@ -261,14 +265,14 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     if (tail.equals("/users")) {
       return handleRoleUsers(realm, roleName, realmName);
     }
-    return jsonResponse(404, Map.of("error", "Unknown role sub-resource: " + tail));
+    return jsonResponse(404, Map.of(ERROR, "Unknown role sub-resource: " + tail));
   }
 
   private HttpResponse handleRoleUsers(RealmConfig realm, String roleName, String realmName) {
     List<Map<String, Object>> users = realm.getUsers().stream()
         .filter(u -> u.getRoles().contains(roleName))
         .map(u -> userRepresentation(u, realmName))
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, users);
   }
 
@@ -277,7 +281,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
   private HttpResponse handleListClients(RealmConfig realm, String realmName) {
     List<Map<String, Object>> clients = realm.getClients().stream()
         .map(c -> clientRepresentation(c, realmName))
-        .collect(Collectors.toList());
+        .toList();
     return jsonResponse(200, clients);
   }
 
@@ -290,7 +294,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     rep.put("email", user.getEmail() != null ? user.getEmail() : "");
     rep.put("firstName", user.getFirstName() != null ? user.getFirstName() : "");
     rep.put("lastName", user.getLastName() != null ? user.getLastName() : "");
-    rep.put("enabled", true);
+    rep.put(ENABLED, true);
     rep.put("emailVerified", true);
     rep.put("createdTimestamp", CREATED_TIMESTAMP);
     rep.put("totp", false);
@@ -314,20 +318,20 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     rep.put("description", "");
     rep.put("composite", false);
     rep.put("clientRole", false);
-    rep.put("containerId", stableId(realmName, "realm"));
+    rep.put("containerId", stableId(realmName, REALM));
     return rep;
   }
 
   private Map<String, Object> groupRepresentation(GroupConfig group, String realmName) {
     Map<String, Object> rep = new LinkedHashMap<>();
-    rep.put("id", stableId(realmName, "group:" + group.getName()));
+    rep.put("id", stableId(realmName, GROUP_PREFIX + group.getName()));
     rep.put("name", group.getName());
     rep.put("path", "/" + group.getName());
 
     List<Map<String, Object>> subGroups = new ArrayList<>();
     for (String sub : group.getSubGroups()) {
       Map<String, Object> subRep = new LinkedHashMap<>();
-      subRep.put("id", stableId(realmName, "group:" + group.getName() + "/" + sub));
+      subRep.put("id", stableId(realmName, GROUP_PREFIX + group.getName() + "/" + sub));
       subRep.put("name", sub);
       subRep.put("path", "/" + group.getName() + "/" + sub);
       subRep.put("subGroups", List.of());
@@ -342,7 +346,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
     Map<String, Object> rep = new LinkedHashMap<>();
     rep.put("id", stableId(realmName, "client:" + client.getClientId()));
     rep.put("clientId", client.getClientId());
-    rep.put("enabled", true);
+    rep.put(ENABLED, true);
     rep.put("publicClient", client.isPublicClient());
     rep.put("protocol", "openid-connect");
     rep.put("bearerOnly", false);
@@ -383,7 +387,7 @@ public class KeycloakAdminCallback implements ExpectationResponseCallback {
 
   private Optional<GroupConfig> findGroupById(RealmConfig realm, String realmName, String groupId) {
     return realm.getGroups().stream()
-        .filter(g -> stableId(realmName, "group:" + g.getName()).equals(groupId))
+        .filter(g -> stableId(realmName, GROUP_PREFIX + g.getName()).equals(groupId))
         .findFirst();
   }
 

@@ -42,10 +42,13 @@ public class PayloadCache {
 
   private PayloadCache(long timeToLive) {
     this.timeToLive = timeToLive;
-    LOG.info("Cache initialized to expire in {}", DurationUtil.formatDuration(timeToLive));
+    if (LOG.isInfoEnabled()) {
+      LOG.info("Cache initialized to expire in {}", DurationUtil.formatDuration(timeToLive));
+    }
     new Timer(true).scheduleAtFixedRate(new CacheEvictTimer(), timeToLive, timeToLive);
   }
 
+  @SuppressWarnings("java:S3077") // DCL singleton — volatile+synchronized is correct here.
   private static volatile PayloadCache instance = null;
 
   /**
@@ -174,7 +177,7 @@ public class PayloadCache {
     if (lastEntry == null || lastEntry.getValue() == null || !lastEntry.getValue().has(VERSION)) {
       return null;
     }
-    return lastEntry.getValue().get(VERSION).asText();
+    return lastEntry.getValue().get(VERSION).asString();
   }
 
   public synchronized JsonNode get(RequestContext ctx) {

@@ -35,12 +35,15 @@ public class IdempotencyCache {
 
   private IdempotencyCache(long timeToLive) {
     this.timeToLive = timeToLive;
-    LOG.info(
-        "Idempotency cache initialized to expire in {}",
-        DurationUtil.formatDuration(timeToLive));
+    if (LOG.isInfoEnabled()) {
+      LOG.info(
+          "Idempotency cache initialized to expire in {}",
+          DurationUtil.formatDuration(timeToLive));
+    }
     new Timer(true).scheduleAtFixedRate(new EvictTimer(), timeToLive, timeToLive);
   }
 
+  @SuppressWarnings("java:S3077") // DCL singleton — volatile+synchronized is correct here.
   private static volatile IdempotencyCache instance = null;
 
   public static IdempotencyCache getInstance() {
@@ -62,6 +65,7 @@ public class IdempotencyCache {
    * touched so that {@link PayloadCache} can eagerly evict matching idempotency records when the
    * underlying payload is removed.
    */
+  @SuppressWarnings({"java:S6206", "java:S107"}) // 8-field data holder with public bean-style API used across the codebase
   public static final class Record {
     private final String method;
     private final String path;
@@ -128,13 +132,13 @@ public class IdempotencyCache {
     return records.get(idempotencyKey);
   }
 
-  public synchronized void put(String idempotencyKey, Record record) {
-    records.put(idempotencyKey, record);
+  public synchronized void put(String idempotencyKey, Record entry) {
+    records.put(idempotencyKey, entry);
     LOG.info(
         "Idempotency record stored for key=\"{}\" {} {}",
         idempotencyKey,
-        record.getMethod(),
-        record.getPath());
+        entry.getMethod(),
+        entry.getPath());
   }
 
   /**

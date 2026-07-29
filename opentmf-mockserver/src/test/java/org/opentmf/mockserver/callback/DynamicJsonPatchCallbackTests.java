@@ -41,13 +41,14 @@ class DynamicJsonPatchCallbackTests {
   void shouldApplyJsonPatch() {
     // Given
     String id = TSID.Factory.getTsid().toString();
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, id);
     String requestBody =
-        "[\n"
-            + "    { \"op\": \"add\", \"path\": \"/contactMedium/0/characteristic/street1\", \"value\": \"New Street\" },\n"
-            + "    { \"op\": \"replace\", \"path\": \"/contactMedium/1/characteristic/country\", \"value\": \"US\" }\n"
-            + "]";
+        """
+        [
+            { "op": "add", "path": "/contactMedium/0/characteristic/street1", "value": "New Street" },
+            { "op": "replace", "path": "/contactMedium/1/characteristic/country", "value": "US" }
+        ]""";
 
     httpRequest.withPath(domain + "/" + id).withBody(requestBody);
     RequestContext ctx =
@@ -69,24 +70,25 @@ class DynamicJsonPatchCallbackTests {
     JsonNode firstContactMediumNode = contactMediumNode.get(0);
     assertNotNull(firstContactMediumNode);
     assertEquals(
-        "New Street", firstContactMediumNode.path("characteristic").path("street1").asText());
+        "New Street", firstContactMediumNode.path("characteristic").path("street1").asString());
 
     JsonNode secondContactMediumNode = contactMediumNode.get(1);
     assertNotNull(secondContactMediumNode);
-    assertEquals("US", secondContactMediumNode.path("characteristic").path("country").asText());
+    assertEquals("US", secondContactMediumNode.path("characteristic").path("country").asString());
   }
 
   @Test
   void testApplyPatch_withNonExistId() {
     // Given
     String id = TSID.Factory.getTsid().toString();
-    String domain = RandomStringUtils.randomAlphabetic(5);
+    String domain = RandomStringUtils.insecure().nextAlphabetic(5);
     addDataToCache(domain, "nonExistId");
     String requestBody =
-        "[\n"
-            + "    { \"op\": \"add\", \"path\": \"/contactMedium/0/characteristic/street1\", \"value\": \"New Street\" },\n"
-            + "    { \"op\": \"replace\", \"path\": \"/contactMedium/1/characteristic/country\", \"value\": \"US\" }\n"
-            + "]";
+        """
+        [
+            { "op": "add", "path": "/contactMedium/0/characteristic/street1", "value": "New Street" },
+            { "op": "replace", "path": "/contactMedium/1/characteristic/country", "value": "US" }
+        ]""";
 
     httpRequest.withPath(domain + "/" + id).withBody(requestBody);
 

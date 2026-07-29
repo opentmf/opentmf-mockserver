@@ -1,5 +1,6 @@
 package org.opentmf.mockserver.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -54,8 +55,8 @@ class IdempotencyGuardTests {
 
     assertEquals(201, first.getStatusCode());
     assertEquals(201, second.getStatusCode());
-    String firstId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asText();
-    String secondId = JacksonUtil.readAsTree(second.getBodyAsString()).get("id").asText();
+    String firstId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asString();
+    String secondId = JacksonUtil.readAsTree(second.getBodyAsString()).get("id").asString();
     assertNotEquals(firstId, secondId);
     assertFalse(first.containsHeader(REPLAY_HEADER), "no key → no replay header");
   }
@@ -83,8 +84,8 @@ class IdempotencyGuardTests {
     HttpResponse first = postCallback.handle(postRequest(domain, "{}", key));
     HttpResponse replay = postCallback.handle(postRequest(domain, "{}", key));
 
-    String firstId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asText();
-    String replayId = JacksonUtil.readAsTree(replay.getBodyAsString()).get("id").asText();
+    String firstId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asString();
+    String replayId = JacksonUtil.readAsTree(replay.getBodyAsString()).get("id").asString();
     assertEquals(firstId, replayId);
   }
 
@@ -94,7 +95,7 @@ class IdempotencyGuardTests {
     String key = randomKey();
     HttpResponse first =
         postCallback.handle(postRequest(domain, "{\"description\":\"touch\"}", key));
-    String resourceId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asText();
+    String resourceId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asString();
     Id id = new Id();
     id.setId(resourceId);
 
@@ -246,7 +247,7 @@ class IdempotencyGuardTests {
     String key = randomKey();
     HttpResponse first =
         postCallback.handle(postRequest(domain, "{\"description\":\"alive\"}", key));
-    String resourceId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asText();
+    String resourceId = JacksonUtil.readAsTree(first.getBodyAsString()).get("id").asString();
     Id id = new Id();
     id.setId(resourceId);
     assertNotNull(IDEMPOTENCY.get(key));
@@ -258,7 +259,7 @@ class IdempotencyGuardTests {
         postCallback.handle(postRequest(domain, "{\"description\":\"again\"}", key));
     assertEquals(201, afterEviction.getStatusCode());
     JsonNode body = JacksonUtil.readAsTree(afterEviction.getBodyAsString());
-    assertNotEquals(resourceId, body.get("id").asText(),
+    assertNotEquals(resourceId, body.get("id").asString(),
         "after eviction the same key behaves as a fresh request");
   }
 
@@ -283,9 +284,12 @@ class IdempotencyGuardTests {
   void touchByResource_isNoOpForMissingDomain() {
     Id id = new Id();
     id.setId("nope");
-    CACHE.touchByResource("does-not-exist-" + RandomStringUtils.randomAlphabetic(6), id);
-    CACHE.touchByResource(null, id);
-    CACHE.touchByResource("anything", null);
+    assertDoesNotThrow(
+        () -> {
+          CACHE.touchByResource("does-not-exist-" + RandomStringUtils.insecure().nextAlphabetic(6), id);
+          CACHE.touchByResource(null, id);
+          CACHE.touchByResource("anything", null);
+        });
   }
 
   private static HttpRequest postRequest(String domain, String body, String key) {
@@ -313,13 +317,14 @@ class IdempotencyGuardTests {
   }
 
   private static String randomDomain() {
-    return RandomStringUtils.randomAlphabetic(8).toLowerCase();
+    return RandomStringUtils.insecure().nextAlphabetic(8).toLowerCase();
   }
 
   private static String randomKey() {
-    return "key-" + RandomStringUtils.randomAlphanumeric(16);
+    return "key-" + RandomStringUtils.insecure().nextAlphanumeric(16);
   }
 
+  @SuppressWarnings("java:S2925") // deliberate small sleep to advance TTL timestamps
   private static void sleepBriefly() {
     try {
       Thread.sleep(5);

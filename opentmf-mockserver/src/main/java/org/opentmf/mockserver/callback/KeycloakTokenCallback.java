@@ -43,6 +43,11 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
   private static final String GRANT_CLIENT_CREDENTIALS = "client_credentials";
   private static final String GRANT_PASSWORD = "password";
   private static final String GRANT_REFRESH_TOKEN = "refresh_token";
+  private static final String DEFAULT_SCOPE = "openid profile email";
+  private static final String INVALID_REQUEST = "invalid_request";
+  private static final String SCOPE = "scope";
+  private static final String PREFERRED_USERNAME = "preferred_username";
+  private static final String ROLES = "roles";
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
@@ -64,13 +69,13 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     String clientSecret = params.getOrDefault("client_secret", "");
 
     String[] basicAuth = extractBasicAuth(httpRequest);
-    if (basicAuth != null) {
+    if (basicAuth.length == 2) {
       clientId = basicAuth[0];
       clientSecret = basicAuth[1];
     }
 
     if (clientId.isEmpty()) {
-      return tokenError(400, "invalid_request", "Missing client_id");
+      return tokenError(400, INVALID_REQUEST, "Missing client_id");
     }
 
     Optional<ClientConfig> clientOpt = realmCfg.findClient(clientId);
@@ -115,7 +120,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
         : realmCfg.getRoles();
 
     String subject = "service-account-" + clientCfg.getClientId();
-    String scope = "openid profile email";
+    String scope = DEFAULT_SCOPE;
 
     return buildTokenResponse(issuer, subject, clientCfg.getClientId(), roles, null, scope,
         expiresIn);
@@ -124,10 +129,10 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
   private HttpResponse handlePassword(RealmConfig realmCfg, ClientConfig clientCfg,
       Map<String, String> params, String issuer, int expiresIn) {
     String username = params.getOrDefault("username", "");
-    String password = params.getOrDefault("password", "");
+    String password = params.getOrDefault(GRANT_PASSWORD, "");
 
     if (username.isEmpty() || password.isEmpty()) {
-      return tokenError(400, "invalid_request", "Missing username or password");
+      return tokenError(400, INVALID_REQUEST, "Missing username or password");
     }
 
     Optional<UserConfig> userOpt = realmCfg.findUser(username);
@@ -136,7 +141,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     }
 
     UserConfig user = userOpt.get();
-    String scope = params.getOrDefault("scope", "openid profile email");
+    String scope = params.getOrDefault(SCOPE, DEFAULT_SCOPE);
 
     return buildTokenResponse(issuer, username, clientCfg.getClientId(), user.getRoles(), username,
         scope, expiresIn);
@@ -144,23 +149,23 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
 
   private HttpResponse handleRefreshToken(RealmConfig realmCfg, ClientConfig clientCfg,
       Map<String, String> params, String issuer, int expiresIn) {
-    String refreshToken = params.getOrDefault("refresh_token", "");
+    String refreshToken = params.getOrDefault(GRANT_REFRESH_TOKEN, "");
     if (refreshToken.isEmpty()) {
-      return tokenError(400, "invalid_request", "Missing refresh_token");
+      return tokenError(400, INVALID_REQUEST, "Missing refresh_token");
     }
 
     try {
       com.nimbusds.jwt.SignedJWT parsed = com.nimbusds.jwt.SignedJWT.parse(refreshToken);
       com.nimbusds.jwt.JWTClaimsSet claims = parsed.getJWTClaimsSet();
       String subject = claims.getSubject();
-      String preferredUsername = claims.getStringClaim("preferred_username");
-      List<String> roles = claims.getStringListClaim("roles");
+      String preferredUsername = claims.getStringClaim(PREFERRED_USERNAME);
+      List<String> roles = claims.getStringListClaim(ROLES);
       if (roles == null) {
         roles = Collections.emptyList();
       }
-      String scope = claims.getStringClaim("scope");
+      String scope = claims.getStringClaim(SCOPE);
       if (scope == null) {
-        scope = "openid profile email";
+        scope = DEFAULT_SCOPE;
       }
       return buildTokenResponse(issuer, subject, clientCfg.getClientId(), roles,
           preferredUsername, scope, expiresIn);
@@ -171,7 +176,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
           ? clientCfg.getServiceAccountRoles()
           : realmCfg.getRoles();
       return buildTokenResponse(issuer, subject, clientCfg.getClientId(), roles, null,
-          "openid profile email", expiresIn);
+          DEFAULT_SCOPE, expiresIn);
     }
   }
 
@@ -202,6 +207,7 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
         .withBody(writeAsString(response));
   }
 
+  @SuppressWarnings("java:S107") // JWT claim inputs are inherently disjoint; grouping them into a value class would just push the same 8 fields into a builder
   private String buildAccessToken(JwtKeyProvider kp, String issuer, String subject,
       String clientId, List<String> roles, String preferredUsername, String scope, int expiresIn) {
     long now = System.currentTimeMillis();
@@ -213,20 +219,20 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("iat", now / 1000);
     claims.put("exp", now / 1000 + expiresIn);
     claims.put("jti", TSID.Factory.getTsid().toString());
-    claims.put("scope", scope);
+    claims.put(SCOPE, scope);
 
     LinkedHashMap<String, Serializable> realmAccess = new LinkedHashMap<>();
-    realmAccess.put("roles", (Serializable) roles);
+    realmAccess.put(ROLES, (Serializable) roles);
     claims.put("realm_access", realmAccess);
 
     LinkedHashMap<String, Serializable> clientRoles = new LinkedHashMap<>();
-    clientRoles.put("roles", (Serializable) roles);
+    clientRoles.put(ROLES, (Serializable) roles);
     LinkedHashMap<String, Serializable> resourceAccess = new LinkedHashMap<>();
     resourceAccess.put(clientId, clientRoles);
     claims.put("resource_access", resourceAccess);
 
     if (preferredUsername != null) {
-      claims.put("preferred_username", preferredUsername);
+      claims.put(PREFERRED_USERNAME, preferredUsername);
     }
     return kp.signJwt(claims);
   }
@@ -243,10 +249,10 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("exp", now / 1000 + expiresIn);
     claims.put("jti", TSID.Factory.getTsid().toString());
     if (preferredUsername != null) {
-      claims.put("preferred_username", preferredUsername);
+      claims.put(PREFERRED_USERNAME, preferredUsername);
     }
     if (scope != null) {
-      claims.put("scope", scope);
+      claims.put(SCOPE, scope);
     }
     return kp.signJwt(claims);
   }
@@ -263,12 +269,12 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
     claims.put("iat", now / 1000);
     claims.put("exp", (now + refreshExpiry) / 1000);
     claims.put("jti", TSID.Factory.getTsid().toString());
-    claims.put("roles", (Serializable) roles);
+    claims.put(ROLES, (Serializable) roles);
     if (preferredUsername != null) {
-      claims.put("preferred_username", preferredUsername);
+      claims.put(PREFERRED_USERNAME, preferredUsername);
     }
     if (scope != null) {
-      claims.put("scope", scope);
+      claims.put(SCOPE, scope);
     }
     return kp.signJwt(claims);
   }
@@ -319,15 +325,15 @@ public class KeycloakTokenCallback implements ExpectationResponseCallback {
   private String[] extractBasicAuth(HttpRequest request) {
     String authHeader = request.getFirstHeader("Authorization");
     if (authHeader == null || !authHeader.startsWith("Basic ")) {
-      return null;
+      return new String[0];
     }
     try {
       String decoded = new String(Base64.getDecoder().decode(authHeader.substring(6)),
           StandardCharsets.UTF_8);
       String[] parts = decoded.split(":", 2);
-      return parts.length == 2 ? parts : null;
+      return parts.length == 2 ? parts : new String[0];
     } catch (IllegalArgumentException e) {
-      return null;
+      return new String[0];
     }
   }
 

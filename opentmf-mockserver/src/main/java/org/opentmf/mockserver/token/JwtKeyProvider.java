@@ -19,10 +19,12 @@ import org.slf4j.LoggerFactory;
  * Both the token callback and the JWKS initializer share this instance so that tokens can be
  * verified against the published key.
  */
+@SuppressWarnings("java:S6548") // singleton is deliberate — RSA keypair shared by token signer and JWKS publisher
 public final class JwtKeyProvider {
 
   private static final Logger LOG = LoggerFactory.getLogger(JwtKeyProvider.class);
 
+  @SuppressWarnings({"java:S3077", "java:S6548"}) // DCL singleton — intentional pattern.
   private static volatile JwtKeyProvider instance;
 
   private final JWTGenerator jwtGenerator;

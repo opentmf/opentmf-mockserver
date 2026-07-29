@@ -19,16 +19,15 @@ class SpringRedirectsTests {
     RecordingRegistry registry = new RecordingRegistry();
     mock.redirectApiClients(registry, "onedms", "asgw");
 
-    assertThat(registry.snapshot()).containsOnlyKeys(
-        "opentmf.api-clients.onedms.base-url",
-        "opentmf.api-clients.onedms.context-path",
-        "opentmf.api-clients.asgw.base-url",
-        "opentmf.api-clients.asgw.context-path");
-    assertThat(registry.snapshot().get("opentmf.api-clients.onedms.base-url"))
-        .isEqualTo(mock.baseUrl());
-    assertThat(registry.snapshot().get("opentmf.api-clients.onedms.context-path")).isEqualTo("");
-    assertThat(registry.snapshot().get("opentmf.api-clients.asgw.base-url"))
-        .isEqualTo(mock.baseUrl());
+    assertThat(registry.snapshot())
+        .containsOnlyKeys(
+            "opentmf.api-clients.onedms.base-url",
+            "opentmf.api-clients.onedms.context-path",
+            "opentmf.api-clients.asgw.base-url",
+            "opentmf.api-clients.asgw.context-path")
+        .containsEntry("opentmf.api-clients.onedms.base-url", mock.baseUrl())
+        .containsEntry("opentmf.api-clients.onedms.context-path", "")
+        .containsEntry("opentmf.api-clients.asgw.base-url", mock.baseUrl());
   }
 
   @Test
@@ -36,9 +35,9 @@ class SpringRedirectsTests {
     RecordingRegistry registry = new RecordingRegistry();
     mock.redirectHttpClients(registry, "raw");
 
-    assertThat(registry.snapshot()).containsOnlyKeys("opentmf.http-clients.raw.base-url");
-    assertThat(registry.snapshot().get("opentmf.http-clients.raw.base-url"))
-        .isEqualTo(mock.baseUrl());
+    assertThat(registry.snapshot())
+        .containsOnlyKeys("opentmf.http-clients.raw.base-url")
+        .containsEntry("opentmf.http-clients.raw.base-url", mock.baseUrl());
   }
 
   @Test
@@ -47,8 +46,7 @@ class SpringRedirectsTests {
     mock.redirectJwks(registry);
 
     Object uri = registry.snapshot().get("opentmf.security.jwk-set-uri");
-    assertThat(uri).isNotNull();
-    assertThat(uri.toString()).isEqualTo(
+    assertThat(uri).isNotNull().hasToString(
         mock.baseUrl() + "/realms/" + OidcMockSupport.DEFAULT_REALM
             + "/protocol/openid-connect/certs");
   }

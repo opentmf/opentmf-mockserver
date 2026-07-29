@@ -135,7 +135,7 @@ public class DynamicGetCallback implements ExpectationResponseCallback {
         && cachedData.has(ctx.getTmfStatePath().getVariableName())
         && cachedData
             .get(ctx.getTmfStatePath().getVariableName())
-            .asText()
+            .asString()
             .equals(ctx.getTmfStatePath().getInitialState());
   }
 }

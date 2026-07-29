@@ -76,7 +76,7 @@ public class RequestContext {
 
   public void obtainVersionFromPayloadIfNecessary(JsonNode payload) {
     if (id.getVersion() == null && payload != null && payload.has(VERSION)) {
-      id.setVersion(payload.get(VERSION).asText());
+      id.setVersion(payload.get(VERSION).asString());
     }
   }
 
@@ -119,7 +119,7 @@ public class RequestContext {
       if (queryParams != null && queryParams.containsEntry(VERSION)) {
         ctx.getId().setVersion(httpRequest.getFirstQueryStringParameter(VERSION));
       } else if (parsedBody != null && parsedBody.has(VERSION)) {
-        ctx.getId().setVersion(parsedBody.get(VERSION).asText());
+        ctx.getId().setVersion(parsedBody.get(VERSION).asString());
       }
     }
 
@@ -142,9 +142,9 @@ public class RequestContext {
       return null;
     }
     Id id = new Id();
-    id.setId(parsedBody.get(ID).asText());
+    id.setId(parsedBody.get(ID).asString());
     if (parsedBody.has(VERSION)) {
-      id.setVersion(parsedBody.get(VERSION).asText());
+      id.setVersion(parsedBody.get(VERSION).asString());
     }
     return id;
   }

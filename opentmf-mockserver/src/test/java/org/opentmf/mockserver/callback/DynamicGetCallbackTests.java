@@ -50,7 +50,7 @@ class DynamicGetCallbackTests {
     // Then
     assertEquals(200, httpResponse.getStatusCode());
     JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
-    assertEquals("active", responseJson.get("status").asText());
+    assertEquals("active", responseJson.get("status").asString());
   }
 
   @Test
@@ -71,7 +71,7 @@ class DynamicGetCallbackTests {
     // Then
     assertEquals(200, httpResponse.getStatusCode());
     JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
-    assertEquals(id, responseJson.get("id").asText());
+    assertEquals(id, responseJson.get("id").asString());
     assertNull(responseJson.get("status"));
   }
 
@@ -93,7 +93,7 @@ class DynamicGetCallbackTests {
     // Then
     assertEquals(200, httpResponse.getStatusCode());
     JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
-    assertEquals(id, responseJson.get("id").asText());
+    assertEquals(id, responseJson.get("id").asString());
     assertNotNull(responseJson.get("href"));
     assertNull(responseJson.get("status"));
     assertNull(responseJson.get("createdDate"));
@@ -173,7 +173,7 @@ class DynamicGetCallbackTests {
     // Then
     assertEquals(200, httpResponse.getStatusCode());
     JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
-    assertEquals("completed", responseJson.get("status").asText());
+    assertEquals("completed", responseJson.get("status").asString());
   }
 
   @Test
@@ -217,7 +217,7 @@ class DynamicGetCallbackTests {
     RequestContext lookupCtx = RequestContext.initialize(lookupRequest, true, null);
     JsonNode preTransitionReference = PayloadCache.getInstance().get(lookupCtx);
     assertNotNull(preTransitionReference);
-    assertEquals("created", preTransitionReference.get("status").asText());
+    assertEquals("created", preTransitionReference.get("status").asString());
 
     // When: a GET triggers the state transition (created → active).
     HttpResponse httpResponse = dynamicGetCallback.handle(lookupRequest);
@@ -225,14 +225,14 @@ class DynamicGetCallbackTests {
     // Then: the response reflects the transition (existing behaviour preserved).
     assertEquals(200, httpResponse.getStatusCode());
     JsonNode responseJson = JacksonUtil.readAsTree(httpResponse.getBodyAsString());
-    assertEquals("active", responseJson.get("status").asText());
+    assertEquals("active", responseJson.get("status").asString());
 
     // And: the reference we captured BEFORE the transition must still read "created" — no
     // in-place mutation happened on the shared cached node. This is what makes the 2.1.7
     // snapshot fix safe.
     assertEquals(
         "created",
-        preTransitionReference.get("status").asText(),
+        preTransitionReference.get("status").asString(),
         "Cached JsonNode was mutated in place; concurrent list-GET readers holding a snapshot "
             + "would race Jackson's internal LinkedHashMap iteration");
 
@@ -242,7 +242,7 @@ class DynamicGetCallbackTests {
         preTransitionReference,
         postTransitionReference,
         "Cache should have been updated by reference replacement, not in-place mutation");
-    assertEquals("active", postTransitionReference.get("status").asText());
+    assertEquals("active", postTransitionReference.get("status").asString());
   }
 
   private void addDataToCache(String domain, String id, String status) {

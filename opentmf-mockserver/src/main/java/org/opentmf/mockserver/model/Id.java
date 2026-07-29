@@ -7,6 +7,7 @@ import java.util.Objects;
  */
 public class Id implements Comparable<Id> {
 
+  @SuppressWarnings("java:S1700") // JavaBean field matching its class name — public getId/setId API
   private String id;
   private String version;
 

@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.stream.Collectors;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.Header;
 import org.mockserver.model.HttpRequest;
@@ -165,7 +164,7 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
         .sorted(combinedComparator)
         .skip(offset)
         .limit(limit)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   private List<JsonNode> applyFieldsFiltering(List<JsonNode> data, Set<String> fields) {
@@ -175,7 +174,7 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     fields.add(ID);
     fields.add(HREF);
 
-    return data.stream().map(node -> filterFields(node, fields)).collect(Collectors.toList());
+    return data.stream().map(node -> filterFields(node, fields)).toList();
   }
 
   private JsonNode filterFields(JsonNode originalNode, Set<String> fieldNames) {
@@ -205,7 +204,7 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
     } else if (val1.isBoolean() && val2.isBoolean()) {
       return Boolean.compare(val1.asBoolean(), val2.asBoolean());
     } else {
-      return val1.asText().compareTo(val2.asText());
+      return val1.asString().compareTo(val2.asString());
     }
   }
 
@@ -220,6 +219,6 @@ public class DynamicGetListCallback implements ExpectationResponseCallback {
                 return (Comparator<JsonNode>) (node1, node2) -> compare(sortField, node1, node2);
               }
             })
-        .collect(Collectors.toList());
+        .toList();
   }
 }
