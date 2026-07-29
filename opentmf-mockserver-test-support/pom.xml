@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.opentmf.mockserver</groupId>
+    <artifactId>opentmf-mockserver-parent</artifactId>
+    <version>2.1.9-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>opentmf-mockserver-test-support</artifactId>
+  <name>opentmf-mockserver-test-support</name>
+
+  <description>
+    Fluent JUnit 5 test helpers over opentmf-mockserver: starts an in-process MockServer,
+    registers Dynamic* TMF callbacks, mints JWTs against the built-in Keycloak mock, and
+    redirects Spring api-clients and JWKS URLs at the mock. JUnit and Spring types are on
+    provided/optional scope so the module works for plain-JUnit and Spring consumers alike
+    without dragging Spring into non-Spring builds.
+  </description>
+
+  <dependencies>
+    <!-- Runtime dep on the server jar: uses its Dynamic* callbacks, JwtKeyProvider, and
+         MockServer client classes. -->
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>opentmf-mockserver</artifactId>
+    </dependency>
+
+    <!-- Jackson 3, already on the server jar's compile path; declare explicitly so the
+         test-support module compiles standalone. -->
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <!-- Nimbus for building JWT claim maps that JwtKeyProvider signs. -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>${nimbus-jose-jwt.version}</version>
+    </dependency>
+
+    <!-- JUnit 5 extension: provided so consumers already using JUnit 5 don't get a version
+         forced on them, and non-JUnit consumers (plain start()/stop()) can omit JUnit
+         entirely. -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${junit-jupiter.version}</version>
+      <scope>provided</scope>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Spring redirect helpers: consumer opts in by having spring on their classpath.
+         Optional + provided so pure-JUnit consumers don't inherit Spring transitively. -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
+      <version>${spring.version}</version>
+      <scope>provided</scope>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-test</artifactId>
+      <version>${spring-boot.version}</version>
+      <scope>provided</scope>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- SLF4J for internal logging. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
+
+    <!-- Test — the provided/optional junit-jupiter-api and spring-test above are already
+         on the test classpath (provided scope is compile+test); the engine is added here
+         so surefire can run the tests. -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <version>${junit-jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <version>${junit-jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot</artifactId>
+      <version>${spring-boot.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+</project>

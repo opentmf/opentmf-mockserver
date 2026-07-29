@@ -5,6 +5,7 @@ FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY opentmf-mockserver ./opentmf-mockserver
+COPY opentmf-mockserver-test-support ./opentmf-mockserver-test-support
 RUN mvn -B -pl opentmf-mockserver -am -Dmaven.test.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true clean package
 
 # --- Final runtime: tiny distro + JRE + curl + tini --------------------------

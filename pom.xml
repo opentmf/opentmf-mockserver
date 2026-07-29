@@ -52,6 +52,7 @@
 
   <modules>
     <module>opentmf-mockserver</module>
+    <module>opentmf-mockserver-test-support</module>
   </modules>
 
   <properties>
@@ -91,7 +92,7 @@
     <junit-jupiter.version>6.1.2</junit-jupiter.version>
     <system-stubs-jupiter.version>2.1.8</system-stubs-jupiter.version>
     <testcontainers.version>1.21.4</testcontainers.version>
-    <assertj.version>4.0.0</assertj.version>
+    <assertj.version>3.27.7</assertj.version>
 
     <!-- Maven plugins -->
     <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
@@ -134,6 +135,11 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>opentmf-mockserver</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>opentmf-mockserver-test-support</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>
