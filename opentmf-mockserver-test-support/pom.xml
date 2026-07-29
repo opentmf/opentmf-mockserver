@@ -104,6 +104,17 @@
       <version>${spring-boot.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- SLF4J binding for this module's own tests only. The server jar declares
+         slf4j-jdk14 as optional=true so it does not force JUL on downstream apps,
+         which means this module does not inherit a binding transitively and
+         SLF4J would fall back to a no-op logger during our test run. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
