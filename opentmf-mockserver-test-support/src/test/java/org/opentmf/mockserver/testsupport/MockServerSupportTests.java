@@ -84,4 +84,31 @@ class MockServerSupportTests {
     // stop() is idempotent when already stopped
     aux.stop();
   }
+
+  @Test
+  void shared_returnsSameInstanceAcrossCalls() {
+    MockServerSupport a = MockServerSupport.shared();
+    MockServerSupport b = MockServerSupport.shared();
+    assertThat(a).isSameAs(b);
+    assertThat(a.port()).isPositive();
+  }
+
+  @Test
+  void shared_afterAll_isNoop_serverStaysUp() throws Exception {
+    // Registering the shared instance as a per-class extension must not stop the server
+    // when this class's `afterAll` fires — otherwise the next test class using
+    // shared() would get a dead server. Simulate the boundary by calling afterAll
+    // directly on the shared instance.
+    MockServerSupport shared = MockServerSupport.shared();
+    int port = shared.port();
+    shared.afterAll(null); // would normally stop() — must no-op for shared instances
+    assertThat(shared.client()).isNotNull(); // still up
+    assertThat(shared.port()).isEqualTo(port);
+    // Still reachable end-to-end
+    shared.stub().get("/still-alive").respondStatus(204);
+    HttpResponse<String> resp = HttpClient.newHttpClient().send(
+        HttpRequest.newBuilder(URI.create(shared.baseUrl() + "/still-alive")).GET().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(resp.statusCode()).isEqualTo(204);
+  }
 }

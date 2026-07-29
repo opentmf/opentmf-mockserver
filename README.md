@@ -950,25 +950,19 @@ JUnit 5 helpers over the same server. Consumer integration tests should stop han
 the `ClientAndServer` + `Dynamic*Callback` + JWKS + `@DynamicPropertySource` glue and use
 this module instead. One implementation, versioned in lockstep with the server.
 
-Add it to your test scope:
+**→ Full usage guide: [docs/TEST_SUPPORT.md](docs/TEST_SUPPORT.md)** — dependency setup,
+per-class vs JVM-shared modes, Spring Boot IT recipe, full builder references (TMF /
+stub / verify / OIDC), non-JUnit usage, migration recipe for existing hand-rolled
+harnesses, and troubleshooting.
 
-```xml
-<dependency>
-  <groupId>org.opentmf.mockserver</groupId>
-  <artifactId>opentmf-mockserver-test-support</artifactId>
-  <version>${opentmf-mockserver.version}</version>
-  <scope>test</scope>
-</dependency>
-```
-
-Then in a Spring Boot integration test:
+Quick taste:
 
 ```java
 @SpringBootTest
 class DocumentServiceIT {
 
   @RegisterExtension
-  static MockServerSupport mock = MockServerSupport.create();   // random free port
+  static MockServerSupport mock = MockServerSupport.shared();   // one server, whole JVM
 
   @DynamicPropertySource
   static void redirect(DynamicPropertyRegistry registry) {
@@ -986,30 +980,9 @@ class DocumentServiceIT {
 }
 ```
 
-**Highlights.**
-
-- `mock.tmf(clientId).post/get/getList/put/delete/jsonPatch/mergePatch/jsonPatchCollection/
-  crud(path)` — registers the corresponding `Dynamic*Callback` on the mock's URL.
-  `crud(path)` does POST + GET-by-id + GET-list + PUT + DELETE in one call.
-- `mock.stub().get/post/put/delete(path).respondJson/respondStatus/respondDelayed/
-  respondSequence(...)` — static expectations for non-TMF endpoints (KBA lookups, gateway
-  stubs, retry-path testing).
-- `mock.verify().post(path).times/never/atLeast/atMost/once/withHeader/withJsonBody(...)`
-  — fluent verification wrapper.
-- `mock.token(roles...)` / `mock.tokenFor(user, roles...)` / `mock.bearerHeader(roles...)`
-  — mint Keycloak-shaped JWTs against the mock's built-in RSA key. Tokens verify against
-  the JWKS served at `/realms/<realm>/protocol/openid-connect/certs`.
-- `mock.redirectApiClients(registry, "id1", "id2")` — populates
-  `opentmf.api-clients.<id>.base-url` at the mock and clears `context-path`.
-- `mock.redirectJwks(registry)` — populates `opentmf.security.jwk-set-uri` at the mock's
-  JWKS endpoint (default realm `realm1`).
-
-**Non-JUnit usage.** `MockServerSupport.create()` / `.stop()` also work without JUnit for
-Cucumber, plain E2E harnesses, or `main`-style probes.
-
-**Spring dependency.** `spring-test` and `spring-boot-test` are declared with
-`<scope>provided</scope><optional>true</optional>`, so a pure-JUnit consumer (no Spring on
-classpath) can still use the module — they just can't call the `redirect*` helpers.
+Use `MockServerSupport.create()` for per-test-class isolation, or `MockServerSupport.shared()`
+to reuse one JVM-wide instance across every test class (recommended for projects with many
+ITs). See the [full guide](docs/TEST_SUPPORT.md#two-lifecycle-modes) for trade-offs.
 
 ## MockServer Feature Matrix
 

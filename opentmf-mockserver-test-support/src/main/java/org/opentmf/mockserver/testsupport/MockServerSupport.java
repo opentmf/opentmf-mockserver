@@ -43,6 +43,10 @@ import org.springframework.test.context.DynamicPropertyRegistry;
  * extension's {@code beforeAll}). {@link BeforeAllCallback} is a defensive no-op; the
  * server is stopped by {@link AfterAllCallback}.
  *
+ * <p>For projects with many integration tests, prefer {@link #shared()} over {@link #create()}
+ * so a single MockServer serves every test class in the JVM (started lazily on first call,
+ * stopped by a JVM shutdown hook). Per-test {@code afterEach} reset still runs.
+ *
  * <p>Also usable outside JUnit via {@link #start()} / {@link #stop()} for Cucumber or plain
  * E2E harnesses.
  */
@@ -51,15 +55,49 @@ public class MockServerSupport
 
   private static final Logger LOG = LoggerFactory.getLogger(MockServerSupport.class);
 
+  @SuppressWarnings("java:S3077") // DCL singleton — volatile+synchronized is correct here.
+  private static volatile MockServerSupport sharedInstance;
+
   private ClientAndServer server;
   private int port;
   private boolean keepExpectationsBetweenTests;
+  private boolean sharedLifecycle;
 
   private MockServerSupport() {}
 
   /** Create a support instance and start MockServer on a random free port. */
   public static MockServerSupport create() {
     return new MockServerSupport().start();
+  }
+
+  /**
+   * Return a JVM-wide shared instance, starting it lazily on first call. Every subsequent
+   * call returns the same instance. The shared instance is safe to
+   * {@code @RegisterExtension} in every test class: its {@link #afterAll} is a no-op, so
+   * closing one class's boundary does not stop the server. A JVM shutdown hook stops it
+   * cleanly at exit.
+   *
+   * <p>Use this to avoid paying MockServer's ~1-2s startup cost per test class in projects
+   * with many integration tests. Trade-off: expectations set by one test class are visible
+   * to concurrent tests in other classes. This mode is meant for sequential test runs;
+   * enabling JUnit's parallel execution across classes on a shared instance will race
+   * expectations. {@code afterEach} still resets expectations at the end of every method
+   * (unless {@link #keepExpectationsBetweenTests()} is on), keeping intra-class isolation
+   * intact.
+   */
+  public static MockServerSupport shared() {
+    if (sharedInstance == null) {
+      synchronized (MockServerSupport.class) {
+        if (sharedInstance == null) {
+          MockServerSupport instance = new MockServerSupport().start();
+          instance.sharedLifecycle = true;
+          Runtime.getRuntime()
+              .addShutdownHook(new Thread(instance::stop, "MockServerSupport-shared-shutdown"));
+          sharedInstance = instance;
+        }
+      }
+    }
+    return sharedInstance;
   }
 
   /** Start MockServer on a random free port. Idempotent — subsequent calls are no-ops. */
@@ -191,6 +229,11 @@ public class MockServerSupport
 
   @Override
   public void afterAll(ExtensionContext context) {
+    if (sharedLifecycle) {
+      // Shared instance — lifecycle is bound to the JVM, not to any single test class.
+      // The shutdown hook installed by shared() will stop the server at JVM exit.
+      return;
+    }
     stop();
   }
 

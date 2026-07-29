@@ -37,6 +37,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       `opentmf.http-clients.<id>.base-url`, and `opentmf.security.jwk-set-uri`. Spring is a
       `provided`/`optional` dependency — non-Spring consumers can use the rest of the
       module without pulling Spring in.
+- **`MockServerSupport.shared()`** — first-class JVM-singleton mode. Lazily starts a
+  single MockServer on first call, returns the same instance for every subsequent call,
+  and installs a JVM shutdown hook to stop it at exit. Safe to `@RegisterExtension` in
+  every test class — `afterAll` is a no-op on shared instances, so closing one class's
+  boundary does not tear down the server the next class needs. `afterEach` reset still
+  runs, keeping intra-class isolation. Use to avoid paying MockServer's ~1–2 s startup
+  cost per test class in projects with many ITs. Trade-off: not safe for tests running in
+  parallel across classes (documented in the guide below).
+- **`docs/TEST_SUPPORT.md`** — full usage guide for
+  `opentmf-mockserver-test-support`. Covers dependency setup, per-class vs JVM-shared
+  lifecycle, Spring Boot IT recipe, full builder references (`TmfMockBuilder`,
+  `StubBuilder`, `VerifyBuilder`, `OidcMockSupport`), non-JUnit usage, a migration recipe
+  for existing hand-rolled harnesses (`dsync-engine` style), and troubleshooting. The
+  README's Test Support section now links to it and shows only a quick taste.
 
 ### Changed
 
