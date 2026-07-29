@@ -7,7 +7,7 @@ enforcement are all included without any external dependencies.
 
 > **MockServer feature matrix** -- This project embeds a subset of MockServer. For a detailed
 > breakdown of what is included and what is intentionally excluded (OpenAPI, XML matching,
-> dashboard, proxy, templates, etc.), see [MOCKSERVER.md](MOCKSERVER.md).
+> dashboard, proxy, templates, etc.), see [MOCKSERVER.md](opentmf-mockserver/MOCKSERVER.md).
 
 <!-- TOC -->
 
@@ -104,7 +104,7 @@ example exchange. The examples all use `/tmf-api/serviceOrdering/v4/serviceOrder
 
 > **Tip:** Instead of registering each expectation with `PUT /mockserver/expectation` after
 > startup, you can pre-load a batch from a JSON file via `MOCKSERVER_INITIALIZATION_JSON_PATH`.
-> See [Initializing Expectations from a JSON File](MOCKSERVER.md#initializing-expectations-from-a-json-file)
+> See [Initializing Expectations from a JSON File](opentmf-mockserver/MOCKSERVER.md#initializing-expectations-from-a-json-file)
 > in MOCKSERVER.md for the file format and a complete example.
 
 ### POST (DynamicPostCallback)
@@ -916,7 +916,7 @@ Set `CONTENT_RANGE_OFFSET_BASE=0` for zero-based offset values. Default offset i
 
 ## API Reference
 
-The full API is documented in [opentmf-mockserver-openapi.yaml](opentmf-mockserver-openapi.yaml) (OpenAPI 3.1). It
+The full API is documented in [opentmf-mockserver-openapi.yaml](opentmf-mockserver/opentmf-mockserver-openapi.yaml) (OpenAPI 3.1). It
 covers all three
 endpoint groups: the MockServer control plane, the Keycloak OIDC mock, and the dynamic TMF
 resource callbacks.
@@ -935,7 +935,7 @@ VS Code OpenAPI extension) directly at `http://localhost:1080/mockserver/openapi
 This project embeds a tailored subset of MockServer. For a detailed breakdown of included
 features (HTTP mocking, JSON matching, TLS, callbacks, forwarding) and excluded features
 (OpenAPI, XML/XPath matching, dashboard UI, SOCKS proxy, template engines, Prometheus), see
-[MOCKSERVER.md](MOCKSERVER.md).
+[MOCKSERVER.md](opentmf-mockserver/MOCKSERVER.md).
 
 ## Acknowledgments
 

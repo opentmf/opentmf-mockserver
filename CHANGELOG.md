@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.9] - 2026-07-29
+
+### Changed
+
+- **Repository is now a multi-module Maven build.** A new aggregator pom
+  `org.opentmf.mockserver:opentmf-mockserver-parent` (packaging=pom) sits at the repository
+  root and reactor-builds the existing `org.opentmf.mockserver:opentmf-mockserver` jar under
+  the `opentmf-mockserver/` subdirectory. **The server artifact's coordinates
+  (`groupId:artifactId:version`) are unchanged**, so no consumer changes are required. The
+  restructure exists to host the new `opentmf-mockserver-test-support` sibling artifact
+  without polluting the server jar's dependency surface with JUnit and Spring. Plugin versions
+  and configuration now live in the aggregator's `<pluginManagement>`; release-only plugins
+  (`maven-source-plugin`, `maven-javadoc-plugin`, `maven-gpg-plugin`,
+  `central-publishing-maven-plugin`) live in the aggregator's `release` profile.
+
 ## [2.1.8] - 2026-07-15
 
 ### Added
@@ -343,6 +358,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release.
+
+[2.1.9]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.8...2.1.9
 
 [2.1.8]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.7...2.1.8
 
