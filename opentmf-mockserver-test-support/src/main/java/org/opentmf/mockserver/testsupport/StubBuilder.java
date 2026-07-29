@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.matchers.Times;
+import org.mockserver.mock.Expectation;
 import org.mockserver.model.Delay;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
@@ -17,18 +18,23 @@ import org.mockserver.model.MediaType;
 /**
  * Fluent static-expectation registration for non-TMF endpoints (KBA lookups, external
  * gateway stubs, etc.). Terminating {@code respond*} methods register the expectation
- * against the {@link MockServerClient}; there is no return value to chain further.
+ * against the {@link MockServerClient} and return a {@link Registration} handle so the
+ * caller can later {@link Registration#clear()} just that expectation without wiping the
+ * whole server.
  *
  * <pre>{@code
- * mock.stub().get("/kba/{key}").respondJson(200, "{\"value\":42}");
+ * Registration r1 = mock.stub().get("/kba/{key}").respondJson(200, "{\"value\":42}");
  * mock.stub().post("/sms").header("X-Api-Key", "s3cret").respondStatus(204);
- * mock.stub().get("/flaky").respondSequence(500, 200);
+ * mock.stub().get("/flaky").limit(3).respondStatus(500);        // matches at most 3 times
+ * mock.stub().get("/seq").respondSequence(500, 200);            // 1st→500, 2nd→200
+ * r1.clear();                                                    // remove just /kba/{key}
  * }</pre>
  */
 public class StubBuilder {
 
   private final MockServerClient client;
   private HttpRequest current;
+  private Times times = Times.unlimited();
 
   StubBuilder(MockServerClient client) {
     this.client = client;
@@ -57,6 +63,23 @@ public class StubBuilder {
   /** Start defining an expectation with an arbitrary method + path. */
   public StubBuilder method(String method, String path) {
     this.current = request().withMethod(method).withPath(path);
+    this.times = Times.unlimited();
+    return this;
+  }
+
+  /**
+   * Cap the number of times this expectation matches (equivalent to
+   * {@code Times.exactly(n)}). After the {@code n}th match, the expectation is retired
+   * and subsequent calls fall through to whatever other expectation matches — or 404 if
+   * none does. Applies to the next {@code respond*} call only; each new
+   * {@code get/post/...} resets the cap to unlimited.
+   *
+   * <p>Ignored by {@link #respondSequence(int...)} / {@link #respondSequence(HttpResponse...)},
+   * which impose their own {@code Times.exactly(1)} per element.
+   */
+  public StubBuilder limit(int n) {
+    ensureStarted();
+    this.times = Times.exactly(n);
     return this;
   }
 
@@ -89,22 +112,22 @@ public class StubBuilder {
   }
 
   /** Respond with the given status and JSON body. Terminates the builder. */
-  public void respondJson(int status, String body) {
-    respond(response().withStatusCode(status)
+  public Registration respondJson(int status, String body) {
+    return respond(response().withStatusCode(status)
         .withContentType(MediaType.APPLICATION_JSON)
         .withBody(body));
   }
 
   /** Respond with the given status and no body. Terminates the builder. */
-  public void respondStatus(int status) {
-    respond(response().withStatusCode(status));
+  public Registration respondStatus(int status) {
+    return respond(response().withStatusCode(status));
   }
 
   /**
    * Respond after a delay — useful for timeout / retry testing. Terminates the builder.
    */
-  public void respondDelayed(int status, String body, Duration delay) {
-    respond(
+  public Registration respondDelayed(int status, String body, Duration delay) {
+    return respond(
         response()
             .withStatusCode(status)
             .withContentType(MediaType.APPLICATION_JSON)
@@ -118,34 +141,39 @@ public class StubBuilder {
    * succeeds). Each entry gets an empty body; use {@link #respondSequence(HttpResponse...)}
    * for full control.
    */
-  public void respondSequence(int... statuses) {
+  public Registration respondSequence(int... statuses) {
     HttpResponse[] responses = new HttpResponse[statuses.length];
     for (int i = 0; i < statuses.length; i++) {
       responses[i] = response().withStatusCode(statuses[i]);
     }
-    respondSequence(responses);
+    return respondSequence(responses);
   }
 
   /**
    * Respond with a sequence of full responses: the Nth call gets the Nth entry. Registers
-   * one expectation per response, each with {@code Times.exactly(1)}, in order.
+   * one expectation per response, each with {@code Times.exactly(1)}, in order. All ids
+   * are surfaced on the returned {@link Registration}.
    */
-  public void respondSequence(HttpResponse... responses) {
+  public Registration respondSequence(HttpResponse... responses) {
     ensureStarted();
-    List<HttpRequest> requests = new ArrayList<>(responses.length);
-    for (HttpResponse ignored : responses) {
-      requests.add(current);
-    }
-    for (int i = 0; i < responses.length; i++) {
-      client.when(requests.get(i), Times.exactly(1)).respond(responses[i]);
+    List<Expectation> registered = new ArrayList<>(responses.length);
+    for (HttpResponse resp : responses) {
+      Expectation[] created = client.when(current, Times.exactly(1)).respond(resp);
+      for (Expectation e : created) {
+        registered.add(e);
+      }
     }
     current = null;
+    times = Times.unlimited();
+    return new Registration(client, registered.toArray(new Expectation[0]));
   }
 
-  private void respond(HttpResponse response) {
+  private Registration respond(HttpResponse response) {
     ensureStarted();
-    client.when(current).respond(response);
+    Expectation[] created = client.when(current, times).respond(response);
     current = null;
+    times = Times.unlimited();
+    return new Registration(client, created);
   }
 
   private void ensureStarted() {

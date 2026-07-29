@@ -49,15 +49,40 @@ class MockServerSupportTests {
   }
 
   @Test
-  void expect_registersRawExpectation() throws Exception {
-    mock.expect(
+  void expect_registersRawExpectation_andReturnsRegistration() throws Exception {
+    Registration reg = mock.expect(
         org.mockserver.model.HttpRequest.request().withMethod("GET").withPath("/raw"),
         org.mockserver.model.HttpResponse.response().withStatusCode(200).withBody("raw-body"));
+    assertThat(reg).isNotNull();
+    assertThat(reg.id()).isNotBlank();
+
     HttpResponse<String> resp = HttpClient.newHttpClient().send(
         HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/raw")).GET().build(),
         HttpResponse.BodyHandlers.ofString());
     assertThat(resp.statusCode()).isEqualTo(200);
     assertThat(resp.body()).isEqualTo("raw-body");
+
+    // Clearing the Registration must retire only the /raw expectation.
+    reg.clear();
+    HttpResponse<String> after = HttpClient.newHttpClient().send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/raw")).GET().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(after.statusCode()).isEqualTo(404);
+  }
+
+  @Test
+  void clear_batchOverRegistrations_removesAll_skipsNulls() throws Exception {
+    Registration r1 = mock.stub().get("/batch-a").respondStatus(200);
+    Registration r2 = mock.stub().get("/batch-b").respondStatus(200);
+
+    mock.clear(r1, null, r2);   // null in the middle is tolerated
+
+    assertThat(HttpClient.newHttpClient().send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/batch-a")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(404);
+    assertThat(HttpClient.newHttpClient().send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/batch-b")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(404);
   }
 
   @Test

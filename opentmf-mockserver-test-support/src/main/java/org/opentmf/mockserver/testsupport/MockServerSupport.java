@@ -217,9 +217,26 @@ public class MockServerSupport
     registry.add("opentmf.security.jwk-set-uri", support::jwksUri);
   }
 
-  /** Register an arbitrary expectation directly. Escape hatch. */
-  public void expect(HttpRequest request, HttpResponse response) {
-    client().when(request).respond(response);
+  /**
+   * Register an arbitrary expectation directly. Escape hatch. Returns a {@link Registration}
+   * so the caller can {@link Registration#clear()} just this expectation later without
+   * wiping the whole server.
+   */
+  public Registration expect(HttpRequest request, HttpResponse response) {
+    return new Registration(client(), client().when(request).respond(response));
+  }
+
+  /**
+   * Clear the given {@link Registration}s from the server (calls
+   * {@link Registration#clear()} on each). Idempotent. Convenience wrapper for the common
+   * "clear a small pile of stubs at the end of a test" pattern.
+   */
+  public void clear(Registration... registrations) {
+    for (Registration r : registrations) {
+      if (r != null) {
+        r.clear();
+      }
+    }
   }
 
   @Override

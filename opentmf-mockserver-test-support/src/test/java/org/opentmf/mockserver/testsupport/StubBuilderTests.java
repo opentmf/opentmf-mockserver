@@ -182,4 +182,103 @@ class StubBuilderTests {
         HttpResponse.BodyHandlers.discarding()).statusCode();
     assertThat(new int[]{s1, s2, s3}).containsExactly(500, 503, 200);
   }
+
+  // ---- .limit(N) bounded matches ----
+
+  @Test
+  void limit_capsMatches_expectationStopsAfterNCalls() throws Exception {
+    mock.stub().get("/capped").limit(2).respondStatus(202);
+
+    int s1 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/capped")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    int s2 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/capped")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    int s3 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/capped")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+
+    assertThat(s1).isEqualTo(202);
+    assertThat(s2).isEqualTo(202);
+    // MockServer returns 404 when no expectation matches (limit was reached).
+    assertThat(s3).isEqualTo(404);
+  }
+
+  @Test
+  void limit_isResetAfterRespond_secondChainDefaultsToUnlimited() throws Exception {
+    mock.stub().get("/one-limited").limit(1).respondStatus(200);
+    mock.stub().get("/other-unlimited").respondStatus(204);
+
+    // /other-unlimited must not inherit the previous /one-limited limit.
+    for (int i = 0; i < 4; i++) {
+      int s = HTTP.send(
+          HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/other-unlimited")).GET().build(),
+          HttpResponse.BodyHandlers.discarding()).statusCode();
+      assertThat(s).isEqualTo(204);
+    }
+  }
+
+  @Test
+  void limit_beforeStarter_throws() {
+    StubBuilder sb = mock.stub();
+    assertThatThrownBy(() -> sb.limit(3)).isInstanceOf(IllegalStateException.class);
+  }
+
+  // ---- Registration returns ----
+
+  @Test
+  void respondJson_returnsRegistrationWithNonEmptyId() {
+    Registration reg = mock.stub().get("/rjson").respondJson(200, "{}");
+    assertThat(reg).isNotNull();
+    assertThat(reg.id()).isNotBlank();
+    assertThat(reg.ids()).hasSize(1);
+  }
+
+  @Test
+  void registration_clear_removesOnlyThatExpectation_othersRemain() throws Exception {
+    Registration toClear = mock.stub().get("/only-me").respondStatus(201);
+    Registration keep = mock.stub().get("/keep-me").respondStatus(202);
+
+    assertThat(HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/only-me")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(201);
+    assertThat(HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/keep-me")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(202);
+
+    toClear.clear();
+
+    // Cleared → 404
+    assertThat(HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/only-me")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(404);
+    // Untouched → still 202
+    assertThat(HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/keep-me")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(202);
+    // sanity: keep is truly untouched
+    assertThat(keep.ids()).isNotEmpty();
+  }
+
+  @Test
+  void registration_clear_isIdempotent() {
+    Registration reg = mock.stub().get("/idem").respondStatus(200);
+    reg.clear();
+    reg.clear();
+  }
+
+  @Test
+  void respondSequence_registrationCarriesAllIds() {
+    Registration reg = mock.stub().get("/seq-reg").respondSequence(500, 502, 200);
+    assertThat(reg.ids()).hasSize(3);
+    assertThat(reg.id()).isEqualTo(reg.ids().get(0));
+  }
+
+  @Test
+  void limitFollowedByRespondSequence_sequenceOverridesLimit() throws Exception {
+    // respondSequence enforces its own Times.exactly(1) per element regardless of prior
+    // .limit() call. This is documented behavior — verify.
+    mock.stub().get("/seq-over-limit").limit(99).respondSequence(200, 200);
+    int s1 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/seq-over-limit")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    int s2 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/seq-over-limit")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    int s3 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/seq-over-limit")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    assertThat(new int[]{s1, s2, s3}).containsExactly(200, 200, 404);
+  }
 }
