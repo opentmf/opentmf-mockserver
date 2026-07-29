@@ -1,10 +1,8 @@
 package org.opentmf.mockserver.callback;
 
-import static org.opentmf.mockserver.model.Error.createErrorContextForNotFound;
 import static org.opentmf.mockserver.util.AuditFieldUtil.setUpdateFields;
 import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
 
-import java.util.Objects;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
@@ -12,7 +10,6 @@ import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 import org.opentmf.commons.patch.JsonMergePatch;
 import org.opentmf.mockserver.model.RequestContext;
-import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.IdempotencyGuard;
 import org.opentmf.mockserver.util.JacksonUtil;
 import org.opentmf.mockserver.util.PayloadCache;
@@ -45,25 +42,12 @@ public class DynamicMergePatchCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError = TokenEnforcer.getInstance().validateForRequest(httpRequest);
-    if (authError != null) {
-      return authError;
+    ExistingEntryLoader.Result pre = ExistingEntryLoader.load(httpRequest);
+    if (pre.isShortCircuit()) {
+      return pre.shortCircuit();
     }
-
-    HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
-    if (replay != null) {
-      return replay;
-    }
-
-    RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
-
-    JsonNode cachedData = ctx.usePointQuery() ? CACHE.get(ctx) : CACHE.getLatestOf(ctx);
-
-    if (Objects.isNull(cachedData)) {
-      return getErrorResponse(HttpStatusCode.NOT_FOUND_404, createErrorContextForNotFound());
-    }
-
-    ctx.obtainVersionFromPayloadIfNecessary(cachedData);
+    RequestContext ctx = pre.ctx();
+    JsonNode cachedData = pre.cachedData();
 
     String body = httpRequest.getBodyAsString();
     JsonMergePatch mergePatch = JsonMergePatch.fromJson(body);

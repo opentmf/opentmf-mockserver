@@ -1,18 +1,12 @@
 package org.opentmf.mockserver.callback;
 
-import static org.opentmf.mockserver.model.Error.createErrorContextForNotFound;
-import static org.opentmf.mockserver.util.ErrorResponseUtil.getErrorResponse;
-
-import java.util.Objects;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.opentmf.mockserver.model.RequestContext;
-import org.opentmf.mockserver.token.TokenEnforcer;
 import org.opentmf.mockserver.util.IdempotencyGuard;
 import org.opentmf.mockserver.util.PayloadCache;
-import tools.jackson.databind.JsonNode;
 
 /**
  *
@@ -37,27 +31,12 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
 
   @Override
   public HttpResponse handle(HttpRequest httpRequest) {
-    HttpResponse authError = TokenEnforcer.getInstance().validateForRequest(httpRequest);
-    if (authError != null) {
-      return authError;
+    ExistingEntryLoader.Result pre = ExistingEntryLoader.load(httpRequest);
+    if (pre.isShortCircuit()) {
+      return pre.shortCircuit();
     }
+    RequestContext ctx = pre.ctx();
 
-    HttpResponse replay = IdempotencyGuard.precheck(httpRequest);
-    if (replay != null) {
-      return replay;
-    }
-
-    RequestContext ctx = RequestContext.initialize(httpRequest, true, null);
-
-    // Retrieve the cached data associated with the domain and ID
-    JsonNode cachedData = ctx.usePointQuery() ? CACHE.get(ctx) : CACHE.getLatestOf(ctx);
-
-    // If cached data is not found, return a not found response
-    if (Objects.isNull(cachedData)) {
-      return getErrorResponse(HttpStatusCode.NOT_FOUND_404, createErrorContextForNotFound());
-    }
-
-    ctx.obtainVersionFromPayloadIfNecessary(cachedData);
     HttpResponse response =
         HttpResponse.response().withStatusCode(HttpStatusCode.NO_CONTENT_204.code());
     // Store the idempotency record before clearing so it stays linked to a still-present
@@ -68,4 +47,3 @@ public class DynamicDeleteCallback implements ExpectationResponseCallback {
     return response;
   }
 }
-

@@ -41,4 +41,47 @@ class MockServerSupportTests {
     assertThat(mock.verify()).isNotNull();
     assertThat(mock.oidc()).isNotNull();
   }
+
+  @Test
+  void keepExpectationsBetweenTests_returnsSameInstance() {
+    // Chainable setter — verify it does not blow up and returns self so callers can chain.
+    assertThat(mock.keepExpectationsBetweenTests()).isSameAs(mock);
+  }
+
+  @Test
+  void expect_registersRawExpectation() throws Exception {
+    mock.expect(
+        org.mockserver.model.HttpRequest.request().withMethod("GET").withPath("/raw"),
+        org.mockserver.model.HttpResponse.response().withStatusCode(200).withBody("raw-body"));
+    HttpResponse<String> resp = HttpClient.newHttpClient().send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/raw")).GET().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(resp.statusCode()).isEqualTo(200);
+    assertThat(resp.body()).isEqualTo("raw-body");
+  }
+
+  @Test
+  void token_bearerHeader_tokenFor_returnRealJwts() {
+    String tok = mock.token("reader");
+    String bearer = mock.bearerHeader("reader", "writer");
+    String userTok = mock.tokenFor("alice", "admin");
+    assertThat(tok.chars().filter(c -> c == '.').count()).isEqualTo(2);
+    assertThat(bearer).startsWith("Bearer ");
+    assertThat(userTok.chars().filter(c -> c == '.').count()).isEqualTo(2);
+  }
+
+  @Test
+  void nonJunit_start_stop_cycleWorks() {
+    // Uses the public API without JUnit lifecycle — the Cucumber / plain-Java entry-point.
+    MockServerSupport aux = MockServerSupport.create();
+    try {
+      assertThat(aux.port()).isPositive();
+      // start() is idempotent while running
+      aux.start();
+    } finally {
+      aux.stop();
+    }
+    // stop() is idempotent when already stopped
+    aux.stop();
+  }
 }
