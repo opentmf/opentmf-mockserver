@@ -408,11 +408,13 @@
       <build>
         <plugins>
           <!-- Invoked explicitly on the CLI: `mvn -Psonar clean verify sonar:sonar`.
-               Phase-binding sonar in a multi-module reactor "delays to end" but never
-               fires because the aggregator's verify runs first and there is no session-end
-               hook that triggers the delayed submission. Documented usage is the trailing
-               sonar:sonar goal. Jacoco lives in the aggregator's always-on config now, so
-               this profile only carries the sonar-maven-plugin declaration. -->
+               Phase-binding sonar to `verify` DOES fire in a multi-module reactor with
+               sonar-maven-plugin 5.7 (the "Delaying" callback executes at reactor end),
+               BUT the delayed scan sees a stale/incomplete jacoco.xml per module and
+               reports ~10 percentage points below the true coverage — a phase-ordering
+               issue between jacoco `report` and the delayed sonar-scan callback that
+               would need dedicated investigation to fix. Until that's resolved, the
+               trailing `sonar:sonar` goal is the correct invocation. -->
           <plugin>
             <groupId>org.sonarsource.scanner.maven</groupId>
             <artifactId>sonar-maven-plugin</artifactId>
