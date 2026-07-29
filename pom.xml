@@ -2,12 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.opentmf.mockserver</groupId>
-  <artifactId>opentmf-mockserver</artifactId>
-  <name>opentmf-mockserver</name>
+  <artifactId>opentmf-mockserver-parent</artifactId>
+  <name>opentmf-mockserver-parent</name>
   <version>2.1.9-SNAPSHOT</version>
+  <packaging>pom</packaging>
 
   <description>
-    Easy to use dynamic expectations for get, list, post, patch, delete and token retrieval.
+    Aggregator and parent POM for opentmf-mockserver and its test-support module.
   </description>
 
   <url>https://github.com/opentmf/opentmf-mockserver</url>
@@ -49,6 +50,11 @@
     </developer>
   </developers>
 
+  <modules>
+    <module>opentmf-mockserver</module>
+    <module>opentmf-mockserver-test-support</module>
+  </modules>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>17</java.version>
@@ -78,10 +84,15 @@
     <!-- Logging -->
     <slf4j.version>2.0.18</slf4j.version>
 
+    <!-- Test-support extension consumers (provided/optional in test-support) -->
+    <spring.version>6.2.11</spring.version>
+    <spring-boot.version>3.5.6</spring-boot.version>
+
     <!-- Test -->
     <junit-jupiter.version>6.1.2</junit-jupiter.version>
     <system-stubs-jupiter.version>2.1.8</system-stubs-jupiter.version>
     <testcontainers.version>1.21.4</testcontainers.version>
+    <assertj.version>3.27.7</assertj.version>
 
     <!-- Maven plugins -->
     <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
@@ -98,6 +109,13 @@
     <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
     <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
     <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
+    <sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
+    <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+
+    <!-- Trivy image used by the `docker` profile scan executions. Pin the exact
+         scanner version so local runs match CI runs and shift only on deliberate
+         bumps. -->
+    <trivy.image.version>0.72.0</trivy.image.version>
   </properties>
 
   <dependencyManagement>
@@ -119,214 +137,22 @@
         <artifactId>commons-compress</artifactId>
         <version>${commons-compress.version}</version>
       </dependency>
+
+      <!-- Own modules, so children reference siblings without repeating the version. -->
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>opentmf-mockserver</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>opentmf-mockserver-test-support</artifactId>
+        <version>${project.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
-  <dependencies>
-    <!-- Jackson 3 -->
-    <dependency>
-      <groupId>tools.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-    </dependency>
-
-    <!-- Netty -->
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-buffer</artifactId>
-      <version>${netty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-codec-http</artifactId>
-      <version>${netty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-codec-http2</artifactId>
-      <version>${netty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-common</artifactId>
-      <version>${netty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-handler</artifactId>
-      <version>${netty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-transport</artifactId>
-      <version>${netty.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-tcnative-boringssl-static</artifactId>
-      <version>${netty-tcnative.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-
-    <!-- TLS / Crypto -->
-    <dependency>
-      <groupId>org.bouncycastle</groupId>
-      <artifactId>bcprov-jdk18on</artifactId>
-      <version>${bouncycastle.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.bouncycastle</groupId>
-      <artifactId>bcpkix-jdk18on</artifactId>
-      <version>${bouncycastle.version}</version>
-    </dependency>
-
-    <!-- JWT -->
-    <dependency>
-      <groupId>com.nimbusds</groupId>
-      <artifactId>nimbus-jose-jwt</artifactId>
-      <version>${nimbus-jose-jwt.version}</version>
-    </dependency>
-
-    <!-- JSON validation and matching -->
-    <dependency>
-      <groupId>com.networknt</groupId>
-      <artifactId>json-schema-validator</artifactId>
-      <version>${json-schema-validator.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.jayway.jsonpath</groupId>
-      <artifactId>json-path</artifactId>
-      <version>${json-path.version}</version>
-    </dependency>
-
-    <!-- JSON Patch + Merge Patch (Jackson 3) -->
-    <dependency>
-      <groupId>org.opentmf.commons</groupId>
-      <artifactId>opentmf-json-patch</artifactId>
-      <version>${opentmf-json-patch.version}</version>
-    </dependency>
-
-    <!-- Async event log -->
-    <dependency>
-      <groupId>com.lmax</groupId>
-      <artifactId>disruptor</artifactId>
-      <version>${disruptor.version}</version>
-    </dependency>
-
-    <!-- Gzip (used by Netty at runtime for HTTP content compression) -->
-    <dependency>
-      <groupId>com.jcraft</groupId>
-      <artifactId>jzlib</artifactId>
-      <version>${jzlib.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-
-    <!-- JSR 305 annotations (@Nullable, @Nonnull) – compile-time only -->
-    <dependency>
-      <groupId>com.google.code.findbugs</groupId>
-      <artifactId>jsr305</artifactId>
-      <version>${jsr305.version}</version>
-      <optional>true</optional>
-    </dependency>
-
-    <!-- TSID (Time-Sorted IDs) -->
-    <dependency>
-      <groupId>io.hypersistence</groupId>
-      <artifactId>hypersistence-tsid</artifactId>
-      <version>${hypersistence-tsid.version}</version>
-    </dependency>
-
-    <!-- Utilities -->
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>${commons-lang3.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-text</artifactId>
-      <version>${commons-text.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>${commons-codec.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${guava.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.github.classgraph</groupId>
-      <artifactId>classgraph</artifactId>
-      <version>${classgraph.version}</version>
-    </dependency>
-
-    <!-- Logging -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-jdk14</artifactId>
-      <version>${slf4j.version}</version>
-      <scope>runtime</scope>
-      <optional>true</optional>
-    </dependency>
-
-    <!-- Test -->
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>${junit-jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>uk.org.webcompere</groupId>
-      <artifactId>system-stubs-jupiter</artifactId>
-      <version>${system-stubs-jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <version>${testcontainers.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>${testcontainers.version}</version>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
   <build>
-    <resources>
-      <resource>
-        <directory>src/main/resources</directory>
-        <filtering>false</filtering>
-        <excludes>
-          <exclude>mockserver-version.properties</exclude>
-        </excludes>
-      </resource>
-      <resource>
-        <directory>src/main/resources</directory>
-        <filtering>true</filtering>
-        <includes>
-          <include>mockserver-version.properties</include>
-        </includes>
-      </resource>
-      <resource>
-        <directory>${project.basedir}</directory>
-        <includes>
-          <include>opentmf-mockserver-openapi.yaml</include>
-        </includes>
-        <filtering>true</filtering>
-      </resource>
-    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -344,89 +170,81 @@
           <artifactId>maven-deploy-plugin</artifactId>
           <version>${maven-deploy-plugin.version}</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>${maven-enforcer-plugin.version}</version>
+          <executions>
+            <execution>
+              <id>enforce-maven</id>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <requireJavaVersion>
+                    <version>[17,18)</version>
+                    <message>Build requires Java 17.x. Newer JDKs are not supported.</message>
+                  </requireJavaVersion>
+                  <requireMavenVersion>
+                    <version>[3.9,3.10)</version>
+                    <message>Build requires Maven 3.9.x.</message>
+                  </requireMavenVersion>
+                </rules>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <version>${maven-dependency-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>${maven-failsafe-plugin.version}</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>integration-test</goal>
+                <goal>verify</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-release-plugin</artifactId>
+          <version>${maven-release-plugin.version}</version>
+          <configuration>
+            <releaseProfiles>release</releaseProfiles>
+            <goals>deploy</goals>
+            <tagNameFormat>@{project.version}</tagNameFormat>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>${maven-enforcer-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>enforce-maven</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <requireJavaVersion>
-                  <version>17</version>
-                </requireJavaVersion>
-                <requireMavenVersion>
-                  <version>3.9.0</version>
-                </requireMavenVersion>
-              </rules>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven-compiler-plugin.version}</version>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>${maven-dependency-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>copy</id>
-            <phase>package</phase>
-            <goals>
-              <goal>copy-dependencies</goal>
-            </goals>
-            <configuration>
-              <includeScope>runtime</includeScope>
-              <outputDirectory>${project.build.directory}/libs</outputDirectory>
-              <overWriteReleases>false</overWriteReleases>
-              <overWriteSnapshots>false</overWriteSnapshots>
-              <overWriteIfNewer>true</overWriteIfNewer>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven-surefire-plugin.version}</version>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <version>${maven-failsafe-plugin.version}</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>integration-test</goal>
-              <goal>verify</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-release-plugin</artifactId>
-        <version>${maven-release-plugin.version}</version>
-        <configuration>
-          <releaseProfiles>release</releaseProfiles>
-          <goals>deploy</goals>
-          <tagNameFormat>@{project.version}</tagNameFormat>
-        </configuration>
+        <inherited>false</inherited>
       </plugin>
     </plugins>
   </build>
@@ -435,118 +253,125 @@
     <profile>
       <id>release</id>
       <build>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-source-plugin</artifactId>
+              <version>${maven-source-plugin.version}</version>
+              <executions>
+                <execution>
+                  <id>attach-sources</id>
+                  <goals>
+                    <goal>jar-no-fork</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-javadoc-plugin</artifactId>
+              <version>${maven-javadoc-plugin.version}</version>
+              <executions>
+                <execution>
+                  <id>attach-javadocs</id>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                  <configuration>
+                    <failOnWarnings>false</failOnWarnings>
+                    <failOnError>false</failOnError>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-gpg-plugin</artifactId>
+              <version>${maven-gpg-plugin.version}</version>
+              <executions>
+                <execution>
+                  <id>sign-artifacts</id>
+                  <phase>verify</phase>
+                  <goals>
+                    <goal>sign</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.sonatype.central</groupId>
+              <artifactId>central-publishing-maven-plugin</artifactId>
+              <version>${central-publishing-maven-plugin.version}</version>
+              <extensions>true</extensions>
+              <configuration>
+                <publishingServerId>publish-to-central</publishingServerId>
+                <autoPublish>true</autoPublish>
+              </configuration>
+            </plugin>
+          </plugins>
+        </pluginManagement>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>${maven-source-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar-no-fork</goal>
-                </goals>
-              </execution>
-            </executions>
           </plugin>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>${maven-javadoc-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-                <configuration>
-                  <failOnWarnings>false</failOnWarnings>
-                  <failOnError>false</failOnError>
-                </configuration>
-              </execution>
-            </executions>
           </plugin>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-gpg-plugin</artifactId>
-            <version>${maven-gpg-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
           </plugin>
           <plugin>
             <groupId>org.sonatype.central</groupId>
             <artifactId>central-publishing-maven-plugin</artifactId>
-            <version>${central-publishing-maven-plugin.version}</version>
             <extensions>true</extensions>
-            <configuration>
-              <publishingServerId>publish-to-central</publishingServerId>
-              <autoPublish>true</autoPublish>
-            </configuration>
           </plugin>
         </plugins>
       </build>
     </profile>
+
     <profile>
-      <id>docker</id>
+      <id>sonar</id>
       <properties>
-        <maven.source.skip>true</maven.source.skip>
-        <maven.javadoc.skip>true</maven.javadoc.skip>
-        <maven.test.skip>true</maven.test.skip>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.exclusions>**/org/mockserver/**</sonar.exclusions>
+        <sonar.coverage.exclusions>**/org/mockserver/**</sonar.coverage.exclusions>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
       </properties>
       <build>
         <plugins>
           <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>${exec-maven-plugin.version}</version>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco-maven-plugin.version}</version>
             <executions>
-              <!-- Remove existing docker image from local repo -->
               <execution>
-                <configuration>
-                  <arguments>
-                    <argument>image</argument>
-                    <argument>rm</argument>
-                    <argument>--force</argument>
-                    <argument>local/opentmf-mockserver:${project.version}</argument>
-                  </arguments>
-                  <executable>docker</executable>
-                  <workingDirectory>${project.basedir}</workingDirectory>
-                </configuration>
+                <id>prepare-agent</id>
                 <goals>
-                  <goal>exec</goal>
+                  <goal>prepare-agent</goal>
                 </goals>
-                <id>docker-clean</id>
-                <phase>clean</phase>
               </execution>
-
-              <!-- Create new docker image -->
               <execution>
-                <configuration>
-                  <arguments>
-                    <argument>build</argument>
-                    <argument>-t</argument>
-                    <argument>local/opentmf-mockserver:${project.version}</argument>
-                    <argument>--build-arg</argument>
-                    <argument>VERSION=${project.version}</argument>
-                    <argument>.</argument>
-                  </arguments>
-                  <executable>docker</executable>
-                  <workingDirectory>${project.basedir}</workingDirectory>
-                </configuration>
+                <id>report</id>
+                <phase>verify</phase>
                 <goals>
-                  <goal>exec</goal>
+                  <goal>report</goal>
                 </goals>
-                <id>docker-build</id>
-                <phase>package</phase>
               </execution>
             </executions>
+          </plugin>
+          <!-- Invoked explicitly on the CLI: `mvn -Psonar clean verify sonar:sonar`.
+               Phase-binding sonar in a multi-module reactor "delays to end" but never
+               fires because the aggregator's verify runs first and there is no session-end
+               hook that triggers the delayed submission. Documented usage is the trailing
+               sonar:sonar goal. -->
+          <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <version>${sonar-maven-plugin.version}</version>
           </plugin>
         </plugins>
       </build>

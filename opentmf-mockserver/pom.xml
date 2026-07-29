@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.opentmf.mockserver</groupId>
+    <artifactId>opentmf-mockserver-parent</artifactId>
+    <version>2.1.9-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>opentmf-mockserver</artifactId>
+  <name>opentmf-mockserver</name>
+
+  <description>
+    Easy to use dynamic expectations for get, list, post, patch, delete and token retrieval.
+  </description>
+
+  <dependencies>
+    <!-- Jackson 3 -->
+    <dependency>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <!-- Netty -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-buffer</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http2</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-handler</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-tcnative-boringssl-static</artifactId>
+      <version>${netty-tcnative.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- TLS / Crypto -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+      <version>${bouncycastle.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk18on</artifactId>
+      <version>${bouncycastle.version}</version>
+    </dependency>
+
+    <!-- JWT -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>${nimbus-jose-jwt.version}</version>
+    </dependency>
+
+    <!-- JSON validation and matching -->
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>${json-schema-validator.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.jayway.jsonpath</groupId>
+      <artifactId>json-path</artifactId>
+      <version>${json-path.version}</version>
+    </dependency>
+
+    <!-- JSON Patch + Merge Patch (Jackson 3) -->
+    <dependency>
+      <groupId>org.opentmf.commons</groupId>
+      <artifactId>opentmf-json-patch</artifactId>
+      <version>${opentmf-json-patch.version}</version>
+    </dependency>
+
+    <!-- Async event log -->
+    <dependency>
+      <groupId>com.lmax</groupId>
+      <artifactId>disruptor</artifactId>
+      <version>${disruptor.version}</version>
+    </dependency>
+
+    <!-- Gzip (used by Netty at runtime for HTTP content compression) -->
+    <dependency>
+      <groupId>com.jcraft</groupId>
+      <artifactId>jzlib</artifactId>
+      <version>${jzlib.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- JSR 305 annotations (@Nullable, @Nonnull) - compile-time only -->
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+      <version>${jsr305.version}</version>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- TSID (Time-Sorted IDs) -->
+    <dependency>
+      <groupId>io.hypersistence</groupId>
+      <artifactId>hypersistence-tsid</artifactId>
+      <version>${hypersistence-tsid.version}</version>
+    </dependency>
+
+    <!-- Utilities -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang3.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>${commons-text.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>${commons-codec.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.classgraph</groupId>
+      <artifactId>classgraph</artifactId>
+      <version>${classgraph.version}</version>
+    </dependency>
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>runtime</scope>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Test -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit-jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>uk.org.webcompere</groupId>
+      <artifactId>system-stubs-jupiter</artifactId>
+      <version>${system-stubs-jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>mockserver-version.properties</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>mockserver-version.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>${project.basedir}</directory>
+        <includes>
+          <include>opentmf-mockserver-openapi.yaml</include>
+        </includes>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <includeScope>runtime</includeScope>
+              <outputDirectory>${project.build.directory}/libs</outputDirectory>
+              <overWriteReleases>false</overWriteReleases>
+              <overWriteSnapshots>false</overWriteSnapshots>
+              <overWriteIfNewer>true</overWriteIfNewer>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Local docker image build + Trivy scan via the exec plugin. Produces
+         local/opentmf-mockserver:${project.version} and runs a full HTML report
+         (all severities, non-failing) plus a HIGH/CRITICAL gate that fails the
+         build on any fixable finding. Tests + javadoc + sources are skipped
+         here because this profile targets a fast image-build loop. -->
+    <profile>
+      <id>docker</id>
+      <properties>
+        <maven.source.skip>true</maven.source.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <maven.test.skip>true</maven.test.skip>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>${exec-maven-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>docker-clean</id>
+                <phase>clean</phase>
+                <goals><goal>exec</goal></goals>
+                <configuration>
+                  <executable>docker</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
+                  <arguments>
+                    <argument>image</argument>
+                    <argument>rm</argument>
+                    <argument>--force</argument>
+                    <argument>local/${project.artifactId}:${project.version}</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+
+              <execution>
+                <id>docker-build</id>
+                <phase>package</phase>
+                <goals><goal>exec</goal></goals>
+                <configuration>
+                  <executable>docker</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
+                  <arguments>
+                    <argument>build</argument>
+                    <argument>-t</argument>
+                    <argument>local/${project.artifactId}:${project.version}</argument>
+                    <argument>--build-arg</argument>
+                    <argument>VERSION=${project.version}</argument>
+                    <argument>.</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+
+              <!-- HTML report — all severities, never fails. Includes unfixed
+                   findings (unlike the gate below) so developers see the full
+                   picture, not just gate-actionable items. -->
+              <execution>
+                <id>trivy-html-report</id>
+                <phase>package</phase>
+                <goals><goal>exec</goal></goals>
+                <configuration>
+                  <executable>docker</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
+                  <arguments>
+                    <argument>run</argument>
+                    <argument>--rm</argument>
+                    <argument>-v</argument>
+                    <argument>/var/run/docker.sock:/var/run/docker.sock</argument>
+                    <argument>-v</argument>
+                    <argument>${user.home}/.cache/trivy:/trivy-cache</argument>
+                    <argument>-v</argument>
+                    <argument>${project.build.directory}:/output</argument>
+                    <argument>-v</argument>
+                    <argument>${project.basedir}/.trivyignore:/.trivyignore:ro</argument>
+                    <argument>-v</argument>
+                    <argument>${project.basedir}/ci/trivy-html.tpl:/trivy-html.tpl:ro</argument>
+                    <argument>aquasec/trivy:${trivy.image.version}</argument>
+                    <argument>--cache-dir</argument>
+                    <argument>/trivy-cache</argument>
+                    <argument>image</argument>
+                    <argument>--ignorefile</argument>
+                    <argument>/.trivyignore</argument>
+                    <argument>--severity</argument>
+                    <argument>LOW,MEDIUM,HIGH,CRITICAL</argument>
+                    <argument>--format</argument>
+                    <argument>template</argument>
+                    <argument>--template</argument>
+                    <argument>@/trivy-html.tpl</argument>
+                    <argument>--output</argument>
+                    <argument>/output/trivy-report.html</argument>
+                    <argument>--exit-code</argument>
+                    <argument>0</argument>
+                    <argument>local/${project.artifactId}:${project.version}</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+
+              <!-- Gate — fails on HIGH or CRITICAL findings WITH a fix available.
+                   Unfixed findings are filtered out (ignore-unfixed). Runs after
+                   the report so the HTML is always written first. -->
+              <execution>
+                <id>trivy-gate</id>
+                <phase>package</phase>
+                <goals><goal>exec</goal></goals>
+                <configuration>
+                  <executable>docker</executable>
+                  <workingDirectory>${project.basedir}</workingDirectory>
+                  <arguments>
+                    <argument>run</argument>
+                    <argument>--rm</argument>
+                    <argument>-v</argument>
+                    <argument>/var/run/docker.sock:/var/run/docker.sock</argument>
+                    <argument>-v</argument>
+                    <argument>${user.home}/.cache/trivy:/trivy-cache</argument>
+                    <argument>-v</argument>
+                    <argument>${project.basedir}/.trivyignore:/.trivyignore:ro</argument>
+                    <argument>aquasec/trivy:${trivy.image.version}</argument>
+                    <argument>--cache-dir</argument>
+                    <argument>/trivy-cache</argument>
+                    <argument>image</argument>
+                    <argument>--ignorefile</argument>
+                    <argument>/.trivyignore</argument>
+                    <argument>--severity</argument>
+                    <argument>HIGH,CRITICAL</argument>
+                    <argument>--ignore-unfixed</argument>
+                    <argument>--exit-code</argument>
+                    <argument>1</argument>
+                    <argument>local/${project.artifactId}:${project.version}</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+</project>

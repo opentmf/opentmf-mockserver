@@ -5,6 +5,91 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.9] - 2026-07-29
+
+### Added
+
+- **New artifact `org.opentmf.mockserver:opentmf-mockserver-test-support`** — a fluent JUnit
+  5 test-support layer over opentmf-mockserver, intended for services that today hand-roll
+  the same `ClientAndServer` + `Dynamic*Callback` + JWKS + `@DynamicPropertySource` glue in
+  every integration test. One implementation, versioned with the server it drives; no drift
+  across consumers.
+    - `MockServerSupport` — JUnit 5 `@RegisterExtension`-compatible facade that starts an
+      in-process MockServer on a random free port and reset expectations after every
+      `@Test`. Also usable without JUnit via `start()` / `stop()` (Cucumber / E2E harnesses).
+    - `TmfMockBuilder` (`mock.tmf(...).post/get/getList/put/delete/jsonPatch/mergePatch/
+      jsonPatchCollection/crud(...)`) — fluent registration of the repo's `Dynamic*Callback`
+      classes on a given TMF resource path.
+    - `StubBuilder` (`mock.stub().get(...).respondJson/respondStatus/respondDelayed/
+      respondSequence(...)`) — fluent static expectations for non-TMF endpoints (KBA
+      lookups, gateways, retry-path stubs).
+    - `VerifyBuilder` (`mock.verify().post(...).times/never/atLeast/atMost/once(...)`) —
+      fluent wrapper over `MockServerClient.verify` so consumers stop importing
+      `org.mockserver.verify.VerificationTimes` directly.
+    - `OidcMockSupport` (`mock.oidc()`) — JWT minting via the built-in `JwtKeyProvider`
+      with Keycloak-shaped claims (`realm_access.roles`, `resource_access.<clientId>.roles`,
+      `azp`, `preferred_username`) and JWKS endpoint registration at
+      `/realms/<realm>/protocol/openid-connect/certs`. Convenience shortcuts on the facade:
+      `mock.token(...)`, `mock.tokenFor(...)`, `mock.bearerHeader(...)`.
+    - Spring redirect helpers (`mock.redirectApiClients`, `mock.redirectHttpClients`,
+      `mock.redirectJwks`) that populate a Spring `DynamicPropertyRegistry` with
+      `opentmf.api-clients.<id>.base-url` / `.context-path`,
+      `opentmf.http-clients.<id>.base-url`, and `opentmf.security.jwk-set-uri`. Spring is a
+      `provided`/`optional` dependency — non-Spring consumers can use the rest of the
+      module without pulling Spring in.
+
+### Changed
+
+- **`docker` Maven profile now builds a local image AND runs a Trivy scan.** After the
+  existing `docker build -t local/opentmf-mockserver:${project.version}` step, the profile
+  runs two additional executions via `exec-maven-plugin`:
+  1. `trivy-html-report` — full LOW/MEDIUM/HIGH/CRITICAL scan rendered to
+     `opentmf-mockserver/target/trivy-report.html` via a bundled Go template
+     (`opentmf-mockserver/ci/trivy-html.tpl`). Never fails the build; includes unfixed
+     findings so developers see the full picture.
+  2. `trivy-gate` — HIGH/CRITICAL scan with `--ignore-unfixed`; exits 1 on any fixable
+     finding. Explicitly-accepted CVEs go in `opentmf-mockserver/.trivyignore` with a
+     comment block recording rationale.
+  Trivy runs from the pinned `aquasec/trivy:0.72.0` container against the docker socket,
+  with `~/.cache/trivy` mounted for cross-run vulnerability-DB caching. Nothing on the
+  default build path changed — the scan only fires under `-Pdocker`.
+- **`maven-enforcer-plugin` now pins the toolchain exactly.** `requireJavaVersion` tightened
+  from `17` (minimum) to `[17,18)` (exact 17.x) and `requireMavenVersion` from `3.9.0` to
+  `[3.9,3.10)`. Newer JDKs/Maven versions are rejected at `validate` phase with an explicit
+  message. The rule runs once on the aggregator (`inherited=false`) since JDK/Maven versions
+  are per-invocation.
+- **Sonar cleanup — 276 findings driven to zero.** First run of the new `sonar` profile
+  against local SonarQube surfaced 276 open findings (0 BUGs after triage; the initial
+  BUG-typed volatile-singleton warnings were confirmed as false positives for the DCL
+  pattern and suppressed with a comment). Bulk-fixed classes:
+  Jackson 3 API migrations (`asText` → `asString`, `isTextual` → `isString`, `getText` →
+  `getString`, `new URL(...)` → `URI.create(...).toURL()`),
+  `Stream.collect(Collectors.toList())` → `Stream.toList()`,
+  `RandomStringUtils.random*` → `.insecure().next*`. Structural changes:
+  `CacheQuery.Criterion` promoted to a `record`; `CacheQuery.matchesGrouped`,
+  `CacheQuery.readPath`, `DurationUtil.formatDuration`,
+  `TokenEnforcer.validateWithRoles`, `TokenEnforcer.extractRoles`,
+  `DynamicJsonPatchCollectionCallback.handle` all extracted into smaller helpers to
+  clear the cognitive-complexity gate. Renamed:
+  `IdempotencyGuard.record(request, response, ctx)` → `IdempotencyGuard.store(...)` to
+  stop shadowing the `record` restricted identifier — call-sites updated. Constants
+  extracted for duplicated string literals across the Keycloak/JWKS callbacks. Log-arg
+  computation guarded with `isInfoEnabled()` where args required work. Suppressions were
+  used only where the finding conflicted with an intentional pattern (DCL singletons,
+  the `Id` JavaBean field, the well-known `/realms/` OIDC path constant,
+  parameterized-vs-separate test style). **No behavioural change:** all 227 server unit
+  tests and 25 test-support tests still pass.
+- **Repository is now a multi-module Maven build.** A new aggregator pom
+  `org.opentmf.mockserver:opentmf-mockserver-parent` (packaging=pom) sits at the repository
+  root and reactor-builds the existing `org.opentmf.mockserver:opentmf-mockserver` jar under
+  the `opentmf-mockserver/` subdirectory. **The server artifact's coordinates
+  (`groupId:artifactId:version`) are unchanged**, so no consumer changes are required. The
+  restructure exists to host the new `opentmf-mockserver-test-support` sibling artifact
+  without polluting the server jar's dependency surface with JUnit and Spring. Plugin versions
+  and configuration now live in the aggregator's `<pluginManagement>`; release-only plugins
+  (`maven-source-plugin`, `maven-javadoc-plugin`, `maven-gpg-plugin`,
+  `central-publishing-maven-plugin`) live in the aggregator's `release` profile.
+
 ## [2.1.8] - 2026-07-15
 
 ### Added
@@ -343,6 +428,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release.
+
+[2.1.9]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.8...2.1.9
 
 [2.1.8]: https://github.com/opentmf/opentmf-mockserver/compare/2.1.7...2.1.8
 

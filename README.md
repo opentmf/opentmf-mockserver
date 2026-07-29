@@ -7,7 +7,7 @@ enforcement are all included without any external dependencies.
 
 > **MockServer feature matrix** -- This project embeds a subset of MockServer. For a detailed
 > breakdown of what is included and what is intentionally excluded (OpenAPI, XML matching,
-> dashboard, proxy, templates, etc.), see [MOCKSERVER.md](MOCKSERVER.md).
+> dashboard, proxy, templates, etc.), see [MOCKSERVER.md](opentmf-mockserver/MOCKSERVER.md).
 
 <!-- TOC -->
 
@@ -43,6 +43,7 @@ enforcement are all included without any external dependencies.
     * [Environment Variables](#environment-variables)
     * [Content-Range Calculations](#content-range-calculations)
     * [API Reference](#api-reference)
+    * [Test Support (opentmf-mockserver-test-support)](#test-support-opentmf-mockserver-test-support)
     * [MockServer Feature Matrix](#mockserver-feature-matrix)
     * [Acknowledgments](#acknowledgments)
     * [Release Notes](#release-notes)
@@ -104,7 +105,7 @@ example exchange. The examples all use `/tmf-api/serviceOrdering/v4/serviceOrder
 
 > **Tip:** Instead of registering each expectation with `PUT /mockserver/expectation` after
 > startup, you can pre-load a batch from a JSON file via `MOCKSERVER_INITIALIZATION_JSON_PATH`.
-> See [Initializing Expectations from a JSON File](MOCKSERVER.md#initializing-expectations-from-a-json-file)
+> See [Initializing Expectations from a JSON File](opentmf-mockserver/MOCKSERVER.md#initializing-expectations-from-a-json-file)
 > in MOCKSERVER.md for the file format and a complete example.
 
 ### POST (DynamicPostCallback)
@@ -916,7 +917,7 @@ Set `CONTENT_RANGE_OFFSET_BASE=0` for zero-based offset values. Default offset i
 
 ## API Reference
 
-The full API is documented in [opentmf-mockserver-openapi.yaml](opentmf-mockserver-openapi.yaml) (OpenAPI 3.1). It
+The full API is documented in [opentmf-mockserver-openapi.yaml](opentmf-mockserver/opentmf-mockserver-openapi.yaml) (OpenAPI 3.1). It
 covers all three
 endpoint groups: the MockServer control plane, the Keycloak OIDC mock, and the dynamic TMF
 resource callbacks.
@@ -930,12 +931,80 @@ GET /mockserver/openapi
 You can point any OpenAPI viewer (e.g. [Swagger Editor](https://editor.swagger.io),
 VS Code OpenAPI extension) directly at `http://localhost:1080/mockserver/openapi`.
 
+## Test Support (`opentmf-mockserver-test-support`)
+
+A sibling artifact `org.opentmf.mockserver:opentmf-mockserver-test-support` ships fluent
+JUnit 5 helpers over the same server. Consumer integration tests should stop hand-rolling
+the `ClientAndServer` + `Dynamic*Callback` + JWKS + `@DynamicPropertySource` glue and use
+this module instead. One implementation, versioned in lockstep with the server.
+
+Add it to your test scope:
+
+```xml
+<dependency>
+  <groupId>org.opentmf.mockserver</groupId>
+  <artifactId>opentmf-mockserver-test-support</artifactId>
+  <version>${opentmf-mockserver.version}</version>
+  <scope>test</scope>
+</dependency>
+```
+
+Then in a Spring Boot integration test:
+
+```java
+@SpringBootTest
+class DocumentServiceIT {
+
+  @RegisterExtension
+  static MockServerSupport mock = MockServerSupport.create();   // random free port
+
+  @DynamicPropertySource
+  static void redirect(DynamicPropertyRegistry registry) {
+    mock.redirectApiClients(registry, "onedms");    // opentmf.api-clients.onedms.* → mock
+    mock.redirectJwks(registry);                    // opentmf.security.jwk-set-uri → mock
+  }
+
+  @Test
+  void archiveDocument_returns201() {
+    mock.tmf("onedms").crud("/document");                        // register Dynamic* callbacks
+    mock.stub().get("/kba/{key}").respondJson(200, "{\"v\":1}"); // static stub
+    // ... exercise the service under test ...
+    mock.verify().post("/document").times(1);                    // fluent verification
+  }
+}
+```
+
+**Highlights.**
+
+- `mock.tmf(clientId).post/get/getList/put/delete/jsonPatch/mergePatch/jsonPatchCollection/
+  crud(path)` — registers the corresponding `Dynamic*Callback` on the mock's URL.
+  `crud(path)` does POST + GET-by-id + GET-list + PUT + DELETE in one call.
+- `mock.stub().get/post/put/delete(path).respondJson/respondStatus/respondDelayed/
+  respondSequence(...)` — static expectations for non-TMF endpoints (KBA lookups, gateway
+  stubs, retry-path testing).
+- `mock.verify().post(path).times/never/atLeast/atMost/once/withHeader/withJsonBody(...)`
+  — fluent verification wrapper.
+- `mock.token(roles...)` / `mock.tokenFor(user, roles...)` / `mock.bearerHeader(roles...)`
+  — mint Keycloak-shaped JWTs against the mock's built-in RSA key. Tokens verify against
+  the JWKS served at `/realms/<realm>/protocol/openid-connect/certs`.
+- `mock.redirectApiClients(registry, "id1", "id2")` — populates
+  `opentmf.api-clients.<id>.base-url` at the mock and clears `context-path`.
+- `mock.redirectJwks(registry)` — populates `opentmf.security.jwk-set-uri` at the mock's
+  JWKS endpoint (default realm `realm1`).
+
+**Non-JUnit usage.** `MockServerSupport.create()` / `.stop()` also work without JUnit for
+Cucumber, plain E2E harnesses, or `main`-style probes.
+
+**Spring dependency.** `spring-test` and `spring-boot-test` are declared with
+`<scope>provided</scope><optional>true</optional>`, so a pure-JUnit consumer (no Spring on
+classpath) can still use the module — they just can't call the `redirect*` helpers.
+
 ## MockServer Feature Matrix
 
 This project embeds a tailored subset of MockServer. For a detailed breakdown of included
 features (HTTP mocking, JSON matching, TLS, callbacks, forwarding) and excluded features
 (OpenAPI, XML/XPath matching, dashboard UI, SOCKS proxy, template engines, Prometheus), see
-[MOCKSERVER.md](MOCKSERVER.md).
+[MOCKSERVER.md](opentmf-mockserver/MOCKSERVER.md).
 
 ## Acknowledgments
 
