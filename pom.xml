@@ -257,8 +257,12 @@
               </goals>
             </execution>
             <execution>
+              <!-- Bound to prepare-package (not verify) so the XML report is written
+                   BEFORE the sonar profile's phase-bound sonar-scan runs at verify.
+                   Otherwise Sonar's JaCoCo importer reads a not-yet-generated file
+                   on the last module and undercounts coverage. -->
               <id>report</id>
-              <phase>verify</phase>
+              <phase>prepare-package</phase>
               <goals>
                 <goal>report</goal>
               </goals>
@@ -401,24 +405,34 @@
       <id>sonar</id>
       <properties>
         <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.projectKey>org.opentmf.mockserver:opentmf-mockserver-parent</sonar.projectKey>
+        <sonar.qualitygate.wait>true</sonar.qualitygate.wait>
         <sonar.exclusions>**/org/mockserver/**</sonar.exclusions>
         <sonar.coverage.exclusions>**/org/mockserver/**</sonar.coverage.exclusions>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <!--
+          Deliberately NOT setting `sonar.coverage.jacoco.xmlReportPaths` here.
+          Sonar auto-discovers each module's own `target/site/jacoco/jacoco.xml`
+          during that module's analysis and attributes coverage per-module.
+          Setting an explicit reactor-wide list would union all modules' XMLs and
+          credit tests in one module toward classes in another — masking
+          undertested modules under a combined coverage number. Rules must apply
+          to each module individually; that includes the coverage attribution
+          Sonar uses to compute its own numbers.
+        -->
       </properties>
       <build>
         <plugins>
-          <!-- Invoked explicitly on the CLI: `mvn -Psonar clean verify sonar:sonar`.
-               Phase-binding sonar to `verify` DOES fire in a multi-module reactor with
-               sonar-maven-plugin 5.7 (the "Delaying" callback executes at reactor end),
-               BUT the delayed scan sees a stale/incomplete jacoco.xml per module and
-               reports ~10 percentage points below the true coverage — a phase-ordering
-               issue between jacoco `report` and the delayed sonar-scan callback that
-               would need dedicated investigation to fix. Until that's resolved, the
-               trailing `sonar:sonar` goal is the correct invocation. -->
           <plugin>
             <groupId>org.sonarsource.scanner.maven</groupId>
             <artifactId>sonar-maven-plugin</artifactId>
             <version>${sonar-maven-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>sonar-scan</id>
+                <phase>verify</phase>
+                <goals><goal>sonar</goal></goals>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
