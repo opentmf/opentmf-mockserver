@@ -258,7 +258,7 @@ class StubBuilderTests {
   void registration_clear_isIdempotent() {
     Registration reg = mock.stub().get("/idem").respondStatus(200);
     reg.clear();
-    reg.clear();
+    org.junit.jupiter.api.Assertions.assertDoesNotThrow(reg::clear);
   }
 
   @Test

@@ -5,6 +5,7 @@ import static org.mockserver.model.HttpResponse.response;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.mockserver.client.MockServerClient;
@@ -159,9 +160,7 @@ public class StubBuilder {
     List<Expectation> registered = new ArrayList<>(responses.length);
     for (HttpResponse resp : responses) {
       Expectation[] created = client.when(current, Times.exactly(1)).respond(resp);
-      for (Expectation e : created) {
-        registered.add(e);
-      }
+      Collections.addAll(registered, created);
     }
     current = null;
     times = Times.unlimited();

@@ -50,6 +50,9 @@ import org.springframework.test.context.DynamicPropertyRegistry;
  * <p>Also usable outside JUnit via {@link #start()} / {@link #stop()} for Cucumber or plain
  * E2E harnesses.
  */
+// java:S6548 — the JVM-wide singleton via shared() is deliberate; see the shared()
+// javadoc for the "one MockServer per JVM" rationale.
+@SuppressWarnings("java:S6548")
 public class MockServerSupport
     implements BeforeAllCallback, AfterAllCallback, AfterEachCallback {
 
