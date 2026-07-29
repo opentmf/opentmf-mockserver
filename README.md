@@ -14,6 +14,7 @@ enforcement are all included without any external dependencies.
 * [opentmf-mockserver](#opentmf-mockserver)
     * [Features](#features)
     * [Quick Start](#quick-start)
+        * [Prerequisites](#prerequisites)
         * [Docker](#docker)
         * [Standalone](#standalone)
     * [Dynamic Callbacks](#dynamic-callbacks)
@@ -65,14 +66,25 @@ enforcement are all included without any external dependencies.
 
 ## Quick Start
 
+### Prerequisites
+
+- **Java 17.x** — the build enforces `[17,18)` at Maven's `validate` phase. Newer JDKs
+  are rejected.
+- **Maven 3.9.x** — enforced as `[3.9,3.10)`.
+- **Docker** — required only for the `docker` profile (image build + Trivy scan).
+
 ### Docker
 
 ```shell
-# Build
+# Build the image AND run a Trivy scan (all-severity HTML report + HIGH/CRITICAL
+# gate with --ignore-unfixed). The build fails on any fixable HIGH/CRITICAL
+# finding; accepted findings live in opentmf-mockserver/.trivyignore.
 mvn -P docker clean package
 
+# HTML report is written to opentmf-mockserver/target/trivy-report.html
+
 # Run
-docker run -p 1080:1080 local/opentmf-mockserver:2.1.0-SNAPSHOT
+docker run -p 1080:1080 local/opentmf-mockserver:<version>
 ```
 
 The server starts on port 1080. Keycloak endpoints and JWKS are available immediately -- no extra setup needed.
@@ -669,13 +681,13 @@ Override the default configuration by providing a JSON file:
 # Docker
 docker run -p 1080:1080 \
   -v /path/to/my-keycloak-config.json:/config/keycloak-mock.json \
-  local/opentmf-mockserver:2.1.0-SNAPSHOT
+  local/opentmf-mockserver:<version>
 
 # Or via environment variable
 docker run -p 1080:1080 \
   -e KEYCLOAK_CONFIG=/config/my-config.json \
   -v /path/to/my-config.json:/config/my-config.json \
-  local/opentmf-mockserver:2.1.0-SNAPSHOT
+  local/opentmf-mockserver:<version>
 ```
 
 The JSON format:
@@ -782,7 +794,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:1080/admin/realms/rea
 Enable token validation on all dynamic callbacks with a single environment variable:
 
 ```shell
-docker run -p 1080:1080 -e ENFORCE_TOKEN=true local/opentmf-mockserver:2.1.0-SNAPSHOT
+docker run -p 1080:1080 -e ENFORCE_TOKEN=true local/opentmf-mockserver:<version>
 ```
 
 When enabled, every request to a dynamic callback must include a valid `Authorization: Bearer <token>` header. The
@@ -799,13 +811,13 @@ docker run -p 1080:1080 \
   -e ENFORCE_TOKEN=true \
   -e JWKS_URI=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs \
   -e TOKEN_ISSUER=https://keycloak.example.com/realms/myrealm \
-  local/opentmf-mockserver:2.1.0-SNAPSHOT
+  local/opentmf-mockserver:<version>
 
 # Option 2: OIDC auto-discovery (JWKS URI is resolved from the issuer's discovery endpoint)
 docker run -p 1080:1080 \
   -e ENFORCE_TOKEN=true \
   -e TOKEN_ISSUER=https://keycloak.example.com/realms/myrealm \
-  local/opentmf-mockserver:2.1.0-SNAPSHOT
+  local/opentmf-mockserver:<version>
 ```
 
 When `TOKEN_ISSUER` is set, the `iss` claim in the token is also validated against it.
