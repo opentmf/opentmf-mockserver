@@ -1,0 +1,12 @@
+# Trivy ignore file - vulnerabilities reviewed and explicitly accepted.
+# Applies to the `docker` Maven profile scans (trivy-html-report + trivy-gate).
+#
+# Add one CVE ID per line. For each entry, keep a comment block above it that
+# records:
+#   - the affected artifact(s) and version(s),
+#   - why no upstream fix is available (or why upgrading is blocked),
+#   - the risk assessment for this project.
+#
+# The gate already runs with --ignore-unfixed, so entries here are only needed
+# for HIGH/CRITICAL findings that DO have a fix but we consciously choose not
+# to take (e.g. transitive from a locked BOM, or breaking change).

@@ -111,6 +111,11 @@
     <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
     <sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+
+    <!-- Trivy image used by the `docker` profile scan executions. Pin the exact
+         scanner version so local runs match CI runs and shift only on deliberate
+         bumps. -->
+    <trivy.image.version>0.72.0</trivy.image.version>
   </properties>
 
   <dependencyManagement>
@@ -187,10 +192,12 @@
               <configuration>
                 <rules>
                   <requireJavaVersion>
-                    <version>17</version>
+                    <version>[17,18)</version>
+                    <message>Build requires Java 17.x. Newer JDKs are not supported.</message>
                   </requireJavaVersion>
                   <requireMavenVersion>
-                    <version>3.9.0</version>
+                    <version>[3.9,3.10)</version>
+                    <message>Build requires Maven 3.9.x.</message>
                   </requireMavenVersion>
                 </rules>
               </configuration>

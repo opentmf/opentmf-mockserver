@@ -40,6 +40,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`docker` Maven profile now builds a local image AND runs a Trivy scan.** After the
+  existing `docker build -t local/opentmf-mockserver:${project.version}` step, the profile
+  runs two additional executions via `exec-maven-plugin`:
+  1. `trivy-html-report` — full LOW/MEDIUM/HIGH/CRITICAL scan rendered to
+     `opentmf-mockserver/target/trivy-report.html` via a bundled Go template
+     (`opentmf-mockserver/ci/trivy-html.tpl`). Never fails the build; includes unfixed
+     findings so developers see the full picture.
+  2. `trivy-gate` — HIGH/CRITICAL scan with `--ignore-unfixed`; exits 1 on any fixable
+     finding. Explicitly-accepted CVEs go in `opentmf-mockserver/.trivyignore` with a
+     comment block recording rationale.
+  Trivy runs from the pinned `aquasec/trivy:0.72.0` container against the docker socket,
+  with `~/.cache/trivy` mounted for cross-run vulnerability-DB caching. Nothing on the
+  default build path changed — the scan only fires under `-Pdocker`.
+- **`maven-enforcer-plugin` now pins the toolchain exactly.** `requireJavaVersion` tightened
+  from `17` (minimum) to `[17,18)` (exact 17.x) and `requireMavenVersion` from `3.9.0` to
+  `[3.9,3.10)`. Newer JDKs/Maven versions are rejected at `validate` phase with an explicit
+  message. The rule runs once on the aggregator (`inherited=false`) since JDK/Maven versions
+  are per-invocation.
 - **Sonar cleanup — 276 findings driven to zero.** First run of the new `sonar` profile
   against local SonarQube surfaced 276 open findings (0 BUGs after triage; the initial
   BUG-typed volatile-singleton warnings were confirmed as false positives for the DCL
