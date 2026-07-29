@@ -51,6 +51,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `StubBuilder`, `VerifyBuilder`, `OidcMockSupport`), non-JUnit usage, a migration recipe
   for existing hand-rolled harnesses (`dsync-engine` style), and troubleshooting. The
   README's Test Support section now links to it and shows only a quick taste.
+- **`StubBuilder.limit(int)`** — cap how many times an expectation matches
+  (`Times.exactly(N)`). Applies to the next `respond*` only; each new
+  `get/post/put/delete/method` resets to unlimited. Enables the "N calls with response A,
+  then hand off to response B" pattern without `respondSequence`.
+- **`Registration` handles + targeted clear.** `StubBuilder`'s `respond*` methods and
+  `MockServerSupport.expect(request, response)` now return a `Registration` carrying the
+  expectation id(s) MockServer minted. `Registration.clear()` removes just that
+  expectation (idempotent) — no more "reset the whole server to unregister one stub".
+  `MockServerSupport.clear(Registration...)` is a batch-clear convenience that tolerates
+  null entries. Callers that ignore the return value keep compiling — the change is
+  source-compatible; and since the whole test-support module is unreleased, there is no
+  binary-compat concern. Motivation: consumers coming from a hand-rolled
+  `MockServerUtils.expectPost(path, count, status, body)` helper get the same "specify
+  count + return the id for cleanup" ergonomics, minus the combinatorial method surface.
 
 ### Changed
 

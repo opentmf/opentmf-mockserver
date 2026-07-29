@@ -12,6 +12,7 @@ glue that consumer integration tests keep hand-rolling.
 - [Spring Boot IT recipe](#spring-boot-it-recipe)
 - [TMF callback registration — `mock.tmf(id)`](#tmf-callback-registration--mocktmfid)
 - [Static stubs — `mock.stub()`](#static-stubs--mockstub)
+- [Bounded matches + targeted clear — `.limit(N)` and `Registration`](#bounded-matches--targeted-clear--limitn-and-registration)
 - [Verification — `mock.verify()`](#verification--mockverify)
 - [OIDC / JWT — `mock.oidc()`, `mock.token(...)`, `mock.bearerHeader(...)`](#oidc--jwt--mockoidc-mocktoken-mockbearerheader)
 - [Escape hatches](#escape-hatches)
@@ -211,19 +212,106 @@ Full builder surface:
 |---|---|
 | `get / post / put / delete(path)` | Start defining an expectation on that verb+path |
 | `method(verb, path)` | Same, for arbitrary verbs (`OPTIONS`, `HEAD`, `PATCH`, ...) |
+| `limit(n)` | Cap matches to N (see [Bounded matches](#bounded-matches--targeted-clear--limitn-and-registration)) |
 | `pathParam(name, value)` | Restrict a path template variable |
 | `queryParam(name, value)` | Restrict a query parameter |
 | `header(name, value)` | Restrict a header (regex accepted) |
 | `jsonBody(body)` | Restrict to a specific JSON body |
-| `respondJson(status, body)` | Terminate: JSON response |
-| `respondStatus(status)` | Terminate: status only, no body |
-| `respondDelayed(status, body, duration)` | Terminate: JSON response after a delay |
-| `respondSequence(int...)` | Terminate: N expectations, N-th call gets N-th status |
-| `respondSequence(HttpResponse...)` | Terminate: N expectations with full response control |
+| `respondJson(status, body)` | Terminate: JSON response — returns `Registration` |
+| `respondStatus(status)` | Terminate: status only, no body — returns `Registration` |
+| `respondDelayed(status, body, duration)` | Terminate: JSON response after a delay — returns `Registration` |
+| `respondSequence(int...)` | Terminate: N expectations, N-th call gets N-th status — returns `Registration` |
+| `respondSequence(HttpResponse...)` | Terminate: N expectations with full response control — returns `Registration` |
 
 Every `respond*` is terminal — you cannot chain another call after it. Calling
 a matcher (`pathParam`, `header`, ...) or a `respond*` before a verb-starter
 throws `IllegalStateException`.
+
+## Bounded matches + targeted clear — `.limit(N)` and `Registration`
+
+Two knobs on top of the basic stub flow: cap how many times an expectation
+matches, and remove a specific stub without wiping the whole server.
+
+### `.limit(N)` — match at most N times
+
+By default a stub matches every request that fits its shape, forever. Add
+`.limit(N)` to make it retire after the N-th match:
+
+```java
+mock.stub().get("/flaky").limit(3).respondStatus(500);
+mock.stub().get("/flaky").respondStatus(200);   // 4th call and onward
+```
+
+- The first three requests to `/flaky` get **500**.
+- The fourth match falls through to the unlimited expectation → **200**.
+- `.limit(N)` applies to the *next* `respond*` only; each new `get/post/...`
+  resets to unlimited. So you never accidentally carry a limit across chains.
+- `.limit(N)` on the same chain as `respondSequence(...)` is a no-op —
+  sequences enforce their own `Times.exactly(1)` per element. Documented and
+  covered by a test.
+
+### `Registration` — targeted clear
+
+Every `respond*` and `mock.expect(...)` returns a `Registration` handle:
+
+```java
+public final class Registration {
+  public String id();          // first expectation id (or null if none)
+  public List<String> ids();   // every id for this registration
+  public void clear();         // MockServer.clear(id) for each id (idempotent)
+}
+```
+
+Use it when `afterEach`'s "reset everything" is too coarse — for example
+you want to change one specific stub mid-test without disturbing the others:
+
+```java
+@Test
+void retriesUntilServerStopsFailing() throws Exception {
+  Registration failing = mock.stub().get("/order/42").respondStatus(500);
+  mock.stub().get("/inventory").respondJson(200, "{\"count\":7}");   // must survive
+
+  service.tryOnce();          // sees 500, backs off
+  service.tryOnce();          // 500 again
+  failing.clear();            // stop failing
+  mock.stub().get("/order/42").respondJson(200, "{\"id\":\"42\"}");
+
+  service.tryOnce();          // now succeeds
+  // /inventory expectation was never touched
+}
+```
+
+`respondSequence(...)` returns a Registration whose `.ids()` carries every
+per-element expectation id — one `.clear()` retires the whole sequence:
+
+```java
+Registration seq = mock.stub().get("/rollout").respondSequence(500, 500, 200);
+// … partway through the test …
+seq.clear();   // drops all three expectations at once
+```
+
+Batch clearing:
+
+```java
+Registration a = mock.stub().get("/a").respondStatus(200);
+Registration b = mock.stub().get("/b").respondStatus(200);
+Registration c = mock.stub().get("/c").respondStatus(200);
+mock.clear(a, b, c);         // convenience for the "clear this pile" pattern
+```
+
+`clear` tolerates nulls in the array, and each `Registration.clear()` is
+idempotent — calling it twice is a no-op.
+
+### When you *don't* need `Registration`
+
+If you're happy with the default per-test-method reset (`afterEach`
+`server.reset()`), you can ignore the return value entirely — nothing else
+changes. `Registration` matters when:
+- You want to swap out one stub for another mid-test.
+- You called `keepExpectationsBetweenTests()` and need to prune only some
+  stubs at the end of a specific test.
+- You have a helper that registers a big pile of stubs and wants to hand
+  the caller a single handle to clean them all up.
 
 ## Verification — `mock.verify()`
 
