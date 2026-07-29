@@ -237,6 +237,70 @@
             <tagNameFormat>@{project.version}</tagNameFormat>
           </configuration>
         </plugin>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>${jacoco-maven-plugin.version}</version>
+          <configuration>
+            <!-- Vendored MockServer code is not first-party and has no tests. Excluding it
+                 from every jacoco execution (agent, report, check) keeps the numbers focused
+                 on org.opentmf.* code and matches the sonar exclusions. -->
+            <excludes>
+              <exclude>org/mockserver/**</exclude>
+            </excludes>
+          </configuration>
+          <executions>
+            <execution>
+              <id>prepare-agent</id>
+              <goals>
+                <goal>prepare-agent</goal>
+              </goals>
+            </execution>
+            <execution>
+              <id>report</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>report</goal>
+              </goals>
+            </execution>
+            <execution>
+              <id>check</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>check</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <rule>
+                    <element>BUNDLE</element>
+                    <limits>
+                      <limit>
+                        <counter>INSTRUCTION</counter>
+                        <value>COVEREDRATIO</value>
+                        <minimum>0.80</minimum>
+                      </limit>
+                      <limit>
+                        <counter>LINE</counter>
+                        <value>COVEREDRATIO</value>
+                        <minimum>0.80</minimum>
+                      </limit>
+                      <limit>
+                        <counter>BRANCH</counter>
+                        <value>COVEREDRATIO</value>
+                        <minimum>0.80</minimum>
+                      </limit>
+                      <limit>
+                        <counter>CLASS</counter>
+                        <value>MISSEDCOUNT</value>
+                        <maximum>0</maximum>
+                      </limit>
+                    </limits>
+                  </rule>
+                </rules>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -343,31 +407,12 @@
       </properties>
       <build>
         <plugins>
-          <plugin>
-            <groupId>org.jacoco</groupId>
-            <artifactId>jacoco-maven-plugin</artifactId>
-            <version>${jacoco-maven-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>prepare-agent</id>
-                <goals>
-                  <goal>prepare-agent</goal>
-                </goals>
-              </execution>
-              <execution>
-                <id>report</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>report</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
           <!-- Invoked explicitly on the CLI: `mvn -Psonar clean verify sonar:sonar`.
                Phase-binding sonar in a multi-module reactor "delays to end" but never
                fires because the aggregator's verify runs first and there is no session-end
                hook that triggers the delayed submission. Documented usage is the trailing
-               sonar:sonar goal. -->
+               sonar:sonar goal. Jacoco lives in the aggregator's always-on config now, so
+               this profile only carries the sonar-maven-plugin declaration. -->
           <plugin>
             <groupId>org.sonarsource.scanner.maven</groupId>
             <artifactId>sonar-maven-plugin</artifactId>

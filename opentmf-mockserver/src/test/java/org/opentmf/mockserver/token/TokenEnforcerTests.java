@@ -587,4 +587,319 @@ class TokenEnforcerTests {
     assertNull(enforcer.validateForRequest(
         request().withMethod("DELETE").withPath("/x")));
   }
+
+  // ---- branch coverage fill-ins ----
+
+  @Test
+  void publicConstructor_disabled_isValidAndAlwaysPasses() {
+    // 3-arg public constructor with enabled=false takes the short-circuit path in the ctor.
+    TokenEnforcer enforcer = new TokenEnforcer(false, "", "");
+    assertNull(enforcer.validate(request().withPath("/anything")));
+    assertNull(enforcer.validateForRequest(request().withMethod("GET").withPath("/x")));
+  }
+
+  @Test
+  void publicConstructor_enabled_noJwks_noIssuer_usesBuiltInKeys() {
+    // enabled=true, both jwks and issuer empty → falls back to built-in JwtKeyProvider keys.
+    TokenEnforcer enforcer = new TokenEnforcer(true, "", "");
+    String token = signToken(ISSUER, "u", 3600_000);
+    assertNull(enforcer.validate(
+        request().withPath("/x").withHeader("Authorization", "Bearer " + token)));
+  }
+
+  @Test
+  void publicConstructor_enabled_malformedJwksUri_yieldsInitError_401OnValidate() {
+    // Force buildKeySource → new URL("not a url") to throw MalformedURLException, becoming
+    // the initError; every validate then returns 401 "misconfigured".
+    TokenEnforcer enforcer = new TokenEnforcer(true, "", "not a url");
+    HttpResponse resp = enforcer.validate(
+        request().withPath("/x").withHeader("Authorization", "Bearer xyz"));
+    assertNotNull(resp);
+    assertEquals(401, resp.getStatusCode());
+    assertTrue(resp.getBodyAsString().contains("misconfigured"));
+  }
+
+  @Test
+  void publicConstructor_nullIssuerAndJwks_areCoercedToEmpty() {
+    // Passing null issuer and jwks exercises the null-to-empty coercion branches in the
+    // full-control constructor. Casts disambiguate against the JWKSource-taking overload.
+    TokenEnforcer enforcer = new TokenEnforcer(
+        true, (String) null, (String) null, null, defaultRolesByMethod());
+    String token = signToken(ISSUER, "u", 3600_000);
+    assertNull(enforcer.validate(
+        request().withPath("/x").withHeader("Authorization", "Bearer " + token)));
+  }
+
+  @Test
+  void extractBearerToken_missingHeader_isMissingOrMalformed401() {
+    TokenEnforcer enforcer = enabledEnforcer("");
+    HttpResponse resp = enforcer.validate(request().withPath("/x"));
+    assertNotNull(resp);
+    assertEquals(401, resp.getStatusCode());
+    assertTrue(resp.getBodyAsString().contains("Missing or malformed"));
+  }
+
+  @Test
+  void extractBearerToken_headerWithoutBearerPrefix_isMissingOrMalformed401() {
+    TokenEnforcer enforcer = enabledEnforcer("");
+    HttpResponse resp = enforcer.validate(
+        request().withPath("/x").withHeader("Authorization", "Basic dXNlcjpwYXNz"));
+    assertNotNull(resp);
+    assertEquals(401, resp.getStatusCode());
+  }
+
+  @Test
+  void extractBearerToken_bearerPrefixCaseInsensitive_isAccepted() {
+    // regionMatches ignoreCase=true — lowercase "bearer " should be honoured.
+    TokenEnforcer enforcer = enabledEnforcer("");
+    String token = signToken(ISSUER, "u", 3600_000);
+    assertNull(enforcer.validate(
+        request().withPath("/x").withHeader("Authorization", "bearer " + token)));
+  }
+
+  @Test
+  void extractBearerToken_emptyToken_returns401EmptyBearerToken() {
+    TokenEnforcer enforcer = enabledEnforcer("");
+    HttpResponse resp = enforcer.validate(
+        request().withPath("/x").withHeader("Authorization", "Bearer "));
+    assertNotNull(resp);
+    assertEquals(401, resp.getStatusCode());
+    assertTrue(resp.getBodyAsString().contains("Empty bearer token"));
+  }
+
+  @Test
+  void validateForRequest_lowerCaseMethod_isNormalizedToUpper() {
+    TokenEnforcer enforcer = enforcerWithRolesByMethod(defaultRolesByMethod());
+    String token = signTokenWithRoles(ISSUER, "u", 3600_000, List.of("admin"));
+    HttpRequest req = request().withMethod("get").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token);
+    assertNull(enforcer.validateForRequest(req));
+  }
+
+  @Test
+  void extractRoles_customRolesClaimPath_navigatesNestedObject() {
+    // rolesClaimPath = "resource_access.my-client.roles"
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"gadmin"});
+    TokenEnforcer enforcer = new TokenEnforcer(
+        true, "", localKeySource, "resource_access.my-client.roles", roles);
+
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    LinkedHashMap<String, Serializable> myClient = new LinkedHashMap<>();
+    myClient.put("roles", (Serializable) List.of("gadmin"));
+    LinkedHashMap<String, Serializable> resourceAccess = new LinkedHashMap<>();
+    resourceAccess.put("my-client", myClient);
+    claims.put("resource_access", resourceAccess);
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+
+    assertNull(enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token)));
+  }
+
+  @Test
+  void extractRolesAtPath_missingSegment_yieldsForbidden() {
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(
+        true, "", localKeySource, "resource_access.not-there.roles", roles);
+    String token = signTokenWithRoles(ISSUER, "u", 3600_000, List.of("admin"));
+    HttpResponse resp = enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token));
+    assertNotNull(resp);
+    assertEquals(403, resp.getStatusCode());
+  }
+
+  @Test
+  void extractRolesAtPath_leafNotAList_yieldsForbidden() {
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(
+        true, "", localKeySource, "azp", roles);
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    claims.put("azp", "some-client");
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+    HttpResponse resp = enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token));
+    assertNotNull(resp);
+    assertEquals(403, resp.getStatusCode());
+  }
+
+  @Test
+  void extractRolesAtPath_cursorNotAMap_yieldsForbidden() {
+    // path traverses into a scalar mid-way — cursor becomes non-Map, returns emptySet
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(
+        true, "", localKeySource, "azp.deeper.field", roles);
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    claims.put("azp", "some-client");
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+    HttpResponse resp = enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token));
+    assertNotNull(resp);
+    assertEquals(403, resp.getStatusCode());
+  }
+
+  @Test
+  void extractRolesAtPath_leafListWithMixedTypes_keepsStringsOnly() {
+    // ensures the non-String branch inside the leaf loop is exercised
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(
+        true, "", localKeySource, "groups", roles);
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    java.util.ArrayList<Serializable> groups = new java.util.ArrayList<>();
+    groups.add("admin");
+    groups.add(42);
+    claims.put("groups", groups);
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+    // "admin" is still a match despite the numeric noise → 200/null.
+    assertNull(enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token)));
+  }
+
+  @Test
+  void extractRolesAtPath_missingLeaf_thenTopLevelRolesFallback_notUsed_becausePathConfigured() {
+    // When rolesClaimPath is set, the fallback to top-level `roles` is NOT tried.
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(
+        true, "", localKeySource, "resource_access.not-there.roles", roles);
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    claims.put("roles", (Serializable) List.of("admin"));
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+    HttpResponse resp = enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token));
+    assertNotNull(resp);
+    assertEquals(403, resp.getStatusCode());
+  }
+
+  @Test
+  void readTopLevelRoles_fallback_kicksIn_whenRealmAccessAbsent() {
+    // No rolesClaimPath, no realm_access; token has top-level "roles" claim.
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(true, "", localKeySource, "", roles);
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    claims.put("roles", (Serializable) List.of("admin"));
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+    assertNull(enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token)));
+  }
+
+  @Test
+  void readRealmAccessRoles_missingClaim_returnsEmpty_leadsTo403WhenRoleRequired() {
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(true, "", localKeySource, "", roles);
+    // Token with no realm_access, no top-level roles.
+    String token = signToken(ISSUER, "u", 3600_000);
+    HttpResponse resp = enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token));
+    assertNotNull(resp);
+    assertEquals(403, resp.getStatusCode());
+  }
+
+  @Test
+  void readRealmAccessRoles_wrongTypeInList_isFiltered() {
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(true, "", localKeySource, "", roles);
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    java.util.ArrayList<Serializable> rolesList = new java.util.ArrayList<>();
+    rolesList.add("admin");
+    rolesList.add(123);
+    LinkedHashMap<String, Serializable> realmAccess = new LinkedHashMap<>();
+    realmAccess.put("roles", rolesList);
+    claims.put("realm_access", realmAccess);
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+    // "admin" still matches; non-string element ignored, no crash.
+    assertNull(enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token)));
+  }
+
+  @Test
+  void readRealmAccessRoles_rolesNotAList_isIgnored_leadsTo403() {
+    Map<String, String[]> roles = new LinkedHashMap<>();
+    roles.put("GET", new String[]{"admin"});
+    TokenEnforcer enforcer = new TokenEnforcer(true, "", localKeySource, "", roles);
+    long nowSeconds = System.currentTimeMillis() / 1000;
+    Map<String, Serializable> claims = new LinkedHashMap<>();
+    claims.put("iss", ISSUER);
+    claims.put("sub", "u");
+    claims.put("iat", nowSeconds);
+    claims.put("exp", nowSeconds + 3600);
+    LinkedHashMap<String, Serializable> realmAccess = new LinkedHashMap<>();
+    realmAccess.put("roles", "not-a-list");
+    claims.put("realm_access", realmAccess);
+    String token = JwtKeyProvider.getInstance().signJwt(claims);
+    HttpResponse resp = enforcer.validateForRequest(request().withMethod("GET").withPath("/x")
+        .withHeader("Authorization", "Bearer " + token));
+    assertNotNull(resp);
+    assertEquals(403, resp.getStatusCode());
+  }
+
+  @Test
+  void validateWithRoles_emptyRequiredRoles_skipsRoleCheck() {
+    // requiredRoles.length == 0 short-circuits checkRoles to null.
+    TokenEnforcer enforcer = enabledEnforcer("");
+    String token = signToken(ISSUER, "u", 3600_000);
+    assertNull(enforcer.validateWithRoles(
+        request().withPath("/x").withHeader("Authorization", "Bearer " + token)));
+  }
+
+  @Test
+  void singletonGetInstance_returnsSameReference() {
+    assertSame(TokenEnforcer.getInstance(), TokenEnforcer.getInstance());
+  }
+
+  @Test
+  void publicSingleton_disabledByDefault_letsRequestsThrough() {
+    // No env vars set in the test runner → default is enabled=false → validate returns null.
+    assertNull(TokenEnforcer.getInstance().validate(request().withPath("/x")));
+  }
+
+  @Test
+  void twoArgConstructor_validatesSuccessfully_whenTokenIsGood() {
+    // Uses the 3-arg constructor path, but with iss empty and jwks empty → built-in keys.
+    TokenEnforcer enforcer = new TokenEnforcer(true, "", "");
+    String token = signToken(ISSUER, "sub", 3600_000);
+    assertNull(enforcer.validate(
+        request().withPath("/x").withHeader("Authorization", "Bearer " + token)));
+  }
 }

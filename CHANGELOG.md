@@ -40,6 +40,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **JaCoCo `check` rule enforced on every `mvn verify`** (both modules). Rules per
+  bundle: INSTRUCTION, LINE, and BRANCH each ≥ 80% covered; 0 missed classes.
+  Vendored MockServer code excluded (`org/mockserver/**`). Rules live in the aggregator's
+  `<pluginManagement>` and each child module opts in with a bare plugin reference.
+  Getting the codebase past the rule surfaced real gaps and drove the additions below.
+- **Coverage push across both modules.**
+  - `opentmf-mockserver`: BRANCH 66.5% → **80.2%**, INSTRUCTION 84.2% → **93.6%**, LINE
+    84.6% → **93.7%**, missed classes **3 → 0** (`TokenUtil`, `CacheQuery.Criterion`,
+    `PayloadCache.CacheEvictTimer` now covered; `IdempotencyCache.EvictTimer` driven
+    via reflection). New test files: `TokenUtilTests`, `CacheQueryTests` (36 tests over
+    the query engine), `IdempotencyCacheTests` (Record + EvictTimer). Extended:
+    `PayloadCacheTests` (+17), `TokenEnforcerTests` (+23 branch cases across
+    `validateForRequest`, custom `rolesClaimPath`, `extractRolesAtPath` failure modes,
+    `readTopLevelRoles` fallback, malformed-JWKS init-error path, empty required roles).
+    227 → 316 tests.
+  - `opentmf-mockserver-test-support`: pushed all three counters over 80%. Extended:
+    `TmfMockBuilderTests` (put / getList / jsonPatch / mergePatch / jsonPatchCollection /
+    trailing-slash `withId`), `StubBuilderTests` (put / delete / method / pathParam /
+    queryParam / jsonBody / respondSequence(HttpResponse…)), `VerifyBuilderTests`
+    (put / delete / method / atLeast / atMost / withJsonBody / withQueryParam),
+    `MockServerSupportTests` (keepExpectationsBetweenTests / expect / token variants /
+    non-JUnit start-stop cycle). 25 → 47 tests.
+- **Shared preamble extracted from PATCH/DELETE callbacks.** `DynamicDeleteCallback`,
+  `DynamicJsonPatchCallback`, and `DynamicMergePatchCallback` all began with the same
+  auth check → idempotency precheck → RequestContext init → cache lookup → 404 short-circuit
+  → version resolution. Moved to `ExistingEntryLoader.load(request)`, which returns either
+  the short-circuit `HttpResponse` or `(RequestContext, JsonNode)`. Eliminates three
+  Sonar-flagged duplication blocks (25/23/23 lines).
+- **3 S2245 security hotspots marked SAFE.** `AuditFieldUtil` (2) and `DynamicPostCallback`
+  (1) call `RandomStringUtils.insecure().next*` to fabricate mock audit fields
+  (`createdBy` / `updatedBy`) and filler payload values. No cryptographic role.
+  Explicitly reviewed and marked SAFE in Sonar with a justification comment on each.
 - **`docker` Maven profile now builds a local image AND runs a Trivy scan.** After the
   existing `docker build -t local/opentmf-mockserver:${project.version}` step, the profile
   runs two additional executions via `exec-maven-plugin`:

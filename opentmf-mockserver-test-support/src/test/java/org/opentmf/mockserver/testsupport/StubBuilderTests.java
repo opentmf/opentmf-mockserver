@@ -88,4 +88,98 @@ class StubBuilderTests {
     assertThatThrownBy(() -> sb.respondStatus(200))
         .isInstanceOf(IllegalStateException.class);
   }
+
+  @Test
+  void put_delete_verbs_registerExpectations() throws Exception {
+    mock.stub().put("/x").respondStatus(204);
+    mock.stub().delete("/x").respondStatus(202);
+
+    HttpResponse<String> put = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/x"))
+            .PUT(HttpRequest.BodyPublishers.noBody()).build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(put.statusCode()).isEqualTo(204);
+
+    HttpResponse<String> del = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/x")).DELETE().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(del.statusCode()).isEqualTo(202);
+  }
+
+  @Test
+  void method_arbitraryVerb_registers() throws Exception {
+    mock.stub().method("OPTIONS", "/opt").respondStatus(200);
+    HttpResponse<String> resp = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/opt"))
+            .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(resp.statusCode()).isEqualTo(200);
+  }
+
+  @Test
+  void queryParam_narrowsMatch() throws Exception {
+    mock.stub().get("/q").queryParam("k", "v").respondStatus(200);
+
+    HttpResponse<String> with = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/q?k=v")).GET().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(with.statusCode()).isEqualTo(200);
+
+    HttpResponse<String> without = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/q?k=other")).GET().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(without.statusCode()).isEqualTo(404);
+  }
+
+  @Test
+  void pathParam_narrowsMatch() throws Exception {
+    mock.stub().get("/pp/{k}").pathParam("k", "abc").respondStatus(200);
+
+    HttpResponse<String> match = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/pp/abc")).GET().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(match.statusCode()).isEqualTo(200);
+
+    HttpResponse<String> other = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/pp/other")).GET().build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(other.statusCode()).isEqualTo(404);
+  }
+
+  @Test
+  void jsonBody_narrowsMatch() throws Exception {
+    mock.stub().post("/jb").jsonBody("{\"x\":1}").respondStatus(200);
+
+    HttpResponse<String> match = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/jb"))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{\"x\":1}"))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(match.statusCode()).isEqualTo(200);
+  }
+
+  @Test
+  void matcherWithoutStart_throws() {
+    StubBuilder sb = mock.stub();
+    assertThatThrownBy(() -> sb.header("H", "v"))
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void respondSequence_httpResponseArray_registersEachOnce() throws Exception {
+    mock.stub().get("/seq-obj")
+        .respondSequence(
+            org.mockserver.model.HttpResponse.response().withStatusCode(500),
+            org.mockserver.model.HttpResponse.response().withStatusCode(503),
+            org.mockserver.model.HttpResponse.response().withStatusCode(200));
+
+    int s1 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/seq-obj")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    int s2 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/seq-obj")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    int s3 = HTTP.send(HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/seq-obj")).GET().build(),
+        HttpResponse.BodyHandlers.discarding()).statusCode();
+    assertThat(new int[]{s1, s2, s3}).containsExactly(500, 503, 200);
+  }
 }
