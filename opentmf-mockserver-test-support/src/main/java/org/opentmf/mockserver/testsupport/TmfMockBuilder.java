@@ -123,11 +123,26 @@ public class TmfMockBuilder {
   }
 
   /**
-   * Register POST + GET + list + PUT + DELETE in one call. Equivalent to
-   * {@code post(path).get(path).getList(path).put(path).delete(path)}.
+   * Register the seven per-resource verbs for a typical TMF resource in one call. Equivalent
+   * to {@code post(path).get(path).getList(path).put(path).delete(path).jsonPatch(path)
+   * .mergePatch(path)}.
+   *
+   * <p>Both PATCH flavors are included because PATCH is the de-facto update mechanism in
+   * TMF v4 (PUT is described in TMF-630 but omitted from the v4 API swaggers). PUT is kept
+   * for non-TMF and legacy consumers — the expectation is harmless if no client sends PUT.
+   *
+   * <p>{@link #jsonPatchCollection(String)} is a collection-level batch operation (on
+   * {@code PATCH /path}, not {@code PATCH /path/{id}}) and is intentionally NOT included
+   * here — register it separately when needed.
    */
   public TmfMockBuilder crud(String path) {
-    return post(path).get(path).getList(path).put(path).delete(path);
+    return post(path)
+        .get(path)
+        .getList(path)
+        .put(path)
+        .delete(path)
+        .jsonPatch(path)
+        .mergePatch(path);
   }
 
   /** Label passed to the constructor. Useful for diagnostics/logging. */

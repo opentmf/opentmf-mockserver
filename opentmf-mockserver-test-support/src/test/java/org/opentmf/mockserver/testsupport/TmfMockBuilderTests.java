@@ -184,6 +184,42 @@ class TmfMockBuilderTests {
   }
 
   @Test
+  void crud_registersBothPatchFlavors_realJsonPatchAndMergePatchWork() throws Exception {
+    mock.tmf("test").crud("/crud-patch");
+
+    // Create one resource so both PATCH flavors have something to update.
+    HttpResponse<String> post = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/crud-patch"))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{\"a\":1,\"b\":2}"))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+    String id = post.body().replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+    // JSON Patch — no explicit .jsonPatch() call; crud() must have registered it.
+    HttpResponse<String> jp = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/crud-patch/" + id))
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH",
+                HttpRequest.BodyPublishers.ofString(
+                    "[{\"op\":\"replace\",\"path\":\"/a\",\"value\":99}]"))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(jp.statusCode()).isEqualTo(200);
+    assertThat(jp.body()).contains("\"a\":99");
+
+    // Merge Patch — same thing, different content-type. crud() must have registered it too.
+    HttpResponse<String> mp = HTTP.send(
+        HttpRequest.newBuilder(URI.create(mock.baseUrl() + "/crud-patch/" + id))
+            .header("Content-Type", "application/merge-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString("{\"b\":42}"))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertThat(mp.statusCode()).isEqualTo(200);
+    assertThat(mp.body()).contains("\"b\":42");
+  }
+
+  @Test
   void withId_trailingSlash_isStrippedBeforeAppendingIdPattern() throws Exception {
     // The private withId branch that trims a trailing '/' is only reachable when the caller
     // passes a path ending in '/'. Register a GET-by-id via a trailing-slash path and

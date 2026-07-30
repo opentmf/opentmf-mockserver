@@ -19,7 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       `@Test`. Also usable without JUnit via `start()` / `stop()` (Cucumber / E2E harnesses).
     - `TmfMockBuilder` (`mock.tmf(...).post/get/getList/put/delete/jsonPatch/mergePatch/
       jsonPatchCollection/crud(...)`) — fluent registration of the repo's `Dynamic*Callback`
-      classes on a given TMF resource path.
+      classes on a given TMF resource path. `crud(path)` registers the seven per-resource
+      verbs typical TMF v4 services expose (POST + GET + GET-list + PUT + DELETE +
+      jsonPatch + mergePatch) — both PATCH flavors are included because PATCH is the
+      de-facto update mechanism in TMF v4. `jsonPatchCollection` is intentionally NOT
+      part of `crud` (it's a collection-level batch op).
     - `StubBuilder` (`mock.stub().get(...).respondJson/respondStatus/respondDelayed/
       respondSequence(...)`) — fluent static expectations for non-TMF endpoints (KBA
       lookups, gateways, retry-path stubs).
