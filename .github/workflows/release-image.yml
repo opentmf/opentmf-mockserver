@@ -11,7 +11,11 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: ${{ github.repository }}   # ghcr.io/<owner>/<repo>
+  # Hard-coded on purpose: the image name is the product identity and must not
+  # move if the GitHub repo is renamed (e.g. multi-module -parent suffix).
+  # Using `github.repository` here silently splits the ghcr.io path across
+  # rename events and breaks downstream consumers pinning the old coordinate.
+  IMAGE: opentmf/opentmf-mockserver
 
 jobs:
   build:

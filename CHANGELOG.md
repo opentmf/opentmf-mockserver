@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.11] - 2026-07-30
+
+### Fixed
+
+- **Release Docker image GHCR coordinate.** `release-image.yml` computed the
+  image name from `${{ github.repository }}`, so when the GitHub repo was
+  renamed from `opentmf-mockserver` to `opentmf-mockserver-parent` (to match
+  the reactor artifact-id after the 2.1.9 multi-module split), the 2.1.10
+  image published to `ghcr.io/opentmf/opentmf-mockserver-parent:2.1.10`
+  instead of the historical `ghcr.io/opentmf/opentmf-mockserver:2.1.10`,
+  breaking consumers pinning the old coordinate. From 2.1.11 the workflow
+  hard-codes `IMAGE: opentmf/opentmf-mockserver`, so the ghcr path is stable
+  regardless of future repo renames. Consumers stuck on 2.1.10 should either
+  upgrade to 2.1.11 or temporarily pin
+  `ghcr.io/opentmf/opentmf-mockserver-parent:2.1.10` until they can.
+
 ## [2.1.10] - 2026-07-30
 
 ### Fixed
