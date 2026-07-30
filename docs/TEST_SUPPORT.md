@@ -148,7 +148,7 @@ class DocumentServiceIT {
 
   @Test
   void archiveDocument_returns201() {
-    mock.tmf("onedms").crud("/document");     // POST/GET/GET-list/PUT/DELETE for /document
+    mock.tmf("onedms").crud("/document");     // POST/GET/GET-list/PUT/DELETE + jsonPatch + mergePatch
     mock.stub().get("/kba/{key}").pathParam("key", "42")
         .respondJson(200, "{\"value\":42}");
 
@@ -182,12 +182,20 @@ mock.tmf("onedms")
     .jsonPatchCollection("/document"); // PATCH /document, batch collection JSON Patch
 ```
 
-Shortcut for the common five:
+Shortcut for the seven per-resource verbs typical TMF services expose:
 
 ```java
 mock.tmf("onedms").crud("/document");
-// same as .post("/document").get("/document").getList("/document").put("/document").delete("/document")
+// same as .post("/document").get("/document").getList("/document").put("/document")
+//              .delete("/document").jsonPatch("/document").mergePatch("/document")
 ```
+
+Both PATCH flavors are included because PATCH is the de-facto update mechanism
+in TMF v4 (PUT is described in TMF-630 but omitted from v4 API swaggers). PUT is
+kept anyway — the expectation is harmless if no client sends PUT. `jsonPatchCollection`
+is deliberately NOT included: it's a collection-level batch op (on `PATCH /document`,
+not `PATCH /document/{id}`), a different shape from the seven per-resource verbs.
+Register it separately when needed.
 
 Notes:
 - The `{id}` on GET/PUT/DELETE/PATCH is a regex (`[^/]+`) — arbitrary TSIDs match.
