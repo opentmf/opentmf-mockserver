@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.10] - 2026-07-30
+
+### Fixed
+
+- **Release Docker image build.** `Dockerfile_release` at repo root had a stray
+  `COPY docker-entrypoint.sh ...` line that pre-dated the 2.1.9 multi-module split.
+  After the split, the script lives under `opentmf-mockserver/docker-entrypoint.sh`,
+  but the workflow (`release-image.yml`) still uses the repo root as build context,
+  so `docker buildx` failed with `"/docker-entrypoint.sh": not found` and the 2.1.9
+  release image never published to GHCR. Path corrected to
+  `opentmf-mockserver/docker-entrypoint.sh`; every other `COPY` in the file was
+  already relative to the repo root context and unaffected.
+
 ## [2.1.9] - 2026-07-30
 
 ### Added
